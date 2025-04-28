@@ -1,0 +1,15 @@
+[package]
+name = "dcrypt-constants"
+version = "0.1.0"
+edition = "2021"
+authors = ["DCRYPT Team <info@dcrypt.example.org>"]
+description = "Centralized algorithm parameters and constants for DCRYPT"
+repository = "https://github.com/example/dcrypt"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = ["std"]
+std = []
+no_std = []
+
+[dependencies]

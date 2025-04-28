@@ -1,0 +1,33 @@
+# CTR-AES192 Decryption Test Vectors
+# Based on NIST Special Publication 800-38A
+# https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
+
+[DECRYPT]
+
+COUNT = 0
+KEY = 8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
+CTR = f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+CIPHERTEXT = 1abc932417521ca24f2b0459fe7e6e0b090339ec0aa6faefd5ccc2c6f4ce8e941e36b26bd1ebc670d1bd1d665620abf74f78a7f6d29809585a97daec58c6b050
+PLAINTEXT = 6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710
+
+# Detailed block by block information
+# Block #1
+# InputBlock f0f1f2f3 f4f5f6f7 f8f9fafb fcfdfeff 
+# OutputBlock 717d2dc6 39128334 a6167a48 8ded7921 
+# Text-In 1abc9324 17521ca2 4f2b0459 fe7e6e0b 
+# Text-Out 6bc1bee2 2e409f96 e93d7e11 7393172a 
+# Block #2
+# InputBlock f0f1f2f3 f4f5f6f7 f8f9fafb fcfdff00 
+# OutputBlock a72eb3bb 14a55673 4b7bad6a b16100c5 
+# Text-In 090339ec 0aa6faef d5ccc2c6 f4ce8e94 
+# Text-Out ae2d8a57 1e03ac9c 9eb76fac 45af8e51 
+# Block #3
+# InputBlock f0f1f2f3 f4f5f6f7 f8f9fafb fcfdff01 
+# OutputBlock 2efeae2d 72b72261 3446dc7f 4c2af918 
+# Text-In 1e36b26b d1ebc670 d1bd1d66 5620abf7 
+# Text-Out 30c81c46 a35ce411 e5fbc119 1a0a52ef 
+# Block #4
+# InputBlock f0f1f2f3 f4f5f6f7 f8f9fafb fcfdff02 
+# OutputBlock b9e783b3 0dd7924f f7bc9b97 beaa8740 
+# Text-In 4f78a7f6 d2980958 5a97daec 58c6b050 
+# Text-Out f69f2445 df4f9b17 ad2b417b e66c3710

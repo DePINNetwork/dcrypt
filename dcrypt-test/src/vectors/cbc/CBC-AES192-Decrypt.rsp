@@ -1,0 +1,33 @@
+# CBC-AES192 Decryption Test Vectors
+# Based on NIST Special Publication 800-38A
+# https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
+
+[DECRYPT]
+
+COUNT = 0
+KEY = 8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b
+IV = 000102030405060708090a0b0c0d0e0f
+CIPHERTEXT = 4f021db243bc633d7178183a9fa071e8b4d9ada9ad7dedf4e5e738763f69145a571b242012fb7ae07fa9baac3df102e008b0e27988598881d920a9e64f5615cd
+PLAINTEXT = 6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710
+
+# Detailed block by block information
+# Block #1
+# Ciphertext 4f021db2 43bc633d 7178183a 9fa071e8 
+# InputBlock 4f021db2 43bc633d 7178183a 9fa071e8 
+# OutputBlock 6bc0bce1 2a459991 e134741a 7f9e1925 
+# Plaintext 6bc1bee2 2e409f96 e93d7e11 7393172a 
+# Block #2
+# Ciphertext b4d9ada9 ad7dedf4 e5e73876 3f69145a 
+# InputBlock b4d9ada9 ad7dedf4 e5e73876 3f69145a 
+# OutputBlock e12f97e5 5dbfcfa1 efcf7796 da0fffb9 
+# Plaintext ae2d8a57 1e03ac9c 9eb76fac 45af8e51 
+# Block #3
+# Ciphertext 571b2420 12fb7ae0 7fa9baac 3df102e0 
+# InputBlock 571b2420 12fb7ae0 7fa9baac 3df102e0 
+# OutputBlock 8411b1ef 0e2109e5 001cf96f 256346b5 
+# Plaintext 30c81c46 a35ce411 e5fbc119 1a0a52ef 
+# Block #4
+# Ciphertext 08b0e279 88598881 d920a9e6 4f5615cd 
+# InputBlock 08b0e279 88598881 d920a9e6 4f5615cd 
+# OutputBlock a1840065 cdb4e1f7 d282fbd7 db9d35f0 
+# Plaintext f69f2445 df4f9b17 ad2b417b e66c3710

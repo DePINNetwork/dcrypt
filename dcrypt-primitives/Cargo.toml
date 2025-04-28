@@ -1,0 +1,32 @@
+[package]
+name = "dcrypt-primitives"
+version = "0.1.0"
+edition = "2021"
+authors = ["DCRYPT Team <info@dcrypt.example.org>"]
+description = "Cryptographic primitives for the DCRYPT library"
+repository = "https://github.com/example/dcrypt"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = ["std"]
+std = ["dcrypt-core/std"]
+no_std = ["dcrypt-core/no_std"]
+wasm = ["dcrypt-core/wasm"]
+simd = ["dcrypt-core/simd", "dep:faster-hex"]
+
+[dependencies]
+dcrypt-core = { path = "../dcrypt-core", version = "0.1.0" }
+dcrypt-constants = { path = "../dcrypt-constants", version = "0.1.0" }
+zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
+byteorder = { version = "1.4.3", default-features = false }
+# Only used when SIMD is enabled
+faster-hex = { version = "0.6.1", optional = true }
+subtle = { version = "2.6.1" }
+# Add hex dependency
+hex = "0.4.3"
+# Add serde_json for test vectors
+serde_json = "1.0.107"
+serde = { version = "1.0.189", features = ["derive"] }
+
+[dev-dependencies]
+rand = "0.8.5"

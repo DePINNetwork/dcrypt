@@ -1,0 +1,27 @@
+[package]
+name = "dcrypt-sign"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Digital Signature Schemes for the DCRYPT library"
+repository.workspace = true
+license.workspace = true
+
+[features]
+default = ["std"]
+std = ["dcrypt-core/std"]
+no_std = ["dcrypt-core/no_std"]
+wasm = ["dcrypt-core/wasm"]
+simd = ["dcrypt-core/simd"]
+serde = ["dep:serde", "dcrypt-core/serde"]
+
+[dependencies]
+dcrypt-core = { path = "../dcrypt-core", version = "0.1.0" }
+dcrypt-constants = { path = "../dcrypt-constants", version = "0.1.0" }
+dcrypt-primitives = { path = "../dcrypt-primitives", version = "0.1.0" }
+zeroize = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+rand_chacha = { workspace = true }
