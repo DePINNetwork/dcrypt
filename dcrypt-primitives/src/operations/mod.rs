@@ -1,21 +1,21 @@
-//! Builder pattern traits for constructing cryptographic operations
+//! Operation pattern traits for constructing cryptographic operations
 //!
-//! This module provides the core builder traits used throughout the DCRYPT library
+//! This module provides the core operation traits used throughout the DCRYPT library
 //! for a fluent API with compile-time and runtime validation guarantees.
 
 use crate::error::Result;
 
-/// Base trait for all builders in the DCRYPT library
+/// Base trait for all operations in the DCRYPT library
 ///
 /// This trait defines the core functionality for constructing objects
 /// in a step-by-step manner with proper validation.
-pub trait Builder<T> {
-    /// Validate and build the final object
+pub trait Operation<T> {
+    /// Validate and execute the final object
     ///
     /// # Returns
     /// - `Ok(T)` if the construction was successful
     /// - `Err(Error)` if validation failed or construction was not possible
-    fn build(self) -> Result<T>;
+    fn execute(self) -> Result<T>;
 
     /// Reset the builder to its initial state
     ///
@@ -54,7 +54,7 @@ pub trait WithData<'a, T> {
     fn with_data(self, data: &'a [u8]) -> T;
 }
 
-/// Mode of operation for cryptographic builders
+/// Mode of operation for cryptographic operations
 pub enum OperationMode {
     /// Standard encryption/decryption
     Standard,
@@ -69,5 +69,5 @@ pub mod aead;
 pub mod kdf;
 
 // Re-export commonly used items for convenience
-pub use aead::{AeadEncryptionBuilder, AeadDecryptionBuilder};
-pub use kdf::KdfBuilder;
+pub use aead::{AeadEncryptOperation, AeadDecryptOperation};
+pub use kdf::KdfOperation;

@@ -8,7 +8,7 @@
 use alloc::vec::Vec;
 use crate::error::{Error, Result};
 use super::{KeyDerivationFunction, SecurityLevel, PasswordHashFunction, PasswordHash, ParamProvider};
-use super::{KdfAlgorithm, KdfBuilder};
+use super::{KdfAlgorithm, KdfOperation};
 use crate::types::{Salt, SecretBytes};
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -98,7 +98,7 @@ impl Argon2 {
     }
 }
 
-/// Builder for Argon2 operations
+/// Operation for Argon2 operations
 pub struct Argon2Builder<'a> {
     kdf: &'a Argon2,
     ikm: Option<&'a [u8]>,
@@ -107,7 +107,7 @@ pub struct Argon2Builder<'a> {
     length: usize,
 }
 
-impl<'a> KdfBuilder<'a, Argon2Algorithm> for Argon2Builder<'a> {
+impl<'a> KdfOperation<'a, Argon2Algorithm> for Argon2Builder<'a> {
     fn with_ikm(mut self, ikm: &'a [u8]) -> Self {
         self.ikm = Some(ikm);
         self
@@ -194,7 +194,7 @@ impl KeyDerivationFunction for Argon2 {
         Ok(result.to_vec())
     }
     
-    fn builder<'a>(&'a self) -> impl KdfBuilder<'a, Self::Algorithm> {
+    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
         Argon2Builder {
             kdf: self,
             ikm: None,

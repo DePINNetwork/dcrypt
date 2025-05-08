@@ -8,7 +8,7 @@
 use crate::error::{Error, Result};
 use crate::hash::HashFunction;
 use crate::mac::hmac::Hmac;
-use crate::kdf::{KeyDerivationFunction, ParamProvider, SecurityLevel, KdfAlgorithm, KdfBuilder};
+use crate::kdf::{KeyDerivationFunction, ParamProvider, SecurityLevel, KdfAlgorithm, KdfOperation};
 use crate::types::Salt;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use rand::{CryptoRng, RngCore};
@@ -64,8 +64,8 @@ pub struct Hkdf<H: HashFunction> {
     params: HkdfParams,
 }
 
-/// Builder for HKDF operations
-pub struct HkdfBuilder<'a, H: HashFunction> {
+/// Operation for HKDF operations
+pub struct HKdfOperation<'a, H: HashFunction> {
     kdf: &'a Hkdf<H>,
     ikm: Option<&'a [u8]>,
     salt: Option<&'a [u8]>,
@@ -73,7 +73,7 @@ pub struct HkdfBuilder<'a, H: HashFunction> {
     length: usize,
 }
 
-impl<'a, H: HashFunction> KdfBuilder<'a, HkdfAlgorithm<H>> for HkdfBuilder<'a, H> {
+impl<'a, H: HashFunction> KdfOperation<'a, HkdfAlgorithm<H>> for HKdfOperation<'a, H> {
     fn with_ikm(mut self, ikm: &'a [u8]) -> Self {
         self.ikm = Some(ikm);
         self
@@ -228,8 +228,8 @@ impl<H: HashFunction> KeyDerivationFunction for Hkdf<H> {
         Ok(result.to_vec())
     }
     
-    fn builder<'a>(&'a self) -> impl KdfBuilder<'a, Self::Algorithm> {
-        HkdfBuilder {
+    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
+        HKdfOperation {
             kdf: self,
             ikm: None,
             salt: None,

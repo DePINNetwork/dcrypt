@@ -1,10 +1,10 @@
-//! Builders for Authenticated Encryption with Associated Data (AEAD) operations
+//! Operations for Authenticated Encryption with Associated Data (AEAD) operations
 //!
-//! This module provides builder implementations for AEAD encryption and decryption
+//! This module provides operation implementations for AEAD encryption and decryption
 //! operations with proper parameter validation and fluent APIs.
 
 use crate::error::{Error, Result};
-use crate::builders::{Builder, WithAssociatedData, WithNonce, WithData};
+use crate::operations::{Operation, WithAssociatedData, WithNonce, WithData};
 use std::marker::PhantomData;
 
 /// Common trait for AEAD operations
@@ -22,8 +22,8 @@ pub trait AeadOperation {
     fn algorithm_name() -> &'static str;
 }
 
-/// Builder for AEAD encryption operations
-pub struct AeadEncryptionBuilder<'a, T: AeadOperation> {
+/// Operation for AEAD encryption operations
+pub struct AeadEncryptOperation<'a, T: AeadOperation> {
     /// Reference to the key
     key: &'a T::Key,
     
@@ -40,7 +40,7 @@ pub struct AeadEncryptionBuilder<'a, T: AeadOperation> {
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T: AeadOperation> AeadEncryptionBuilder<'a, T> {
+impl<'a, T: AeadOperation> AeadEncryptOperation<'a, T> {
     /// Create a new AEAD encryption builder
     pub fn new(key: &'a T::Key) -> Self {
         Self {
@@ -72,8 +72,8 @@ impl<'a, T: AeadOperation> AeadEncryptionBuilder<'a, T> {
     }
 }
 
-impl<'a, T: AeadOperation> Builder<Vec<u8>> for AeadEncryptionBuilder<'a, T> {
-    fn build(self) -> Result<Vec<u8>> {
+impl<'a, T: AeadOperation> Operation<Vec<u8>> for AeadEncryptOperation<'a, T> {
+    fn execute(self) -> Result<Vec<u8>> {
         self.encrypt()
     }
     
@@ -84,29 +84,29 @@ impl<'a, T: AeadOperation> Builder<Vec<u8>> for AeadEncryptionBuilder<'a, T> {
     }
 }
 
-impl<'a, T: AeadOperation> WithNonce<'a, T::Nonce, Self> for AeadEncryptionBuilder<'a, T> {
+impl<'a, T: AeadOperation> WithNonce<'a, T::Nonce, Self> for AeadEncryptOperation<'a, T> {
     fn with_nonce(mut self, nonce: &'a T::Nonce) -> Self {
         self.nonce = Some(nonce);
         self
     }
 }
 
-impl<'a, T: AeadOperation> WithAssociatedData<'a, Self> for AeadEncryptionBuilder<'a, T> {
+impl<'a, T: AeadOperation> WithAssociatedData<'a, Self> for AeadEncryptOperation<'a, T> {
     fn with_associated_data(mut self, aad: &'a [u8]) -> Self {
         self.aad = Some(aad);
         self
     }
 }
 
-impl<'a, T: AeadOperation> WithData<'a, Self> for AeadEncryptionBuilder<'a, T> {
+impl<'a, T: AeadOperation> WithData<'a, Self> for AeadEncryptOperation<'a, T> {
     fn with_data(mut self, data: &'a [u8]) -> Self {
         self.plaintext = Some(data);
         self
     }
 }
 
-/// Builder for AEAD decryption operations
-pub struct AeadDecryptionBuilder<'a, T: AeadOperation> {
+/// Operation for AEAD decryption operations
+pub struct AeadDecryptOperation<'a, T: AeadOperation> {
     /// Reference to the key
     key: &'a T::Key,
     
@@ -123,7 +123,7 @@ pub struct AeadDecryptionBuilder<'a, T: AeadOperation> {
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T: AeadOperation> AeadDecryptionBuilder<'a, T> {
+impl<'a, T: AeadOperation> AeadDecryptOperation<'a, T> {
     /// Create a new AEAD decryption builder
     pub fn new(key: &'a T::Key) -> Self {
         Self {
@@ -164,8 +164,8 @@ impl<'a, T: AeadOperation> AeadDecryptionBuilder<'a, T> {
     }
 }
 
-impl<'a, T: AeadOperation> Builder<Vec<u8>> for AeadDecryptionBuilder<'a, T> {
-    fn build(self) -> Result<Vec<u8>> {
+impl<'a, T: AeadOperation> Operation<Vec<u8>> for AeadDecryptOperation<'a, T> {
+    fn execute(self) -> Result<Vec<u8>> {
         self.decrypt()
     }
     
@@ -176,21 +176,21 @@ impl<'a, T: AeadOperation> Builder<Vec<u8>> for AeadDecryptionBuilder<'a, T> {
     }
 }
 
-impl<'a, T: AeadOperation> WithNonce<'a, T::Nonce, Self> for AeadDecryptionBuilder<'a, T> {
+impl<'a, T: AeadOperation> WithNonce<'a, T::Nonce, Self> for AeadDecryptOperation<'a, T> {
     fn with_nonce(mut self, nonce: &'a T::Nonce) -> Self {
         self.nonce = Some(nonce);
         self
     }
 }
 
-impl<'a, T: AeadOperation> WithAssociatedData<'a, Self> for AeadDecryptionBuilder<'a, T> {
+impl<'a, T: AeadOperation> WithAssociatedData<'a, Self> for AeadDecryptOperation<'a, T> {
     fn with_associated_data(mut self, aad: &'a [u8]) -> Self {
         self.aad = Some(aad);
         self
     }
 }
 
-impl<'a, T: AeadOperation> WithData<'a, Self> for AeadDecryptionBuilder<'a, T> {
+impl<'a, T: AeadOperation> WithData<'a, Self> for AeadDecryptOperation<'a, T> {
     fn with_data(mut self, data: &'a [u8]) -> Self {
         self.ciphertext = Some(data);
         self

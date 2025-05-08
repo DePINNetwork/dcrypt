@@ -1,12 +1,12 @@
-//! Authenticated Encryption with Associated Data (AEAD) with builder pattern
+//! Authenticated Encryption with Associated Data (AEAD) with operation pattern
 //!
 //! This module provides implementations of authenticated encryption algorithms
-//! with an ergonomic builder pattern for operations.
+//! with an ergonomic operation pattern for operations.
 //!
 //! ## Example usage
 //!
 //! ```
-//! use dcrypt_primitives::aead::{ChaCha20Poly1305Cipher, AeadCipher, AeadEncryptionBuilder, AeadDecryptionBuilder};
+//! use dcrypt_primitives::aead::{ChaCha20Poly1305Cipher, AeadCipher, AeadEncryptOperation, AeadDecryptOperation};
 //! use rand::rngs::OsRng;
 //! 
 //! // Generate key and nonce
@@ -16,13 +16,13 @@
 //! // Create cipher instance
 //! let cipher = ChaCha20Poly1305Cipher::new(&key).unwrap();
 //! 
-//! // Encrypt with builder pattern
+//! // Encrypt with operation pattern
 //! let ciphertext = cipher.encrypt()
 //!     .with_nonce(&nonce)
 //!     .with_aad(b"additional data")
 //!     .encrypt(b"secret message").unwrap();
 //! 
-//! // Decrypt with builder pattern
+//! // Decrypt with operation pattern
 //! let plaintext = cipher.decrypt()
 //!     .with_nonce(&nonce)
 //!     .with_aad(b"additional data")
@@ -89,17 +89,17 @@ impl AeadAlgorithm for ChaCha20Poly1305Algorithm {
     }
 }
 
-/// Base trait for operation builders
-pub trait Builder<T> {
+/// Base trait for operations
+pub trait Operation<T> {
     /// Execute the operation and produce a result
-    fn build(self) -> Result<T>;
+    fn execute(self) -> Result<T>;
     
-    /// Reset the builder to its initial state
+    /// Reset the operation to its initial state
     fn reset(&mut self);
 }
 
-/// Trait for encryption builders with AEAD algorithms
-pub trait AeadEncryptionBuilder<'a, A: AeadAlgorithm>: Builder<Vec<u8>> {
+/// Trait for encryption operations with AEAD algorithms
+pub trait AeadEncryptOperation<'a, A: AeadAlgorithm>: Operation<Vec<u8>> {
     /// Set the nonce for encryption - ChaCha20Poly1305 uses Nonce12
     fn with_nonce(self, nonce: &'a Nonce12) -> Self;
     
@@ -110,8 +110,8 @@ pub trait AeadEncryptionBuilder<'a, A: AeadAlgorithm>: Builder<Vec<u8>> {
     fn encrypt(self, plaintext: &'a [u8]) -> Result<Vec<u8>>;
 }
 
-/// Trait for decryption builders with AEAD algorithms
-pub trait AeadDecryptionBuilder<'a, A: AeadAlgorithm>: Builder<Vec<u8>> {
+/// Trait for decryption operations with AEAD algorithms
+pub trait AeadDecryptOperation<'a, A: AeadAlgorithm>: Operation<Vec<u8>> {
     /// Set the nonce for decryption - ChaCha20Poly1305 uses Nonce12
     fn with_nonce(self, nonce: &'a Nonce12) -> Self;
     
@@ -133,11 +133,11 @@ pub trait AeadCipher {
     /// Creates a new AEAD cipher instance
     fn new(key: &Self::Key) -> Result<Self> where Self: Sized;
     
-    /// Begin encryption operation with builder pattern
-    fn encrypt<'a>(&'a self) -> impl AeadEncryptionBuilder<'a, Self::Algorithm>;
+    /// Begin encryption operation with operation pattern
+    fn encrypt<'a>(&'a self) -> impl AeadEncryptOperation<'a, Self::Algorithm>;
     
-    /// Begin decryption operation with builder pattern
-    fn decrypt<'a>(&'a self) -> impl AeadDecryptionBuilder<'a, Self::Algorithm>;
+    /// Begin decryption operation with operation pattern
+    fn decrypt<'a>(&'a self) -> impl AeadDecryptOperation<'a, Self::Algorithm>;
     
     /// Generate a random key
     fn generate_key<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self::Key>;
@@ -185,16 +185,16 @@ impl AeadCipher for ChaCha20Poly1305Cipher {
         })
     }
     
-    fn encrypt<'a>(&'a self) -> impl AeadEncryptionBuilder<'a, Self::Algorithm> {
-        ChaCha20Poly1305EncryptionBuilder {
+    fn encrypt<'a>(&'a self) -> impl AeadEncryptOperation<'a, Self::Algorithm> {
+        ChaCha20Poly1305EncryptOperation {
             cipher: self,
             nonce: None,
             aad: None,
         }
     }
     
-    fn decrypt<'a>(&'a self) -> impl AeadDecryptionBuilder<'a, Self::Algorithm> {
-        ChaCha20Poly1305DecryptionBuilder {
+    fn decrypt<'a>(&'a self) -> impl AeadDecryptOperation<'a, Self::Algorithm> {
+        ChaCha20Poly1305DecryptOperation {
             cipher: self,
             nonce: None,
             aad: None,
@@ -214,17 +214,17 @@ impl AeadCipher for ChaCha20Poly1305Cipher {
     }
 }
 
-/// ChaCha20-Poly1305 encryption builder
+/// ChaCha20-Poly1305 encryption operation
 #[cfg(feature = "alloc")]
-pub struct ChaCha20Poly1305EncryptionBuilder<'a> {
+pub struct ChaCha20Poly1305EncryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305Cipher,
     nonce: Option<&'a Nonce12>,
     aad: Option<&'a [u8]>,
 }
 
 #[cfg(feature = "alloc")]
-impl<'a> Builder<Vec<u8>> for ChaCha20Poly1305EncryptionBuilder<'a> {
-    fn build(self) -> Result<Vec<u8>> {
+impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305EncryptOperation<'a> {
+    fn execute(self) -> Result<Vec<u8>> {
         Err(Error::InvalidParameter("Use encrypt method instead"))
     }
     
@@ -235,8 +235,8 @@ impl<'a> Builder<Vec<u8>> for ChaCha20Poly1305EncryptionBuilder<'a> {
 }
 
 #[cfg(feature = "alloc")]
-impl<'a> AeadEncryptionBuilder<'a, ChaCha20Poly1305Algorithm> 
-    for ChaCha20Poly1305EncryptionBuilder<'a> 
+impl<'a> AeadEncryptOperation<'a, ChaCha20Poly1305Algorithm> 
+    for ChaCha20Poly1305EncryptOperation<'a> 
 {
     fn with_nonce(mut self, nonce: &'a Nonce12) -> Self {
         self.nonce = Some(nonce);
@@ -263,17 +263,17 @@ impl<'a> AeadEncryptionBuilder<'a, ChaCha20Poly1305Algorithm>
     }
 }
 
-/// ChaCha20-Poly1305 decryption builder
+/// ChaCha20-Poly1305 decryption operation
 #[cfg(feature = "alloc")]
-pub struct ChaCha20Poly1305DecryptionBuilder<'a> {
+pub struct ChaCha20Poly1305DecryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305Cipher,
     nonce: Option<&'a Nonce12>,
     aad: Option<&'a [u8]>,
 }
 
 #[cfg(feature = "alloc")]
-impl<'a> Builder<Vec<u8>> for ChaCha20Poly1305DecryptionBuilder<'a> {
-    fn build(self) -> Result<Vec<u8>> {
+impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305DecryptOperation<'a> {
+    fn execute(self) -> Result<Vec<u8>> {
         Err(Error::InvalidParameter("Use decrypt method instead"))
     }
     
@@ -284,8 +284,8 @@ impl<'a> Builder<Vec<u8>> for ChaCha20Poly1305DecryptionBuilder<'a> {
 }
 
 #[cfg(feature = "alloc")]
-impl<'a> AeadDecryptionBuilder<'a, ChaCha20Poly1305Algorithm> 
-    for ChaCha20Poly1305DecryptionBuilder<'a> 
+impl<'a> AeadDecryptOperation<'a, ChaCha20Poly1305Algorithm> 
+    for ChaCha20Poly1305DecryptOperation<'a> 
 {
     fn with_nonce(mut self, nonce: &'a Nonce12) -> Self {
         self.nonce = Some(nonce);

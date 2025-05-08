@@ -80,7 +80,7 @@ use dcrypt_primitives::block::aes::{Aes128, Aes256};
 use dcrypt_primitives::aead::Gcm;
 use dcrypt_primitives::block::BlockCipher;
 use dcrypt_core::traits::symmetric::SymmetricCipher as CoreSymmetricCipher;
-use dcrypt_core::traits::symmetric::{EncryptionBuilder, DecryptionBuilder};
+use dcrypt_core::traits::symmetric::{EncryptOperation, DecryptOperation};
 use dcrypt_core::types::{SecretBytes, Ciphertext};
 // Fix the import of Nonce12
 use dcrypt_primitives::Nonce12;
@@ -171,7 +171,7 @@ impl Aead for Aes128Gcm {
             Err(e) => return Err(Error::from(e)),
         };
         
-        // Use internal_encrypt method directly instead of builder pattern
+        // Use internal_encrypt method directly instead of operation pattern
         match gcm.internal_encrypt(plaintext, aad) {
             Ok(ciphertext) => Ok(ciphertext),
             Err(e) => Err(Error::from(e)),
@@ -198,7 +198,7 @@ impl Aead for Aes128Gcm {
             Err(e) => return Err(Error::from(e)),
         };
         
-        // Use internal_decrypt method directly instead of builder pattern
+        // Use internal_decrypt method directly instead of operation pattern
         match gcm.internal_decrypt(ciphertext, aad) {
             Ok(plaintext) => Ok(plaintext),
             Err(e) => Err(Error::from(e)),
@@ -247,7 +247,7 @@ impl Aead for Aes256Gcm {
             Err(e) => return Err(Error::from(e)),
         };
         
-        // Use internal_encrypt method directly instead of builder pattern
+        // Use internal_encrypt method directly instead of operation pattern
         match gcm.internal_encrypt(plaintext, aad) {
             Ok(ciphertext) => Ok(ciphertext),
             Err(e) => Err(Error::from(e)),
@@ -274,7 +274,7 @@ impl Aead for Aes256Gcm {
             Err(e) => return Err(Error::from(e)),
         };
         
-        // Use internal_decrypt method directly instead of builder pattern
+        // Use internal_decrypt method directly instead of operation pattern
         match gcm.internal_decrypt(ciphertext, aad) {
             Ok(plaintext) => Ok(plaintext),
             Err(e) => Err(Error::from(e)),

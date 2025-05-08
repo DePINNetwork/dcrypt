@@ -17,7 +17,7 @@ use crate::types::SecretBytes;
 use crate::Nonce12; // Updated import path for Nonce12
 use dcrypt_core::types::Ciphertext;
 use dcrypt_core::traits::{AuthenticatedCipher, SymmetricCipher};
-use dcrypt_core::traits::symmetric::{Builder, EncryptionBuilder, DecryptionBuilder};
+use dcrypt_core::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
 use dcrypt_core::error::DcryptError;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
@@ -34,15 +34,15 @@ pub struct ChaCha20Poly1305 {
     key: [u8; CHACHA20POLY1305_KEY_SIZE],
 }
 
-/// Builder for ChaCha20Poly1305 encryption operations
-pub struct ChaCha20Poly1305EncryptionBuilder<'a> {
+/// Operation for ChaCha20Poly1305 encryption operations
+pub struct ChaCha20Poly1305EncryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305,
     nonce: Option<&'a Nonce12>, // Changed from Nonce<CHACHA20POLY1305_NONCE_SIZE> to Nonce12
     aad: Option<&'a [u8]>,
 }
 
-/// Builder for ChaCha20Poly1305 decryption operations
-pub struct ChaCha20Poly1305DecryptionBuilder<'a> {
+/// Operation for ChaCha20Poly1305 decryption operations
+pub struct ChaCha20Poly1305DecryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305,
     nonce: Option<&'a Nonce12>, // Changed from Nonce<CHACHA20POLY1305_NONCE_SIZE> to Nonce12
     aad: Option<&'a [u8]>,
@@ -106,13 +106,14 @@ impl ChaCha20Poly1305 {
                 got: ciphertext.len(),
             });
         }
+        
         let ct_len = ciphertext.len() - POLY1305_TAG_SIZE;
         let (encrypted, tag) = ciphertext.split_at(ct_len);
 
         // -------- one-time key & expected tag ------------------------------
-        let poly_key   = self.poly1305_key(nonce);
-        let expected   = self.calculate_tag_ct(&poly_key, aad, encrypted)?;
-        let tag_ok     = expected.ct_eq(tag);                 // subtle::Choice
+        let poly_key = self.poly1305_key(nonce);
+        let expected = self.calculate_tag_ct(&poly_key, aad, encrypted)?;
+        let tag_ok = expected.ct_eq(tag);               // subtle::Choice
 
         // -------- decrypt ---------------------------------------------------
         let mut m = Vec::with_capacity(encrypted.len());
@@ -120,27 +121,24 @@ impl ChaCha20Poly1305 {
         ChaCha20::with_counter(&self.key, nonce, 1).decrypt(&mut m);
 
         // -------- constant-time post-processing ----------------------------
-        //
-        // We clone `m` so that *both* success and failure paths incur an
-        // identical heap allocation + copy.  The plaintext is then masked with
-        // a branch-free byte-wise AND so the loop timing is identical.
-        //
         // mask = 0xFF when tag_ok == 1, else 0x00
-        // mask = 0xFF (success) or 0x00 (failure)
         let mask = 0u8.wrapping_sub(tag_ok.unwrap_u8());
-        let mut plaintext = m.clone();
-        for byte in &mut plaintext {
+        
+        // Apply mask to all bytes
+        for byte in &mut m {
             *byte &= mask;
         }
-
-        // Always drop the working buffer (`m`) here, so its destructor time is
-        // identical regardless of authentication outcome.
-        drop(m);
+        
+        // Create a burn buffer on success path to match the deallocation in failure path
+        // This ensures both paths perform identical memory operations
+        let mut burn = m.clone();
+        for b in &mut burn { *b = 0; }  // wipe
+        drop(burn);
 
         if bool::from(tag_ok) {
-            Ok(plaintext)
+            Ok(m)  // m lives on success
         } else {
-            Err(Error::AuthenticationFailed)
+            Err(Error::AuthenticationFailed)  // drops m on failure
         }
     }
 
@@ -209,23 +207,23 @@ impl SymmetricCipher for ChaCha20Poly1305 {
     type Key = SecretBytes<CHACHA20POLY1305_KEY_SIZE>;
     type Nonce = Nonce12; // Changed from Nonce<CHACHA20POLY1305_NONCE_SIZE> to Nonce12
     type Ciphertext = Ciphertext;
-    type EncryptionBuilder<'a> = ChaCha20Poly1305EncryptionBuilder<'a> where Self: 'a;
-    type DecryptionBuilder<'a> = ChaCha20Poly1305DecryptionBuilder<'a> where Self: 'a;
+    type EncryptOperation<'a> = ChaCha20Poly1305EncryptOperation<'a> where Self: 'a;
+    type DecryptOperation<'a> = ChaCha20Poly1305DecryptOperation<'a> where Self: 'a;
     
     fn name() -> &'static str {
         "ChaCha20Poly1305"
     }
     
-    fn encrypt<'a>(&'a self) -> Self::EncryptionBuilder<'a> {
-        ChaCha20Poly1305EncryptionBuilder {
+    fn encrypt<'a>(&'a self) -> Self::EncryptOperation<'a> {
+        ChaCha20Poly1305EncryptOperation {
             cipher: self,
             nonce: None,
             aad: None,
         }
     }
     
-    fn decrypt<'a>(&'a self) -> Self::DecryptionBuilder<'a> {
-        ChaCha20Poly1305DecryptionBuilder {
+    fn decrypt<'a>(&'a self) -> Self::DecryptOperation<'a> {
+        ChaCha20Poly1305DecryptOperation {
             cipher: self,
             nonce: None,
             aad: None,
@@ -259,9 +257,9 @@ impl SymmetricCipher for ChaCha20Poly1305 {
     }
 }
 
-// Implement Builder for ChaCha20Poly1305EncryptionBuilder
-impl<'a> Builder<Ciphertext> for ChaCha20Poly1305EncryptionBuilder<'a> {
-    fn build(self) -> std::result::Result<Ciphertext, DcryptError> {
+// Implement Operation for ChaCha20Poly1305EncryptOperation
+impl<'a> Operation<Ciphertext> for ChaCha20Poly1305EncryptOperation<'a> {
+    fn execute(self) -> std::result::Result<Ciphertext, DcryptError> {
         let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
             context: "ChaCha20Poly1305 encryption",
             #[cfg(feature = "std")]
@@ -283,7 +281,7 @@ impl<'a> Builder<Ciphertext> for ChaCha20Poly1305EncryptionBuilder<'a> {
     }
 }
 
-impl<'a> EncryptionBuilder<'a, ChaCha20Poly1305> for ChaCha20Poly1305EncryptionBuilder<'a> {
+impl<'a> EncryptOperation<'a, ChaCha20Poly1305> for ChaCha20Poly1305EncryptOperation<'a> {
     fn with_nonce(mut self, nonce: &'a <ChaCha20Poly1305 as SymmetricCipher>::Nonce) -> Self {
         self.nonce = Some(nonce);
         self
@@ -314,9 +312,9 @@ impl<'a> EncryptionBuilder<'a, ChaCha20Poly1305> for ChaCha20Poly1305EncryptionB
     }
 }
 
-// Implement Builder for ChaCha20Poly1305DecryptionBuilder
-impl<'a> Builder<Vec<u8>> for ChaCha20Poly1305DecryptionBuilder<'a> {
-    fn build(self) -> std::result::Result<Vec<u8>, DcryptError> {
+// Implement Operation for ChaCha20Poly1305DecryptOperation
+impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305DecryptOperation<'a> {
+    fn execute(self) -> std::result::Result<Vec<u8>, DcryptError> {
         Err(DcryptError::InvalidParameter {
             context: "ChaCha20Poly1305 decryption",
             #[cfg(feature = "std")]
@@ -325,7 +323,7 @@ impl<'a> Builder<Vec<u8>> for ChaCha20Poly1305DecryptionBuilder<'a> {
     }
 }
 
-impl<'a> DecryptionBuilder<'a, ChaCha20Poly1305> for ChaCha20Poly1305DecryptionBuilder<'a> {
+impl<'a> DecryptOperation<'a, ChaCha20Poly1305> for ChaCha20Poly1305DecryptOperation<'a> {
     fn with_nonce(mut self, nonce: &'a <ChaCha20Poly1305 as SymmetricCipher>::Nonce) -> Self {
         self.nonce = Some(nonce);
         self

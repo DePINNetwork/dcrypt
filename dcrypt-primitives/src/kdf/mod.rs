@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-//! Key Derivation Functions with builder pattern and type-level guarantees
+//! Key Derivation Functions with operation pattern and type-level guarantees
 //!
 //! This module provides implementations of key derivation functions (KDFs)
 //! with improved type safety and ergonomic APIs.
@@ -9,7 +9,7 @@
 ///
 /// ```
 /// # use rand::rngs::OsRng;
-/// use dcrypt_primitives::kdf::{TypedHkdf, KeyDerivationFunction, KdfBuilder}; 
+/// use dcrypt_primitives::kdf::{TypedHkdf, KeyDerivationFunction, KdfOperation}; 
 /// use dcrypt_primitives::hash::Sha256;
 /// 
 /// // Create KDF instance
@@ -26,7 +26,7 @@
 ///     32
 /// ).unwrap();
 /// 
-/// // Builder pattern API
+/// // Operation pattern API
 /// let key2 = kdf.builder()
 ///     .with_ikm(b"password123")
 ///     .with_salt(salt.as_ref())
@@ -114,8 +114,8 @@ pub trait KdfAlgorithm {
     fn security_level() -> SecurityLevel;
 }
 
-/// Builder for KDF operations with improved type safety
-pub trait KdfBuilder<'a, A: KdfAlgorithm, T = Vec<u8>>: Sized {
+/// Operation for KDF operations with improved type safety
+pub trait KdfOperation<'a, A: KdfAlgorithm, T = Vec<u8>>: Sized {
     /// Set the input keying material
     fn with_ikm(self, ikm: &'a [u8]) -> Self;
     
@@ -160,7 +160,7 @@ pub trait KeyDerivationFunction {
     fn derive_key(&self, input: &[u8], salt: Option<&[u8]>, info: Option<&[u8]>, length: usize) -> Result<Vec<u8>>;
     
     /// Creates a builder for fluent API usage
-    fn builder<'a>(&'a self) -> impl KdfBuilder<'a, Self::Algorithm> where Self: Sized;
+    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> where Self: Sized;
     
     /// Returns the security level of the KDF in bits
     fn security_level() -> SecurityLevel {
@@ -220,8 +220,8 @@ impl<H: HashFunction> KeyDerivationFunction for TypedHkdf<H> {
         self.inner.derive_key(input, salt, info, length)
     }
     
-    fn builder<'a>(&'a self) -> impl KdfBuilder<'a, Self::Algorithm> {
-        HkdfBuilder {
+    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
+        HKdfOperation {
             kdf: self,
             ikm: None,
             salt: None,
@@ -239,7 +239,7 @@ impl<H: HashFunction> KeyDerivationFunction for TypedHkdf<H> {
 
 /// HKDF builder implementation
 #[cfg(feature = "alloc")]
-pub struct HkdfBuilder<'a, H: HashFunction> {
+pub struct HKdfOperation<'a, H: HashFunction> {
     kdf: &'a TypedHkdf<H>,
     ikm: Option<&'a [u8]>,
     salt: Option<&'a [u8]>,
@@ -248,7 +248,7 @@ pub struct HkdfBuilder<'a, H: HashFunction> {
 }
 
 #[cfg(feature = "alloc")]
-impl<'a, H: HashFunction> KdfBuilder<'a, HkdfAlgorithm<H>> for HkdfBuilder<'a, H> {
+impl<'a, H: HashFunction> KdfOperation<'a, HkdfAlgorithm<H>> for HKdfOperation<'a, H> {
     fn with_ikm(mut self, ikm: &'a [u8]) -> Self {
         self.ikm = Some(ikm);
         self
@@ -344,7 +344,7 @@ impl<H: HashFunction + Clone> KeyDerivationFunction for TypedPbkdf2<H> {
         self.inner.derive_key(input, salt, info, length)
     }
     
-    fn builder<'a>(&'a self) -> impl KdfBuilder<'a, Self::Algorithm> {
+    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
         Pbkdf2Builder {
             kdf: self,
             password: None,
@@ -381,7 +381,7 @@ impl<'a, H: HashFunction + Clone> Pbkdf2Builder<'a, H> {
 }
 
 #[cfg(feature = "alloc")]
-impl<'a, H: HashFunction + Clone> KdfBuilder<'a, Pbkdf2Algorithm<H>> for Pbkdf2Builder<'a, H> {
+impl<'a, H: HashFunction + Clone> KdfOperation<'a, Pbkdf2Algorithm<H>> for Pbkdf2Builder<'a, H> {
     fn with_ikm(mut self, password: &'a [u8]) -> Self {
         self.password = Some(password);
         self

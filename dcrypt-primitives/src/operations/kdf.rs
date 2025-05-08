@@ -1,10 +1,10 @@
-//! Builders for Key Derivation Function (KDF) operations
+//! Operations for Key Derivation Function (KDF) operations
 //!
-//! This module provides builder implementations for key derivation operations
+//! This module provides operation implementations for key derivation operations
 //! with proper parameter validation and fluent APIs.
 
 use crate::error::{Error, Result};
-use crate::builders::{Builder, WithOutputLength, WithData};
+use crate::operations::{Operation, WithOutputLength, WithData};
 use std::marker::PhantomData;
 
 /// Common trait for KDF operations
@@ -120,8 +120,8 @@ impl<'a, T: KdfOperation> Default for KdfBuilder<'a, T> {
     }
 }
 
-impl<'a, T: KdfOperation> Builder<Vec<u8>> for KdfBuilder<'a, T> {
-    fn build(self) -> Result<Vec<u8>> {
+impl<'a, T: KdfOperation> Operation<Vec<u8>> for KdfBuilder<'a, T> {
+    fn execute(self) -> Result<Vec<u8>> {
         self.derive()
     }
     

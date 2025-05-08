@@ -69,7 +69,7 @@ pub trait Mac: Sized {
     }
 }
 
-/// Builder for MAC operations
+/// Operation for MAC operations
 pub trait MacBuilder<'a, M: Mac>: Sized {
     /// Add data to the MAC computation
     fn update(self, data: &'a [u8]) -> Result<Self>;

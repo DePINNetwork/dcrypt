@@ -4,14 +4,14 @@ use crate::error::Result;
 use rand::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
-/// Base trait for operation builders
-pub trait Builder<T> {
+/// Base trait for operations
+pub trait Operation<T> {
     /// Execute the operation and produce a result
-    fn build(self) -> Result<T>;
+    fn execute(self) -> Result<T>;
 }
 
-/// Base trait for encryption operation builders
-pub trait EncryptionBuilder<'a, C: SymmetricCipher + ?Sized>: Builder<C::Ciphertext> {
+/// Base trait for encryption operations
+pub trait EncryptOperation<'a, C: SymmetricCipher + ?Sized>: Operation<C::Ciphertext> {
     /// Set the nonce for encryption
     fn with_nonce(self, nonce: &'a C::Nonce) -> Self;
     
@@ -22,8 +22,8 @@ pub trait EncryptionBuilder<'a, C: SymmetricCipher + ?Sized>: Builder<C::Ciphert
     fn encrypt(self, plaintext: &'a [u8]) -> Result<C::Ciphertext>;
 }
 
-/// Base trait for decryption operation builders
-pub trait DecryptionBuilder<'a, C: SymmetricCipher + ?Sized>: Builder<Vec<u8>> {
+/// Base trait for decryption operations
+pub trait DecryptOperation<'a, C: SymmetricCipher + ?Sized>: Operation<Vec<u8>> {
     /// Set the nonce for decryption
     fn with_nonce(self, nonce: &'a C::Nonce) -> Self;
     
@@ -45,20 +45,20 @@ pub trait SymmetricCipher: Sized {
     /// Ciphertext output type
     type Ciphertext: AsRef<[u8]> + AsMut<[u8]> + Clone;
     
-    /// Builder type for encryption operations
-    type EncryptionBuilder<'a>: EncryptionBuilder<'a, Self> where Self: 'a;
+    /// Operation type for encryption operations
+    type EncryptOperation<'a>: EncryptOperation<'a, Self> where Self: 'a;
     
-    /// Builder type for decryption operations 
-    type DecryptionBuilder<'a>: DecryptionBuilder<'a, Self> where Self: 'a;
+    /// Operation type for decryption operations 
+    type DecryptOperation<'a>: DecryptOperation<'a, Self> where Self: 'a;
     
     /// Returns the symmetric cipher algorithm name
     fn name() -> &'static str;
     
     /// Begin encryption operation
-    fn encrypt<'a>(&'a self) -> Self::EncryptionBuilder<'a>;
+    fn encrypt<'a>(&'a self) -> Self::EncryptOperation<'a>;
     
     /// Begin decryption operation
-    fn decrypt<'a>(&'a self) -> Self::DecryptionBuilder<'a>;
+    fn decrypt<'a>(&'a self) -> Self::DecryptOperation<'a>;
     
     /// Generate a new random key
     fn generate_key<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self::Key>;

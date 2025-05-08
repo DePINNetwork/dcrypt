@@ -42,7 +42,7 @@ use crate::Nonce12;
 use crate::error::{Error, Result};
 use dcrypt_core::error::DcryptError;
 use dcrypt_core::types::Ciphertext;
-use dcrypt_core::traits::symmetric::{SymmetricCipher, Builder, EncryptionBuilder, DecryptionBuilder};
+use dcrypt_core::traits::symmetric::{SymmetricCipher, Operation, EncryptOperation, DecryptOperation};
 
 // Import the GHASH module
 mod ghash;
@@ -71,15 +71,15 @@ impl<B: BlockCipher> Drop for Gcm<B> {
     }
 }
 
-/// Builder for GCM encryption operations
-pub struct GcmEncryptionBuilder<'a, B: BlockCipher> {
+/// Operation for GCM encryption operations
+pub struct GcmEncryptOperation<'a, B: BlockCipher> {
     cipher: &'a Gcm<B>,
     nonce: Option<&'a Nonce12>,
     aad: Option<&'a [u8]>,
 }
 
-/// Builder for GCM decryption operations
-pub struct GcmDecryptionBuilder<'a, B: BlockCipher> {
+/// Operation for GCM decryption operations
+pub struct GcmDecryptOperation<'a, B: BlockCipher> {
     cipher: &'a Gcm<B>,
     nonce: Option<&'a Nonce12>,
     aad: Option<&'a [u8]>,
@@ -275,23 +275,23 @@ impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
     type Key = SecretBytes<32>; // Using a fixed size for demonstration - adjust based on your needs
     type Nonce = Nonce12;  // GCM typically uses 12-byte nonces
     type Ciphertext = Ciphertext;
-    type EncryptionBuilder<'a> = GcmEncryptionBuilder<'a, B> where Self: 'a;
-    type DecryptionBuilder<'a> = GcmDecryptionBuilder<'a, B> where Self: 'a;
+    type EncryptOperation<'a> = GcmEncryptOperation<'a, B> where Self: 'a;
+    type DecryptOperation<'a> = GcmDecryptOperation<'a, B> where Self: 'a;
     
     fn name() -> &'static str {
         "GCM"
     }
     
-    fn encrypt<'a>(&'a self) -> Self::EncryptionBuilder<'a> {
-        GcmEncryptionBuilder {
+    fn encrypt<'a>(&'a self) -> Self::EncryptOperation<'a> {
+        GcmEncryptOperation {
             cipher: self,
             nonce: None,
             aad: None,
         }
     }
     
-    fn decrypt<'a>(&'a self) -> Self::DecryptionBuilder<'a> {
-        GcmDecryptionBuilder {
+    fn decrypt<'a>(&'a self) -> Self::DecryptOperation<'a> {
+        GcmDecryptOperation {
             cipher: self,
             nonce: None,
             aad: None,
@@ -325,9 +325,9 @@ impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
     }
 }
 
-// Implement Builder for GcmEncryptionBuilder
-impl<'a, B: BlockCipher> Builder<Ciphertext> for GcmEncryptionBuilder<'a, B> {
-    fn build(self) -> std::result::Result<Ciphertext, DcryptError> {
+// Implement Operation for GcmEncryptOperation
+impl<'a, B: BlockCipher> Operation<Ciphertext> for GcmEncryptOperation<'a, B> {
+    fn execute(self) -> std::result::Result<Ciphertext, DcryptError> {
         let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
             context: "GCM encryption",
             #[cfg(feature = "std")]
@@ -344,8 +344,8 @@ impl<'a, B: BlockCipher> Builder<Ciphertext> for GcmEncryptionBuilder<'a, B> {
     }
 }
 
-// Implement EncryptionBuilder for GcmEncryptionBuilder
-impl<'a, B: BlockCipher> EncryptionBuilder<'a, Gcm<B>> for GcmEncryptionBuilder<'a, B> {
+// Implement EncryptOperation for GcmEncryptOperation
+impl<'a, B: BlockCipher> EncryptOperation<'a, Gcm<B>> for GcmEncryptOperation<'a, B> {
     fn with_nonce(mut self, nonce: &'a <Gcm<B> as SymmetricCipher>::Nonce) -> Self {
         self.nonce = Some(nonce);
         self
@@ -372,9 +372,9 @@ impl<'a, B: BlockCipher> EncryptionBuilder<'a, Gcm<B>> for GcmEncryptionBuilder<
     }
 }
 
-// Implement Builder for GcmDecryptionBuilder
-impl<'a, B: BlockCipher> Builder<Vec<u8>> for GcmDecryptionBuilder<'a, B> {
-    fn build(self) -> std::result::Result<Vec<u8>, DcryptError> {
+// Implement Operation for GcmDecryptOperation
+impl<'a, B: BlockCipher> Operation<Vec<u8>> for GcmDecryptOperation<'a, B> {
+    fn execute(self) -> std::result::Result<Vec<u8>, DcryptError> {
         Err(DcryptError::InvalidParameter {
             context: "GCM decryption",
             #[cfg(feature = "std")]
@@ -383,8 +383,8 @@ impl<'a, B: BlockCipher> Builder<Vec<u8>> for GcmDecryptionBuilder<'a, B> {
     }
 }
 
-// Implement DecryptionBuilder for GcmDecryptionBuilder
-impl<'a, B: BlockCipher> DecryptionBuilder<'a, Gcm<B>> for GcmDecryptionBuilder<'a, B> {
+// Implement DecryptOperation for GcmDecryptOperation
+impl<'a, B: BlockCipher> DecryptOperation<'a, Gcm<B>> for GcmDecryptOperation<'a, B> {
     fn with_nonce(mut self, nonce: &'a <Gcm<B> as SymmetricCipher>::Nonce) -> Self {
         self.nonce = Some(nonce);
         self

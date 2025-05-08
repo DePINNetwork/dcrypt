@@ -28,7 +28,7 @@ impl Default for TestConfig {
     }
 }
 
-// Builder methods for easy customization
+// Operation methods for easy customization
 impl TestConfig {
     pub fn with_mean_ratio_range(mut self, min: f64, max: f64) -> Self {
         self.mean_ratio_min = min;

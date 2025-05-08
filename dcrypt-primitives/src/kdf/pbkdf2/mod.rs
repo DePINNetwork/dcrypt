@@ -11,7 +11,7 @@ use crate::error::{Error, Result};
 use crate::hash::HashFunction;
 use crate::mac::hmac::Hmac;
 use crate::kdf::{KeyDerivationFunction, ParamProvider, PasswordHashFunction};
-use crate::kdf::{SecurityLevel, PasswordHash, KdfAlgorithm, KdfBuilder};
+use crate::kdf::{SecurityLevel, PasswordHash, KdfAlgorithm, KdfOperation};
 use crate::kdf::common::{constant_time_eq, generate_salt};
 use crate::types::{Salt, SecretBytes};
 
@@ -118,7 +118,7 @@ impl<'a, H: HashFunction + Clone> Pbkdf2Builder<'a, H> {
     }
 }
 
-impl<'a, H: HashFunction + Clone> KdfBuilder<'a, Pbkdf2Algorithm<H>> for Pbkdf2Builder<'a, H> {
+impl<'a, H: HashFunction + Clone> KdfOperation<'a, Pbkdf2Algorithm<H>> for Pbkdf2Builder<'a, H> {
     fn with_ikm(mut self, ikm: &'a [u8]) -> Self {
         self.ikm = Some(ikm);
         self
@@ -319,7 +319,7 @@ impl<H: HashFunction + Clone> KeyDerivationFunction for Pbkdf2<H> {
         Ok(result.to_vec())
     }
     
-    fn builder<'a>(&'a self) -> impl KdfBuilder<'a, Self::Algorithm> {
+    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
         Pbkdf2Builder {
             kdf: self,
             ikm: None,

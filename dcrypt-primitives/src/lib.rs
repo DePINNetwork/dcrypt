@@ -1,7 +1,7 @@
 //! Cryptographic primitives for the DCRYPT library
 //!
 //! This crate provides essential cryptographic primitives with strong type safety
-//! guarantees through domain-specific types and builder patterns.
+//! guarantees through domain-specific types and operation patterns.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -13,8 +13,8 @@ extern crate alloc;
 pub mod error;
 pub mod types;
 
-// Builder pattern core traits
-pub mod builders;
+// Operation pattern core traits
+pub mod operations;
 
 // Cryptographic primitive modules
 #[cfg(any(feature = "block", feature = "std"))]
@@ -49,11 +49,11 @@ pub use types::{
 pub use types::nonce::{Nonce12, Nonce16, Nonce24};
 pub use types::digest::{Digest32, Digest64};
 
-// Re-export builder traits for ergonomic usage
-pub use builders::{
-    Builder, WithData, WithNonce, WithAssociatedData, WithOutputLength,
-    aead::{AeadEncryptionBuilder, AeadDecryptionBuilder},
-    kdf::KdfBuilder
+// Re-export operation traits for ergonomic usage
+pub use operations::{
+    Operation, WithData, WithNonce, WithAssociatedData, WithOutputLength,
+    aead::{AeadEncryptOperation, AeadDecryptOperation},
+    kdf::KdfOperation
 };
 
 // Re-export algorithm implementations
