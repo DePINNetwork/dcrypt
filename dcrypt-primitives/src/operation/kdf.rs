@@ -4,7 +4,7 @@
 //! with proper parameter validation and fluent APIs.
 
 use crate::error::{Error, Result};
-use crate::operations::{Operation, WithOutputLength, WithData};
+use crate::operation::{Operation, WithOutputLength, WithData};
 use std::marker::PhantomData;
 
 /// Common trait for KDF operations

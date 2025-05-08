@@ -4,7 +4,7 @@
 //! operations with proper parameter validation and fluent APIs.
 
 use crate::error::{Error, Result};
-use crate::operations::{Operation, WithAssociatedData, WithNonce, WithData};
+use crate::operation::{Operation, WithAssociatedData, WithNonce, WithData};
 use std::marker::PhantomData;
 
 /// Common trait for AEAD operations

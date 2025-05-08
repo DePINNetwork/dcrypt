@@ -34,10 +34,6 @@
           - tests.rs
         - mod.rs
       - mod.rs
-    - builders/
-      - aead.rs
-      - kdf.rs
-      - mod.rs
     - error.rs
     - hash/
       - blake2/
@@ -80,6 +76,10 @@
       - poly1305/
         - mod.rs
         - tests.rs
+    - operation/
+      - aead.rs
+      - kdf.rs
+      - mod.rs
     - stream/
       - chacha/
         - chacha20/

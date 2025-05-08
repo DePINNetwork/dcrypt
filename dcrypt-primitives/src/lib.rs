@@ -14,7 +14,7 @@ pub mod error;
 pub mod types;
 
 // Operation pattern core traits
-pub mod operations;
+pub mod operation;
 
 // Cryptographic primitive modules
 #[cfg(any(feature = "block", feature = "std"))]
@@ -50,7 +50,7 @@ pub use types::nonce::{Nonce12, Nonce16, Nonce24};
 pub use types::digest::{Digest32, Digest64};
 
 // Re-export operation traits for ergonomic usage
-pub use operations::{
+pub use operation::{
     Operation, WithData, WithNonce, WithAssociatedData, WithOutputLength,
     aead::{AeadEncryptOperation, AeadDecryptOperation},
     kdf::KdfOperation
