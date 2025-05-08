@@ -1,0 +1,65 @@
+[package]
+name = "dcrypt-primitives"
+version = "0.1.0"
+edition = "2021"
+authors = ["DCRYPT Team <info@dcrypt.example.org>"]
+description = "Cryptographic primitives for the DCRYPT library"
+repository = "https://github.com/example/dcrypt"
+license = "MIT OR Apache-2.0"
+
+[features]
+# Feature configuration for different environments
+default = ["std"]
+
+# Standard library support - enables all features
+std = ["alloc", "byteorder/std", "subtle/std", "hex/std", "rand/std", "getrandom/std", "serde_json"]
+
+# Allocator support - provides Vec, Box, String, etc.
+alloc = []
+
+# Optional feature groups for modular inclusion
+hash = []
+xof = ["alloc"]  # XOFs need heap for variable-length output
+aead = ["alloc"] # AEAD needs heap for ciphertext+tag
+block = []       # Raw block ciphers work on fixed buffers
+kdf = ["alloc"]  # KDFs usually need heap for derivation
+mac = []         # MACs can work with fixed buffers
+stream = []      # Stream ciphers can work with fixed buffers
+
+# Enable serde_json for tests
+serde_json = ["dep:serde_json", "dep:serde"]
+
+# Hardware optimization features
+simd = ["dcrypt-core/simd", "dep:faster-hex"]
+wasm = ["dcrypt-core/wasm"]
+
+[dependencies]
+dcrypt-core = { path = "../dcrypt-core", version = "0.1.0", default-features = false }
+dcrypt-constants = { path = "../dcrypt-constants", version = "0.1.0" }
+zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
+byteorder = { version = "1.4.3", default-features = false }
+subtle = { version = "2.6.1", default-features = false }
+# Only used when SIMD is enabled
+faster-hex = { version = "0.6.1", optional = true }
+# Add hex dependency
+hex = { version = "0.4.3", default-features = false }
+# Optional dependencies for std environments
+serde = { version = "1.0.189", features = ["derive"], optional = true }
+serde_json = { version = "1.0.107", optional = true }
+
+# Configure rand with appropriate features for embedded
+rand = { version = "0.8.5", default-features = false }
+getrandom = { version = "0.2.15", default-features = false, optional = true, features = ["custom"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Use custom RNG implementation for embedded targets
+rand_chacha = { version = "0.3.1", default-features = false }
+
+[dev-dependencies]
+# Test dependencies that are always available in test mode
+serde = { version = "1.0.189", features = ["derive"] }
+serde_json = "1.0.107"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

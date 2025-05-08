@@ -1,0 +1,266 @@
+#![no_std]
+
+//! Block cipher implementations with advanced type-level guarantees
+//!
+//! This module contains implementations of various block ciphers and related
+//! algorithms with improved type-safety through compile-time constraints.
+//!
+/// ## Example usage
+///
+/// ```
+/// use dcrypt_primitives::block::{TypedAes128, TypedCbc, BlockCipher, BlockCipherMode, CipherAlgorithm};
+/// use rand::rngs::OsRng;
+/// 
+/// // Generate a random key and nonce
+/// let key = TypedAes128::generate_key(&mut OsRng);
+/// let nonce = TypedCbc::<TypedAes128>::generate_nonce(&mut OsRng);
+/// 
+/// // Create cipher and mode instances
+/// let cipher = TypedAes128::new(&key);
+/// let mode = TypedCbc::new(cipher, &nonce).unwrap();
+/// 
+/// // Encrypt and decrypt
+/// let plaintext = b"secret message with padding...!!"; // Exactly 32 bytes (multiple of 16)
+/// let ciphertext = mode.encrypt(plaintext).unwrap();
+/// let decrypted = mode.decrypt(&ciphertext).unwrap();
+/// 
+/// assert_eq!(plaintext, &decrypted[..]);
+/// ```
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+use zeroize::Zeroize;
+
+use crate::error::{Error, Result};
+use crate::types::{Nonce, SecretBytes, Tag};
+// Import the Nonce16 type from the crate root
+use crate::Nonce16;
+use rand::{CryptoRng, RngCore};
+
+pub mod aes;
+pub mod modes;
+
+// Re-exports
+pub use aes::{Aes128, Aes192, Aes256};
+pub use modes::{Cbc, Ctr};
+
+/// Marker trait for cipher algorithms with compile-time properties
+pub trait CipherAlgorithm {
+    /// Key size in bytes
+    const KEY_SIZE: usize;
+    
+    /// Block size in bytes
+    const BLOCK_SIZE: usize;
+    
+    /// Algorithm name
+    fn name() -> &'static str;
+}
+
+/// Marker trait for specific AES key sizes
+pub trait AesVariant: CipherAlgorithm {
+    /// Number of rounds
+    const ROUNDS: usize;
+}
+
+/// Marker trait for block cipher operating modes
+pub trait CipherMode {
+    /// Mode name
+    fn name() -> &'static str;
+    
+    /// Whether the mode requires initialization vector/nonce
+    const REQUIRES_IV: bool;
+    
+    /// Whether this is an authenticated mode
+    const IS_AUTHENTICATED: bool;
+    
+    /// Size of the nonce/IV in bytes (if applicable)
+    const IV_SIZE: usize;
+    
+    /// Size of the tag in bytes (if applicable and authenticated)
+    const TAG_SIZE: Option<usize>;
+}
+
+/// Trait for block ciphers with type-level constraints
+pub trait BlockCipher {
+    /// The algorithm this cipher implements
+    type Algorithm: CipherAlgorithm;
+    
+    /// Key type with appropriate size guarantee
+    type Key: AsRef<[u8]> + AsMut<[u8]> + Clone + Zeroize;
+    
+    /// Creates a new block cipher instance with the given key
+    fn new(key: &Self::Key) -> Self;
+    
+    /// Encrypts a single block in place
+    fn encrypt_block(&self, block: &mut [u8]) -> Result<()>;
+    
+    /// Decrypts a single block in place
+    fn decrypt_block(&self, block: &mut [u8]) -> Result<()>;
+    
+    /// Returns the key size in bytes
+    fn key_size() -> usize {
+        Self::Algorithm::KEY_SIZE
+    }
+    
+    /// Returns the block size in bytes
+    fn block_size() -> usize {
+        Self::Algorithm::BLOCK_SIZE
+    }
+    
+    /// Returns the name of the block cipher
+    fn name() -> &'static str {
+        Self::Algorithm::name()
+    }
+    
+    /// Generate a random key
+    fn generate_key<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Key;
+}
+
+/// Trait for block cipher modes with type parameters
+pub trait BlockCipherMode<C: BlockCipher> {
+    /// The mode this implementation uses
+    type Mode: CipherMode;
+    
+    /// Nonce/IV type with appropriate size constraint
+    type Nonce: AsRef<[u8]> + AsMut<[u8]> + Clone;
+    
+    /// Creates a new block cipher mode instance
+    fn new(cipher: C, nonce: &Self::Nonce) -> Result<Self> where Self: Sized;
+    
+    /// Encrypts plaintext data
+    fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>>;
+    
+    /// Decrypts ciphertext data
+    fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>>;
+    
+    /// Generate a random nonce
+    fn generate_nonce<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Nonce;
+    
+    /// Returns the mode name
+    fn mode_name() -> &'static str {
+        Self::Mode::name()
+    }
+}
+
+/// Trait for authenticated block cipher modes
+pub trait AuthenticatedCipherMode<C: BlockCipher>: BlockCipherMode<C> {
+    /// Tag type with appropriate size constraint
+    type Tag: AsRef<[u8]> + AsMut<[u8]> + Clone;
+    
+    /// Encrypts plaintext with associated data
+    fn encrypt_with_aad(&self, plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>>;
+    
+    /// Decrypts ciphertext with associated data
+    fn decrypt_with_aad(&self, ciphertext: &[u8], aad: &[u8]) -> Result<Vec<u8>>;
+    
+    /// Returns the tag size in bytes
+    fn tag_size() -> usize {
+        Self::Mode::TAG_SIZE.unwrap_or(0)
+    }
+}
+
+/// Type-level constants for AES-128
+pub enum Aes128Algorithm {}
+
+impl CipherAlgorithm for Aes128Algorithm {
+    const KEY_SIZE: usize = 16;
+    const BLOCK_SIZE: usize = 16;
+    
+    fn name() -> &'static str {
+        "AES-128"
+    }
+}
+
+impl AesVariant for Aes128Algorithm {
+    const ROUNDS: usize = 10;
+}
+
+/// Enhanced AES-128 implementation with type-level guarantees
+pub struct TypedAes128 {
+    inner: aes::Aes128,
+}
+
+// Add the missing CipherAlgorithm implementation for TypedAes128
+impl CipherAlgorithm for TypedAes128 {
+    const KEY_SIZE: usize = 16;
+    const BLOCK_SIZE: usize = 16;
+    
+    fn name() -> &'static str {
+        "AES-128"
+    }
+}
+
+impl BlockCipher for TypedAes128 {
+    type Algorithm = Aes128Algorithm;
+    type Key = SecretBytes<16>;
+    
+    fn new(key: &Self::Key) -> Self {
+        Self {
+            inner: aes::Aes128::new(key),
+        }
+    }
+    
+    fn encrypt_block(&self, block: &mut [u8]) -> Result<()> {
+        self.inner.encrypt_block(block)
+    }
+    
+    fn decrypt_block(&self, block: &mut [u8]) -> Result<()> {
+        self.inner.decrypt_block(block)
+    }
+    
+    fn generate_key<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Key {
+        let mut key = [0u8; 16];
+        rng.fill_bytes(&mut key);
+        SecretBytes::new(key)
+    }
+}
+
+/// Type-level constants for CBC mode
+pub enum CbcMode {}
+
+impl CipherMode for CbcMode {
+    const REQUIRES_IV: bool = true;
+    const IS_AUTHENTICATED: bool = false;
+    const IV_SIZE: usize = 16; // For AES
+    const TAG_SIZE: Option<usize> = None;
+    
+    fn name() -> &'static str {
+        "CBC"
+    }
+}
+
+/// Enhanced CBC mode implementation with type parameters
+pub struct TypedCbc<C: BlockCipher + CipherAlgorithm> {
+    inner: modes::Cbc<C>,
+    _phantom: core::marker::PhantomData<C>,
+}
+
+impl<C: BlockCipher + CipherAlgorithm> BlockCipherMode<C> for TypedCbc<C> {
+    type Mode = CbcMode;
+    type Nonce = Nonce16;
+    
+    fn new(cipher: C, nonce: &Self::Nonce) -> Result<Self> {
+        let inner = modes::Cbc::new(cipher, nonce.as_ref())?;
+        Ok(Self {
+            inner,
+            _phantom: core::marker::PhantomData,
+        })
+    }
+    
+    fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
+        self.inner.encrypt(plaintext)
+    }
+    
+    fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>> {
+        self.inner.decrypt(ciphertext)
+    }
+    
+    fn generate_nonce<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Nonce {
+        let mut nonce = [0u8; 16];
+        rng.fill_bytes(&mut nonce);
+        Nonce16::new(nonce)
+    }
+}

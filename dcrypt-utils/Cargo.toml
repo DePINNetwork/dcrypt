@@ -1,0 +1,19 @@
+[package]
+name = "dcrypt-utils"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Utilities and helpers for the DCRYPT library"
+repository.workspace = true
+license.workspace = true
+
+[features]
+default = ["std"]
+std = ["dcrypt-core/std"]
+no_std = ["dcrypt-core/no_std"]
+wasm = ["dcrypt-core/wasm"]
+
+[dependencies]
+dcrypt-core = { path = "../dcrypt-core", version = "0.1.0" }
+zeroize = { workspace = true }
+rand = { workspace = true }

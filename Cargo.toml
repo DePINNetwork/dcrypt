@@ -1,0 +1,34 @@
+[workspace]
+members = [
+    "dcrypt",
+    "dcrypt-core",
+    "dcrypt-constants",
+    "dcrypt-primitives",
+    "dcrypt-symmetric",
+    "dcrypt-kem",
+    "dcrypt-sign",
+    "dcrypt-hybrid",
+    "dcrypt-utils",
+    "tests"
+]
+resolver = "2" 
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["DCRYPT Team <info@dcrypt.example.org>"]
+description = "A pure Rust cryptographic library with traditional and post-quantum cryptographic algorithms"
+repository = "https://github.com/example/dcrypt"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+categories = ["cryptography", "no-std"]
+keywords = ["cryptography", "post-quantum", "kem", "signatures"]
+
+[workspace.dependencies]
+rand = "0.8.5"
+rand_chacha = "0.3.1"
+zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
+const-time = "0.1.1"
+serde = { version = "1.0.147", features = ["derive"] }
+thiserror = "1.0.37"
+

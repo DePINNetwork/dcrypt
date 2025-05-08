@@ -1,0 +1,22 @@
+[package]
+name = "tests"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Testing utilities and benchmarks for the DCRYPT library"
+repository.workspace = true
+license.workspace = true
+
+[dependencies]
+dcrypt-core = { path = "../dcrypt-core", version = "0.1.0" }
+dcrypt = { path = "../dcrypt", version = "0.1.0" }
+dcrypt-kem = { path = "../dcrypt-kem", version = "0.1.0" }
+dcrypt-sign = { path = "../dcrypt-sign", version = "0.1.0" }
+dcrypt-primitives = { path = "../dcrypt-primitives", version = "0.1.0"}
+dcrypt-symmetric = { path = "../dcrypt-symmetric", version = "0.1.0" }
+dcrypt-hybrid = { path = "../dcrypt-hybrid", version = "0.1.0" }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+
+
+statrs = "0.16"

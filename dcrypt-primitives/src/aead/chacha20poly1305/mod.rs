@@ -1,0 +1,358 @@
+//! ChaCha20-Poly1305 authenticated encryption
+//!
+//! This module implements the ChaCha20-Poly1305 AEAD algorithm as specified in
+//! RFC 8439.
+//!
+//! ## Constant-Time Guarantees
+//!
+//! * No variable-length early-returns after authentication is checked.
+//! * Heap allocations and frees are balanced in both success and failure paths.
+//! * Authentication is decided with a branch-free constant-time mask; the same
+//!   byte-wise loop executes whatever the tag's validity.
+
+use crate::error::{Error, Result};
+use crate::stream::chacha::chacha20::{ChaCha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE};
+use crate::mac::poly1305::{Poly1305, POLY1305_KEY_SIZE, POLY1305_TAG_SIZE};
+use crate::types::SecretBytes;
+use crate::Nonce12; // Updated import path for Nonce12
+use dcrypt_core::types::Ciphertext;
+use dcrypt_core::traits::{AuthenticatedCipher, SymmetricCipher};
+use dcrypt_core::traits::symmetric::{Builder, EncryptionBuilder, DecryptionBuilder};
+use dcrypt_core::error::DcryptError;
+use subtle::ConstantTimeEq;
+use zeroize::Zeroize;
+
+/// Size constants
+pub const CHACHA20POLY1305_KEY_SIZE: usize = CHACHA20_KEY_SIZE;
+pub const CHACHA20POLY1305_NONCE_SIZE: usize = CHACHA20_NONCE_SIZE;
+pub const CHACHA20POLY1305_TAG_SIZE: usize = POLY1305_TAG_SIZE;
+
+/// ChaCha20-Poly1305 AEAD
+#[derive(Clone, Zeroize)]
+#[zeroize(drop)]
+pub struct ChaCha20Poly1305 {
+    key: [u8; CHACHA20POLY1305_KEY_SIZE],
+}
+
+/// Builder for ChaCha20Poly1305 encryption operations
+pub struct ChaCha20Poly1305EncryptionBuilder<'a> {
+    cipher: &'a ChaCha20Poly1305,
+    nonce: Option<&'a Nonce12>, // Changed from Nonce<CHACHA20POLY1305_NONCE_SIZE> to Nonce12
+    aad: Option<&'a [u8]>,
+}
+
+/// Builder for ChaCha20Poly1305 decryption operations
+pub struct ChaCha20Poly1305DecryptionBuilder<'a> {
+    cipher: &'a ChaCha20Poly1305,
+    nonce: Option<&'a Nonce12>, // Changed from Nonce<CHACHA20POLY1305_NONCE_SIZE> to Nonce12
+    aad: Option<&'a [u8]>,
+}
+
+impl ChaCha20Poly1305 {
+    /// Create a new instance from a 256-bit key.
+    pub fn new(key: &[u8; CHACHA20POLY1305_KEY_SIZE]) -> Self {
+        let mut cipher_key = [0u8; CHACHA20POLY1305_KEY_SIZE];
+        cipher_key.copy_from_slice(key);
+        Self { key: cipher_key }
+    }
+
+    /// Derive the one-time Poly1305 key (RFC 8439 §2.8).
+    fn poly1305_key(&self, nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE]) -> [u8; POLY1305_KEY_SIZE] {
+        let mut chacha = ChaCha20::new(&self.key, nonce);
+        let mut poly_key = [0u8; POLY1305_KEY_SIZE];
+        chacha.keystream(&mut poly_key);
+        poly_key
+    }
+
+    /* --------------------------------------------------------------------- */
+    /*                               ENCRYPT                                 */
+    /* --------------------------------------------------------------------- */
+
+    pub fn encrypt_with_nonce(
+        &self,
+        nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE],
+        plaintext: &[u8],
+        aad: Option<&[u8]>,
+    ) -> Result<Vec<u8>> {
+        let poly_key = self.poly1305_key(nonce);
+
+        // ciphertext || tag
+        let mut ct_buf = Vec::with_capacity(plaintext.len() + POLY1305_TAG_SIZE);
+
+        // --- encryption ----------------------------------------------------
+        ct_buf.extend_from_slice(plaintext);
+        ChaCha20::with_counter(&self.key, nonce, 1).encrypt(&mut ct_buf);
+
+        // --- tag -----------------------------------------------------------
+        let tag = self.calculate_tag_ct(&poly_key, aad, &ct_buf)?;
+        ct_buf.extend_from_slice(&tag);
+        Ok(ct_buf)
+    }
+
+    /* --------------------------------------------------------------------- */
+    /*                               DECRYPT                                 */
+    /* --------------------------------------------------------------------- */
+
+    pub fn decrypt_with_nonce(
+        &self,
+        nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE],
+        ciphertext: &[u8],
+        aad: Option<&[u8]>,
+    ) -> Result<Vec<u8>> {
+        if ciphertext.len() < POLY1305_TAG_SIZE {
+            return Err(Error::InvalidLength {
+                context: "ChaCha20Poly1305 ciphertext",
+                needed: POLY1305_TAG_SIZE,
+                got: ciphertext.len(),
+            });
+        }
+        let ct_len = ciphertext.len() - POLY1305_TAG_SIZE;
+        let (encrypted, tag) = ciphertext.split_at(ct_len);
+
+        // -------- one-time key & expected tag ------------------------------
+        let poly_key   = self.poly1305_key(nonce);
+        let expected   = self.calculate_tag_ct(&poly_key, aad, encrypted)?;
+        let tag_ok     = expected.ct_eq(tag);                 // subtle::Choice
+
+        // -------- decrypt ---------------------------------------------------
+        let mut m = Vec::with_capacity(encrypted.len());
+        m.extend_from_slice(encrypted);
+        ChaCha20::with_counter(&self.key, nonce, 1).decrypt(&mut m);
+
+        // -------- constant-time post-processing ----------------------------
+        //
+        // We clone `m` so that *both* success and failure paths incur an
+        // identical heap allocation + copy.  The plaintext is then masked with
+        // a branch-free byte-wise AND so the loop timing is identical.
+        //
+        // mask = 0xFF when tag_ok == 1, else 0x00
+        // mask = 0xFF (success) or 0x00 (failure)
+        let mask = 0u8.wrapping_sub(tag_ok.unwrap_u8());
+        let mut plaintext = m.clone();
+        for byte in &mut plaintext {
+            *byte &= mask;
+        }
+
+        // Always drop the working buffer (`m`) here, so its destructor time is
+        // identical regardless of authentication outcome.
+        drop(m);
+
+        if bool::from(tag_ok) {
+            Ok(plaintext)
+        } else {
+            Err(Error::AuthenticationFailed)
+        }
+    }
+
+    /* --------------------------------------------------------------------- */
+    /*                               TAG CT                                  */
+    /* --------------------------------------------------------------------- */
+
+    /// RFC 8439 §2.8: constant-time Poly1305 tag computation.
+    fn calculate_tag_ct(
+        &self,
+        poly_key: &[u8; POLY1305_KEY_SIZE],
+        aad: Option<&[u8]>,
+        ciphertext: &[u8],
+    ) -> Result<[u8; POLY1305_TAG_SIZE]> {
+        let mut poly = Poly1305::new(poly_key);
+        let aad_slice = aad.unwrap_or(&[]);
+
+        const ZERO16: [u8; 16] = [0u8; 16];
+
+        // AAD
+        poly.update(aad_slice)?;
+        poly.update(&ZERO16[..(16 - aad_slice.len() % 16) % 16])?;
+
+        // ciphertext
+        poly.update(ciphertext)?;
+        poly.update(&ZERO16[..(16 - ciphertext.len() % 16) % 16])?;
+
+        // length block
+        let mut len_block = [0u8; 16];
+        len_block[..8].copy_from_slice(&(aad_slice.len() as u64).to_le_bytes());
+        len_block[8..].copy_from_slice(&(ciphertext.len() as u64).to_le_bytes());
+        poly.update(&len_block)?;
+
+        Ok(poly.finalize())
+    }
+    
+    /// Encrypt data
+    pub fn encrypt(
+        &self,
+        nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE],
+        plaintext: &[u8],
+        aad: Option<&[u8]>,
+    ) -> Result<Vec<u8>> {
+        self.encrypt_with_nonce(nonce, plaintext, aad)
+    }
+    
+    /// Decrypt data
+    pub fn decrypt(
+        &self,
+        nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE],
+        ciphertext: &[u8],
+        aad: Option<&[u8]>,
+    ) -> Result<Vec<u8>> {
+        self.decrypt_with_nonce(nonce, ciphertext, aad)
+    }
+}
+
+// Implement the marker trait AuthenticatedCipher
+impl AuthenticatedCipher for ChaCha20Poly1305 {
+    const TAG_SIZE: usize = POLY1305_TAG_SIZE;
+    const ALGORITHM_ID: &'static str = "ChaCha20Poly1305";
+}
+
+// Implement SymmetricCipher trait
+impl SymmetricCipher for ChaCha20Poly1305 {
+    type Key = SecretBytes<CHACHA20POLY1305_KEY_SIZE>;
+    type Nonce = Nonce12; // Changed from Nonce<CHACHA20POLY1305_NONCE_SIZE> to Nonce12
+    type Ciphertext = Ciphertext;
+    type EncryptionBuilder<'a> = ChaCha20Poly1305EncryptionBuilder<'a> where Self: 'a;
+    type DecryptionBuilder<'a> = ChaCha20Poly1305DecryptionBuilder<'a> where Self: 'a;
+    
+    fn name() -> &'static str {
+        "ChaCha20Poly1305"
+    }
+    
+    fn encrypt<'a>(&'a self) -> Self::EncryptionBuilder<'a> {
+        ChaCha20Poly1305EncryptionBuilder {
+            cipher: self,
+            nonce: None,
+            aad: None,
+        }
+    }
+    
+    fn decrypt<'a>(&'a self) -> Self::DecryptionBuilder<'a> {
+        ChaCha20Poly1305DecryptionBuilder {
+            cipher: self,
+            nonce: None,
+            aad: None,
+        }
+    }
+    
+    fn generate_key<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<Self::Key, DcryptError> {
+        let mut key_data = [0u8; CHACHA20POLY1305_KEY_SIZE];
+        rng.fill_bytes(&mut key_data);
+        Ok(SecretBytes::new(key_data))
+    }
+    
+    fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<Self::Nonce, DcryptError> {
+        let mut nonce_data = [0u8; CHACHA20POLY1305_NONCE_SIZE];
+        rng.fill_bytes(&mut nonce_data);
+        Ok(Nonce12::new(nonce_data))
+    }
+    
+    fn derive_key_from_bytes(bytes: &[u8]) -> std::result::Result<Self::Key, DcryptError> {
+        if bytes.len() < CHACHA20POLY1305_KEY_SIZE {
+            return Err(DcryptError::InvalidLength {
+                context: "ChaCha20Poly1305 key derivation",
+                expected: CHACHA20POLY1305_KEY_SIZE,
+                actual: bytes.len(),
+            });
+        }
+        
+        let mut key_data = [0u8; CHACHA20POLY1305_KEY_SIZE];
+        key_data.copy_from_slice(&bytes[..CHACHA20POLY1305_KEY_SIZE]);
+        Ok(SecretBytes::new(key_data))
+    }
+}
+
+// Implement Builder for ChaCha20Poly1305EncryptionBuilder
+impl<'a> Builder<Ciphertext> for ChaCha20Poly1305EncryptionBuilder<'a> {
+    fn build(self) -> std::result::Result<Ciphertext, DcryptError> {
+        let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
+            context: "ChaCha20Poly1305 encryption",
+            #[cfg(feature = "std")]
+            message: "Nonce is required for ChaCha20Poly1305 encryption".to_string(),
+        })?;
+        
+        let plaintext = b""; // Default empty plaintext
+        
+        let mut nonce_array = [0u8; CHACHA20POLY1305_NONCE_SIZE];
+        nonce_array.copy_from_slice(nonce.as_ref());
+        
+        let ciphertext = self.cipher.encrypt_with_nonce(
+            &nonce_array,
+            plaintext,
+            self.aad,
+        ).map_err(|e| DcryptError::from(e))?;
+        
+        Ok(Ciphertext::new(&ciphertext))
+    }
+}
+
+impl<'a> EncryptionBuilder<'a, ChaCha20Poly1305> for ChaCha20Poly1305EncryptionBuilder<'a> {
+    fn with_nonce(mut self, nonce: &'a <ChaCha20Poly1305 as SymmetricCipher>::Nonce) -> Self {
+        self.nonce = Some(nonce);
+        self
+    }
+    
+    fn with_aad(mut self, aad: &'a [u8]) -> Self {
+        self.aad = Some(aad);
+        self
+    }
+    
+    fn encrypt(self, plaintext: &'a [u8]) -> std::result::Result<Ciphertext, DcryptError> {
+        let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
+            context: "ChaCha20Poly1305 encryption",
+            #[cfg(feature = "std")]
+            message: "Nonce is required for ChaCha20Poly1305 encryption".to_string(),
+        })?;
+        
+        let mut nonce_array = [0u8; CHACHA20POLY1305_NONCE_SIZE];
+        nonce_array.copy_from_slice(nonce.as_ref());
+        
+        let ciphertext = self.cipher.encrypt_with_nonce(
+            &nonce_array,
+            plaintext,
+            self.aad,
+        ).map_err(|e| DcryptError::from(e))?;
+        
+        Ok(Ciphertext::new(&ciphertext))
+    }
+}
+
+// Implement Builder for ChaCha20Poly1305DecryptionBuilder
+impl<'a> Builder<Vec<u8>> for ChaCha20Poly1305DecryptionBuilder<'a> {
+    fn build(self) -> std::result::Result<Vec<u8>, DcryptError> {
+        Err(DcryptError::InvalidParameter {
+            context: "ChaCha20Poly1305 decryption",
+            #[cfg(feature = "std")]
+            message: "Use decrypt method instead".to_string(),
+        })
+    }
+}
+
+impl<'a> DecryptionBuilder<'a, ChaCha20Poly1305> for ChaCha20Poly1305DecryptionBuilder<'a> {
+    fn with_nonce(mut self, nonce: &'a <ChaCha20Poly1305 as SymmetricCipher>::Nonce) -> Self {
+        self.nonce = Some(nonce);
+        self
+    }
+    
+    fn with_aad(mut self, aad: &'a [u8]) -> Self {
+        self.aad = Some(aad);
+        self
+    }
+    
+    fn decrypt(self, ciphertext: &'a <ChaCha20Poly1305 as SymmetricCipher>::Ciphertext) -> std::result::Result<Vec<u8>, DcryptError> {
+        let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
+            context: "ChaCha20Poly1305 decryption",
+            #[cfg(feature = "std")]
+            message: "Nonce is required for ChaCha20Poly1305 decryption".to_string(),
+        })?;
+        
+        let mut nonce_array = [0u8; CHACHA20POLY1305_NONCE_SIZE];
+        nonce_array.copy_from_slice(nonce.as_ref());
+        
+        self.cipher.decrypt_with_nonce(
+            &nonce_array,
+            ciphertext.as_ref(),
+            self.aad,
+        ).map_err(|e| DcryptError::from(e))
+    }
+}
+
+#[cfg(test)]
+mod tests;

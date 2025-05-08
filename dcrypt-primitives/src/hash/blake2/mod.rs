@@ -1,0 +1,385 @@
+//! BLAKE2 hash function implementations
+//!
+//! This module implements the BLAKE2 family of hash functions as specified in
+//! RFC 7693 (https://www.rfc-editor.org/rfc/rfc7693.html). BLAKE2 is optimized
+//! for speed on 64-bit platforms while maintaining high security levels.
+//!
+//! Supported variants:
+//! - BLAKE2b: 64-bit optimized, digest up to 64 bytes.
+//! - BLAKE2s: 32-bit optimized, digest up to 32 bytes.
+
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+use core::cmp::min;
+use core::convert::TryInto;
+use zeroize::Zeroize;
+
+use crate::error::{Error, Result};
+use crate::hash::{HashFunction, HashAlgorithm, Hash};
+use crate::types::Digest;
+
+/// BLAKE2b constants
+const BLAKE2B_BLOCK_SIZE: usize = 128;
+const BLAKE2B_MAX_OUTPUT_SIZE: usize = 64;
+const BLAKE2B_ROUNDS: usize = 12;
+
+const BLAKE2B_IV: [u64; 8] = [
+    0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
+    0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1,
+    0x510E527FADE682D1, 0x9B05688C2B3E6C1F,
+    0x1F83D9ABFB41BD6B, 0x5BE0CD19137E2179,
+];
+
+const BLAKE2B_SIGMA: [[usize; 16]; BLAKE2B_ROUNDS] = [
+    [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15],
+    [14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3],
+    [11,  8, 12,  0,  5,  2, 15, 13, 10, 14,  3,  6,  7,  1,  9,  4],
+    [ 7,  9,  3,  1, 13, 12, 11, 14,  2,  6,  5, 10,  4,  0, 15,  8],
+    [ 9,  0,  5,  7,  2,  4, 10, 15, 14,  1, 11, 12,  6,  8,  3, 13],
+    [ 2, 12,  6, 10,  0, 11,  8,  3,  4, 13,  7,  5, 15, 14,  1,  9],
+    [12,  5,  1, 15, 14, 13,  4, 10,  0,  7,  6,  3,  9,  2,  8, 11],
+    [13, 11,  7, 14, 12,  1,  3,  9,  5,  0, 15,  4,  8,  6,  2, 10],
+    [ 6, 15, 14,  9, 11,  3,  0,  8, 12,  2, 13,  7,  1,  4, 10,  5],
+    [10,  2,  8,  4,  7,  6,  1,  5, 15, 11,  9, 14,  3, 12, 13,  0],
+    [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15],
+    [14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3],
+];
+
+/// Define Blake2b algorithm marker type
+pub enum Blake2bAlgorithm {}
+
+/// Implement HashAlgorithm for Blake2b
+impl HashAlgorithm for Blake2bAlgorithm {
+    const OUTPUT_SIZE: usize = BLAKE2B_MAX_OUTPUT_SIZE;
+    const BLOCK_SIZE: usize = BLAKE2B_BLOCK_SIZE;
+    const ALGORITHM_ID: &'static str = "BLAKE2b";
+}
+
+/// BLAKE2b state
+#[derive(Clone, Zeroize)]
+pub struct Blake2b {
+    h: [u64; 8],
+    t: [u64; 2],
+    f: [u64; 2],
+    buf: [u8; BLAKE2B_BLOCK_SIZE],
+    buf_len: usize,
+    out_len: usize,
+}
+
+impl Blake2b {
+    pub fn with_output_size(out_len: usize) -> Self {
+        let mut h = BLAKE2B_IV;
+        let param0 = 0x0101_0000u64 + (out_len as u64);
+        h[0] ^= param0;
+        Blake2b { h, t: [0;2], f: [0;2], buf: [0;BLAKE2B_BLOCK_SIZE], buf_len: 0, out_len }
+    }
+
+    fn g(v: &mut [u64; 16], a: usize, b: usize, c: usize, d: usize, x: u64, y: u64) {
+        v[a] = v[a].wrapping_add(v[b]).wrapping_add(x);
+        v[d] = (v[d] ^ v[a]).rotate_right(32);
+        v[c] = v[c].wrapping_add(v[d]);
+        v[b] = (v[b] ^ v[c]).rotate_right(24);
+        v[a] = v[a].wrapping_add(v[b]).wrapping_add(y);
+        v[d] = (v[d] ^ v[a]).rotate_right(16);
+        v[c] = v[c].wrapping_add(v[d]);
+        v[b] = (v[b] ^ v[c]).rotate_right(63);
+    }
+
+    fn compress(&mut self, last: bool) -> Result<()> {
+        let mut v = [0u64; 16];
+        v[..8].copy_from_slice(&self.h);
+        v[8..].copy_from_slice(&BLAKE2B_IV);
+        v[12] ^= self.t[0];
+        v[13] ^= self.t[1];
+        if last { v[14] = !v[14]; }
+        
+        let mut m = [0u64; 16];
+        for i in 0..16 {
+            let idx = i*8;
+            // Safety check: ensure we don't access out of bounds
+            if idx + 8 > self.buf.len() {
+                return Err(Error::InvalidLength {
+                    context: "BLAKE2b buffer slice",
+                    needed: idx + 8,
+                    got: self.buf.len(),
+                });
+            }
+            
+            // Replace unwrap with proper error handling
+            m[i] = u64::from_le_bytes(
+                self.buf[idx..idx+8].try_into()
+                    .map_err(|_| Error::Other("Failed to convert bytes to u64 in BLAKE2b"))?
+            );
+        }
+        
+        for round in 0..BLAKE2B_ROUNDS {
+            let s = &BLAKE2B_SIGMA[round];
+            Self::g(&mut v,0,4,8,12,m[s[0]],m[s[1]]);
+            Self::g(&mut v,1,5,9,13,m[s[2]],m[s[3]]);
+            Self::g(&mut v,2,6,10,14,m[s[4]],m[s[5]]);
+            Self::g(&mut v,3,7,11,15,m[s[6]],m[s[7]]);
+            Self::g(&mut v,0,5,10,15,m[s[8]],m[s[9]]);
+            Self::g(&mut v,1,6,11,12,m[s[10]],m[s[11]]);
+            Self::g(&mut v,2,7,8,13,m[s[12]],m[s[13]]);
+            Self::g(&mut v,3,4,9,14,m[s[14]],m[s[15]]);
+        }
+        
+        for i in 0..8 {
+            self.h[i] ^= v[i] ^ v[i+8];
+        }
+        
+        Ok(())
+    }
+
+    fn update_internal(&mut self, mut input: &[u8]) -> Result<()> {
+        while !input.is_empty() {
+            let fill = min(input.len(), BLAKE2B_BLOCK_SIZE - self.buf_len);
+            self.buf[self.buf_len..self.buf_len+fill].copy_from_slice(&input[..fill]);
+            self.buf_len += fill;
+            input = &input[fill..];
+            if self.buf_len == BLAKE2B_BLOCK_SIZE {
+                let inc = BLAKE2B_BLOCK_SIZE as u64;
+                self.t[0] = self.t[0].wrapping_add(inc);
+                if self.t[0] < inc { self.t[1] = self.t[1].wrapping_add(1); }
+                self.compress(false)?; // Propagate error
+                self.buf_len = 0;
+            }
+        }
+        
+        Ok(())
+    }
+
+    fn finalize_internal(&mut self) -> Result<Vec<u8>> {
+        let inc = self.buf_len as u64;
+        self.t[0] = self.t[0].wrapping_add(inc);
+        if self.t[0] < inc { self.t[1] = self.t[1].wrapping_add(1); }
+        if self.buf_len < BLAKE2B_BLOCK_SIZE {
+            for b in &mut self.buf[self.buf_len..] { *b = 0; }
+        }
+        
+        self.compress(true)?; // Propagate error
+        
+        let mut out = Vec::with_capacity(self.out_len);
+        for &w in &self.h {
+            out.extend_from_slice(&w.to_le_bytes());
+        }
+        out.truncate(self.out_len);
+        
+        Ok(out)
+    }
+}
+
+impl HashFunction for Blake2b {
+    type Algorithm = Blake2bAlgorithm;
+    type Output = Digest<BLAKE2B_MAX_OUTPUT_SIZE>;
+
+    fn new() -> Self {
+        Blake2b::with_output_size(BLAKE2B_MAX_OUTPUT_SIZE)
+    }
+
+    fn update(&mut self, input: &[u8]) -> Result<&mut Self> {
+        self.update_internal(input)?;
+        Ok(self)
+    }
+
+    fn finalize(&mut self) -> Result<Self::Output> {
+        let hash = self.finalize_internal()?;
+        let mut digest = [0u8; BLAKE2B_MAX_OUTPUT_SIZE];
+        digest[..hash.len()].copy_from_slice(&hash);
+        // Create digest with the actual output length
+        Ok(Digest::with_len(digest, self.out_len))
+    }
+
+    fn output_size() -> usize {
+        Self::Algorithm::OUTPUT_SIZE
+    }
+
+    fn block_size() -> usize {
+        Self::Algorithm::BLOCK_SIZE
+    }
+
+    fn name() -> String {
+        Self::Algorithm::ALGORITHM_ID.to_string()
+    }
+}
+
+/// BLAKE2s constants
+const BLAKE2S_BLOCK_SIZE: usize = 64;
+const BLAKE2S_MAX_OUTPUT_SIZE: usize = 32;
+const BLAKE2S_ROUNDS: usize = 10;
+const BLAKE2S_IV: [u32; 8] = [
+    0x6A09E667,0xBB67AE85,0x3C6EF372,0xA54FF53A,
+    0x510E527F,0x9B05688C,0x1F83D9AB,0x5BE0CD19
+];
+const BLAKE2S_SIGMA: [[usize;16]; BLAKE2S_ROUNDS] = [
+    [ 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+    [14,10,4,8,9,15,13,6,1,12,0,2,11,7,5,3],
+    [11,8,12,0,5,2,15,13,10,14,3,6,7,1,9,4],
+    [7,9,3,1,13,12,11,14,2,6,5,10,4,0,15,8],
+    [9,0,5,7,2,4,10,15,14,1,11,12,6,8,3,13],
+    [2,12,6,10,0,11,8,3,4,13,7,5,15,14,1,9],
+    [12,5,1,15,14,13,4,10,0,7,6,3,9,2,8,11],
+    [13,11,7,14,12,1,3,9,5,0,15,4,8,6,2,10],
+    [6,15,14,9,11,3,0,8,12,2,13,7,1,4,10,5],
+    [10,2,8,4,7,6,1,5,15,11,9,14,3,12,13,0],
+];
+
+/// Define Blake2s algorithm marker type
+pub enum Blake2sAlgorithm {}
+
+/// Implement HashAlgorithm for Blake2s
+impl HashAlgorithm for Blake2sAlgorithm {
+    const OUTPUT_SIZE: usize = BLAKE2S_MAX_OUTPUT_SIZE;
+    const BLOCK_SIZE: usize = BLAKE2S_BLOCK_SIZE;
+    const ALGORITHM_ID: &'static str = "BLAKE2s";
+}
+
+/// BLAKE2s state
+#[derive(Clone, Zeroize)]
+pub struct Blake2s {
+    h: [u32;8],
+    t: [u32;2],
+    f: [u32;2],
+    buf: [u8; BLAKE2S_BLOCK_SIZE],
+    buf_len: usize,
+    out_len: usize,
+}
+
+impl Blake2s {
+    pub fn with_output_size(out_len: usize) -> Self {
+        let mut h = BLAKE2S_IV;
+        h[0] ^= 0x01010000 ^ (out_len as u32);
+        Blake2s { h, t:[0;2], f:[0;2], buf:[0;BLAKE2S_BLOCK_SIZE], buf_len:0, out_len }
+    }
+
+    fn g(v: &mut [u32;16], a:usize,b:usize,c:usize,d:usize,x:u32,y:u32) {
+        v[a] = v[a].wrapping_add(v[b]).wrapping_add(x);
+        v[d] = (v[d] ^ v[a]).rotate_right(16);
+        v[c] = v[c].wrapping_add(v[d]);
+        v[b] = (v[b] ^ v[c]).rotate_right(12);
+        v[a] = v[a].wrapping_add(v[b]).wrapping_add(y);
+        v[d] = (v[d] ^ v[a]).rotate_right(8);
+        v[c] = v[c].wrapping_add(v[d]);
+        v[b] = (v[b] ^ v[c]).rotate_right(7);
+    }
+
+    fn compress(&mut self, last: bool) -> Result<()> {
+        let mut v = [0u32;16];
+        v[..8].copy_from_slice(&self.h);
+        v[8..].copy_from_slice(&BLAKE2S_IV);
+        v[12] ^= self.t[0];
+        v[13] ^= self.t[1];
+        if last { v[14] = !v[14]; }
+        
+        let mut m = [0u32;16];
+        for i in 0..16 {
+            let idx = i*4;
+            // Safety check: ensure we don't access out of bounds
+            if idx + 4 > self.buf.len() {
+                return Err(Error::InvalidLength {
+                    context: "BLAKE2s buffer slice",
+                    needed: idx + 4,
+                    got: self.buf.len(),
+                });
+            }
+            
+            // Replace unwrap with proper error handling
+            m[i] = u32::from_le_bytes(
+                self.buf[idx..idx+4].try_into()
+                    .map_err(|_| Error::Other("Failed to convert bytes to u32 in BLAKE2s"))?
+            );
+        }
+        
+        for i in 0..BLAKE2S_ROUNDS {
+            let s = &BLAKE2S_SIGMA[i];
+            Self::g(&mut v,0,4,8,12,m[s[0]],m[s[1]]);
+            Self::g(&mut v,1,5,9,13,m[s[2]],m[s[3]]);
+            Self::g(&mut v,2,6,10,14,m[s[4]],m[s[5]]);
+            Self::g(&mut v,3,7,11,15,m[s[6]],m[s[7]]);
+            Self::g(&mut v,0,5,10,15,m[s[8]],m[s[9]]);
+            Self::g(&mut v,1,6,11,12,m[s[10]],m[s[11]]);
+            Self::g(&mut v,2,7,8,13,m[s[12]],m[s[13]]);
+            Self::g(&mut v,3,4,9,14,m[s[14]],m[s[15]]);
+        }
+        
+        for i in 0..8 {
+            self.h[i] ^= v[i] ^ v[i+8];
+        }
+        
+        Ok(())
+    }
+
+    fn update_internal(&mut self, mut input: &[u8]) -> Result<()> {
+        while !input.is_empty() {
+            let fill = min(input.len(), BLAKE2S_BLOCK_SIZE - self.buf_len);
+            self.buf[self.buf_len..self.buf_len+fill].copy_from_slice(&input[..fill]);
+            self.buf_len += fill;
+            input = &input[fill..];
+            if self.buf_len == BLAKE2S_BLOCK_SIZE {
+                let inc = BLAKE2S_BLOCK_SIZE as u32;
+                self.t[0] = self.t[0].wrapping_add(inc);
+                if self.t[0] < inc { self.t[1] = self.t[1].wrapping_add(1); }
+                self.compress(false)?; // Propagate error
+                self.buf_len = 0;
+            }
+        }
+        
+        Ok(())
+    }
+
+    fn finalize_internal(&mut self) -> Result<Vec<u8>> {
+        let inc = self.buf_len as u32;
+        self.t[0] = self.t[0].wrapping_add(inc);
+        if self.t[0] < inc { self.t[1] = self.t[1].wrapping_add(1); }
+        if self.buf_len < BLAKE2S_BLOCK_SIZE {
+            for b in &mut self.buf[self.buf_len..] { *b = 0; }
+        }
+        
+        self.compress(true)?; // Propagate error
+        
+        let mut out = Vec::with_capacity(self.out_len);
+        for &w in &self.h {
+            out.extend_from_slice(&w.to_le_bytes());
+        }
+        out.truncate(self.out_len);
+        
+        Ok(out)
+    }
+}
+
+impl HashFunction for Blake2s {
+    type Algorithm = Blake2sAlgorithm;
+    type Output = Digest<BLAKE2S_MAX_OUTPUT_SIZE>;
+
+    fn new() -> Self {
+        Blake2s::with_output_size(BLAKE2S_MAX_OUTPUT_SIZE)
+    }
+
+    fn update(&mut self, input: &[u8]) -> Result<&mut Self> {
+        self.update_internal(input)?;
+        Ok(self)
+    }
+
+    fn finalize(&mut self) -> Result<Self::Output> {
+        let hash = self.finalize_internal()?;
+        let mut digest = [0u8; BLAKE2S_MAX_OUTPUT_SIZE];
+        digest[..hash.len()].copy_from_slice(&hash);
+        // Create digest with the actual output length
+        Ok(Digest::with_len(digest, self.out_len))
+    }
+
+    fn output_size() -> usize {
+        Self::Algorithm::OUTPUT_SIZE
+    }
+
+    fn block_size() -> usize {
+        Self::Algorithm::BLOCK_SIZE
+    }
+
+    fn name() -> String {
+        Self::Algorithm::ALGORITHM_ID.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests;

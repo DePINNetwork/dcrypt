@@ -1,0 +1,102 @@
+//! Types specific to GCM mode of operation
+
+use crate::error::{Error, Result};
+use rand::{RngCore, rngs::OsRng};
+use base64;
+
+/// GCM nonce type (96 bits/12 bytes is the recommended size for GCM)
+#[derive(Clone, Debug)]
+pub struct GcmNonce([u8; 12]);
+
+impl GcmNonce {
+    /// Creates a new nonce from raw bytes
+    pub fn new(bytes: [u8; 12]) -> Self {
+        Self(bytes)
+    }
+    
+    /// Creates a new random nonce
+    pub fn generate() -> Self {
+        let mut nonce = [0u8; 12];
+        OsRng.fill_bytes(&mut nonce);
+        Self(nonce)
+    }
+    
+    /// Returns a reference to the raw nonce bytes
+    pub fn as_bytes(&self) -> &[u8; 12] {
+        &self.0
+    }
+    
+    /// Serializes the nonce to a base64 string
+    pub fn to_string(&self) -> String {
+        base64::encode(&self.0)
+    }
+    
+    /// Creates a nonce from a base64 string
+    pub fn from_string(s: &str) -> Result<Self> {
+        let bytes = base64::decode(s)
+            .map_err(|_| Error::InvalidFormat)?;
+            
+        if bytes.len() != 12 {
+            return Err(Error::InvalidFormat);
+        }
+        
+        let mut nonce = [0u8; 12];
+        nonce.copy_from_slice(&bytes);
+        
+        Ok(Self(nonce))
+    }
+}
+
+/// Format for storing both ciphertext and nonce together
+#[derive(Clone, Debug)]
+pub struct AesCiphertextPackage {
+    /// The nonce used for encryption
+    pub nonce: GcmNonce,
+    /// The encrypted data
+    pub ciphertext: Vec<u8>,
+}
+
+impl AesCiphertextPackage {
+    /// Creates a new package containing nonce and ciphertext
+    pub fn new(nonce: GcmNonce, ciphertext: Vec<u8>) -> Self {
+        Self { nonce, ciphertext }
+    }
+    
+    /// Serializes the package to a base64 string with format:
+    /// DCRYPT-AES-GCM:{nonce_b64}:{ciphertext_b64}
+    pub fn to_string(&self) -> String {
+        let nonce_b64 = base64::encode(self.nonce.as_bytes());
+        let ciphertext_b64 = base64::encode(&self.ciphertext);
+        format!("DCRYPT-AES-GCM:{}:{}", nonce_b64, ciphertext_b64)
+    }
+    
+    /// Parses a serialized package
+    pub fn from_string(s: &str) -> Result<Self> {
+        if !s.starts_with("DCRYPT-AES-GCM:") {
+            return Err(Error::InvalidFormat);
+        }
+        
+        let parts: Vec<&str> = s["DCRYPT-AES-GCM:".len()..].split(':').collect();
+        if parts.len() != 2 {
+            return Err(Error::InvalidFormat);
+        }
+        
+        let nonce_bytes = base64::decode(parts[0])
+            .map_err(|_| Error::InvalidFormat)?;
+            
+        if nonce_bytes.len() != 12 {
+            return Err(Error::InvalidFormat);
+        }
+        
+        let mut nonce = [0u8; 12];
+        nonce.copy_from_slice(&nonce_bytes);
+        
+        let ciphertext = base64::decode(parts[1])
+            .map_err(|_| Error::InvalidFormat)?;
+            
+        Ok(Self {
+            nonce: GcmNonce(nonce),
+            ciphertext,
+        })
+    }
+}
