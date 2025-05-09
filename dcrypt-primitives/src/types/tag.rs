@@ -10,12 +10,16 @@ use zeroize::Zeroize;
 
 use dcrypt_core::error::{DcryptError, Result};
 use crate::types::{ConstantTimeEq, RandomGeneration, SecureZeroingType, FixedSize, ByteSerializable};
+use crate::types::sealed::Sealed;
 
 /// A cryptographic authentication tag with fixed size
 #[derive(Clone, Zeroize)]
 pub struct Tag<const N: usize> {
     data: [u8; N],
 }
+
+// Mark Tag types as sealed
+impl<const N: usize> Sealed for Tag<N> {}
 
 impl<const N: usize> Tag<N> {
     /// Create a new tag from an existing array
@@ -39,7 +43,12 @@ impl<const N: usize> Tag<N> {
         Ok(Self { data })
     }
     
-    /// Get the length of the tag
+    /// Create a zeroed tag
+    pub fn zeroed() -> Self {
+        Self { data: [0u8; N] }
+    }
+    
+    /// Get the length of the tag in bytes
     pub fn len(&self) -> usize {
         N
     }
@@ -49,6 +58,11 @@ impl<const N: usize> Tag<N> {
         N == 0
     }
     
+    /// Get the size of this tag in bytes
+    pub fn size() -> usize {
+        N
+    }
+    
     /// Convert to a hexadecimal string
     pub fn to_hex(&self) -> String {
         let mut result = String::with_capacity(N * 2);
@@ -56,6 +70,12 @@ impl<const N: usize> Tag<N> {
             result.push_str(&format!("{:02x}", byte));
         }
         result
+    }
+    
+    /// Unchecked constructor for internal use
+    #[doc(hidden)]
+    pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
+        Self { data }
     }
 }
 
@@ -87,6 +107,10 @@ impl<const N: usize> DerefMut for Tag<N> {
 
 impl<const N: usize> PartialEq for Tag<N> {
     fn eq(&self, other: &Self) -> bool {
+        // Note: We deliberately use a non-constant time equality here
+        // because Tag equality is expected to leak timing information
+        // for performance. For security-sensitive tag verification,
+        // use the ct_eq method instead.
         self.data == other.data
     }
 }
@@ -121,7 +145,7 @@ impl<const N: usize> RandomGeneration for Tag<N> {
 
 impl<const N: usize> SecureZeroingType for Tag<N> {
     fn zeroed() -> Self {
-        Self { data: [0u8; N] }
+        Self::zeroed()
     }
 }
 
@@ -141,7 +165,20 @@ impl<const N: usize> ByteSerializable for Tag<N> {
     }
 }
 
-// Common tag size type aliases
-pub type Tag16 = Tag<16>; // Common AEAD tag size
-pub type Tag12 = Tag<12>; // Some AEAD modes use 12-byte tags
-pub type Tag32 = Tag<32>; // Extended tag size for high security
+// Algorithm compatibility marker traits
+/// Poly1305 compatible tag sizes
+pub trait Poly1305Compatible: Sealed {}
+impl Poly1305Compatible for Tag<16> {}
+
+/// HMAC compatible tag sizes (dependent on hash function)
+pub trait HmacCompatible: Sealed {}
+impl HmacCompatible for Tag<32> {} // HMAC-SHA256
+impl HmacCompatible for Tag<64> {} // HMAC-SHA512
+
+/// GCM compatible tag sizes
+pub trait GcmCompatible: Sealed {}
+impl GcmCompatible for Tag<16> {}
+
+/// ChaCha20Poly1305 compatible tag sizes
+pub trait ChaCha20Poly1305Compatible: Sealed {}
+impl ChaCha20Poly1305Compatible for Tag<16> {}

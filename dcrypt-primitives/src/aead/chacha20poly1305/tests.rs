@@ -1,5 +1,7 @@
+// dcrypt-primitives/src/aead/chacha20poly1305/tests.rs
 use super::*;
 use hex;
+use crate::types::Nonce;
 
 #[test]
 fn test_chacha20poly1305_rfc8439() {
@@ -19,17 +21,20 @@ fn test_chacha20poly1305_rfc8439() {
     let key_bytes: [u8; CHACHA20POLY1305_KEY_SIZE] = key.try_into().expect("Invalid key length");
     let nonce_bytes: [u8; CHACHA20POLY1305_NONCE_SIZE] = nonce.try_into().expect("Invalid nonce length");
     
+    // Create the Nonce object from the byte array
+    let nonce_obj = Nonce::<CHACHA20POLY1305_NONCE_SIZE>::new(nonce_bytes);
+    
     // Create cipher
     let chacha_poly = ChaCha20Poly1305::new(&key_bytes);
     
     // Encrypt
-    let ciphertext = chacha_poly.encrypt(&nonce_bytes, &plaintext, Some(&aad))
+    let ciphertext = chacha_poly.encrypt(&nonce_obj, &plaintext, Some(&aad))
         .expect("Encryption failed");
     
     assert_eq!(ciphertext, expected_ciphertext);
     
     // Decrypt
-    let decrypted = chacha_poly.decrypt(&nonce_bytes, &ciphertext, Some(&aad))
+    let decrypted = chacha_poly.decrypt(&nonce_obj, &ciphertext, Some(&aad))
         .expect("Decryption failed");
     
     assert_eq!(decrypted, plaintext);
@@ -39,7 +44,11 @@ fn test_chacha20poly1305_rfc8439() {
 fn test_chacha20poly1305_encrypt_decrypt() {
     // Test with random key and nonce
     let key = [0x42; CHACHA20POLY1305_KEY_SIZE];
-    let nonce = [0x24; CHACHA20POLY1305_NONCE_SIZE];
+    let nonce_bytes = [0x24; CHACHA20POLY1305_NONCE_SIZE];
+    
+    // Create the Nonce object from the byte array
+    let nonce = Nonce::<CHACHA20POLY1305_NONCE_SIZE>::new(nonce_bytes);
+    
     let aad = b"Additional authenticated data";
     let plaintext = b"Secret message that needs protection";
     

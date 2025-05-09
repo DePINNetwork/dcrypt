@@ -20,6 +20,8 @@ use dcrypt_primitives::stream::chacha::chacha20::{ChaCha20, CHACHA20_KEY_SIZE, C
 use dcrypt_primitives::kdf::hkdf::Hkdf;
 use dcrypt_primitives::kdf::pbkdf2::Pbkdf2;
 use dcrypt_primitives::kdf::KeyDerivationFunction;
+// Add Nonce type import
+use dcrypt_primitives::types::Nonce;
 
 #[test]
 fn test_aes_constant_time() {
@@ -100,7 +102,11 @@ fn make_gcm() -> (Gcm<Aes128>, Vec<u8>, Vec<u8>) {
     // Convert raw key bytes to SecretBytes
     let key_bytes = [0u8; 16];
     let key = SecretBytes::<16>::new(key_bytes);
-    let nonce = [0u8; 12];
+    
+    // Create a Nonce<12> from raw bytes
+    let nonce_bytes = [0u8; 12];
+    let nonce = Nonce::<12>::new(nonce_bytes);
+    
     let aad = b"additional data";
     let plain = b"secret message";
     let cipher = Aes128::new(&key);
@@ -227,7 +233,11 @@ fn test_gcm_error_path_constant_time() {
 // Helper to set up the ChaCha20Poly1305 instance
 fn make_chacha_poly() -> (ChaCha20Poly1305, Vec<u8>, Vec<u8>) {
     let key = [0x42; CHACHA20POLY1305_KEY_SIZE];
-    let nonce = [0x24; CHACHA20POLY1305_NONCE_SIZE];
+    
+    // Create a Nonce<12> from raw bytes
+    let nonce_bytes = [0x24; CHACHA20POLY1305_NONCE_SIZE];
+    let nonce = Nonce::<CHACHA20POLY1305_NONCE_SIZE>::new(nonce_bytes);
+    
     let aad = b"additional authenticated data";
     let plaintext = b"confidential message";
     
@@ -241,7 +251,10 @@ fn make_chacha_poly() -> (ChaCha20Poly1305, Vec<u8>, Vec<u8>) {
 fn test_chacha_poly_success_constant_time() {
     let config = TestConfig::for_chacha_poly();
     let (cipher, ciphertext, aad) = make_chacha_poly();
-    let nonce = [0x24; CHACHA20POLY1305_NONCE_SIZE];
+    
+    // Create a Nonce<12> from raw bytes
+    let nonce_bytes = [0x24; CHACHA20POLY1305_NONCE_SIZE];
+    let nonce = Nonce::<CHACHA20POLY1305_NONCE_SIZE>::new(nonce_bytes);
 
     for _ in 0..config.num_warmup {
         let _ = cipher.decrypt(&nonce, &ciphertext, Some(&aad));
@@ -300,7 +313,10 @@ fn test_chacha_poly_success_constant_time() {
 fn test_chacha_poly_failure_constant_time() {
     let config = TestConfig::for_chacha_poly();
     let (cipher, mut ciphertext, aad) = make_chacha_poly();
-    let nonce = [0x24; CHACHA20POLY1305_NONCE_SIZE];
+    
+    // Create a Nonce<12> from raw bytes
+    let nonce_bytes = [0x24; CHACHA20POLY1305_NONCE_SIZE];
+    let nonce = Nonce::<CHACHA20POLY1305_NONCE_SIZE>::new(nonce_bytes);
     
     // Tamper with ciphertext to force authentication failure
     if !ciphertext.is_empty() {
@@ -681,7 +697,11 @@ fn test_hmac_sha256_constant_time() {
 fn test_chacha20_constant_time() {
     let config = TestConfig::for_stream();
     let key = [0x42u8; CHACHA20_KEY_SIZE];
-    let nonce = [0x24u8; CHACHA20_NONCE_SIZE];
+    
+    // Create a Nonce<12> from raw bytes
+    let nonce_bytes = [0x24u8; CHACHA20_NONCE_SIZE];
+    let nonce = Nonce::<CHACHA20_NONCE_SIZE>::new(nonce_bytes);
+    
     let data_zeros = [0u8; 64];
     let data_ones = [1u8; 64];
     

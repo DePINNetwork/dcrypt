@@ -1,4 +1,5 @@
 use super::*;
+use crate::types::Tag;
 use hex;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 
@@ -17,9 +18,7 @@ fn test_poly1305_rfc8439_vector() {
     p.update(msg).unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("a8061dc1305136c6c22b8baf0c0127a9")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("a8061dc1305136c6c22b8baf0c0127a9").unwrap()).unwrap()
     );
 }
 
@@ -29,7 +28,7 @@ fn test_empty_message() {
     let tag = Poly1305::new(&key).finalize();
     let mut expected = [0u8; 16];
     expected.copy_from_slice(&key[16..32]);
-    assert_eq!(tag, expected);
+    assert_eq!(tag, Tag::<16>::new(expected));
 }
 
 #[test]
@@ -54,9 +53,7 @@ fn test_hello_message() {
     p.update(b"Hello").unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("f74f694dcdf0d5131ed59f4b4e760495")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("f74f694dcdf0d5131ed59f4b4e760495").unwrap()).unwrap()
     );
 }
 
@@ -67,9 +64,7 @@ fn test_single_block_message() {
     p.update(b"0123456789ABCDEF").unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("e70d564ce526627cb2f56c7657604601")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("e70d564ce526627cb2f56c7657604601").unwrap()).unwrap()
     );
 }
 
@@ -81,9 +76,7 @@ fn test_multi_block_message() {
     p.update(msg).unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("8253fca07713cc36043e7aed25d35085")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("8253fca07713cc36043e7aed25d35085").unwrap()).unwrap()
     );
 }
 
@@ -100,12 +93,9 @@ publication as all or part of an IETF Internet-Draft or RFC";
     p.update(text).unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("36e5f6b5c5e06070f0efca96227a863e")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("36e5f6b5c5e06070f0efca96227a863e").unwrap()).unwrap()
     );
 }
-
 
 #[test]
 fn test_poly1305_rfc8439_vector5() {
@@ -115,9 +105,7 @@ fn test_poly1305_rfc8439_vector5() {
     p.update(&[0xFFu8; 16]).unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("03000000000000000000000000000000")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("03000000000000000000000000000000").unwrap()).unwrap()
     );
 }
 
@@ -134,9 +122,7 @@ fn test_poly1305_rfc8439_vector6() {
     p.update(&block).unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("03000000000000000000000000000000")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("03000000000000000000000000000000").unwrap()).unwrap()
     );
 }
 
@@ -154,9 +140,7 @@ fn test_poly1305_rfc8439_vector7() {
     p.update(&b3).unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("05000000000000000000000000000000")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("05000000000000000000000000000000").unwrap()).unwrap()
     );
 }
 
@@ -172,9 +156,7 @@ fn test_poly1305_rfc8439_vector8() {
     p.update(&[0x01u8; 16]).unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("00000000000000000000000000000000")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("00000000000000000000000000000000").unwrap()).unwrap()
     );
 }
 
@@ -195,9 +177,7 @@ fn test_poly1305_rfc8439_vector10() {
     p.update(&data).unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("14000000000000005500000000000000")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("14000000000000005500000000000000").unwrap()).unwrap()
     );
 }
 
@@ -217,9 +197,7 @@ fn test_poly1305_rfc8439_vector11() {
     p.update(&data).unwrap();
     assert_eq!(
         p.finalize(),
-        hex::decode("13000000000000000000000000000000")
-            .unwrap()
-            .as_slice()
+        Tag::<16>::from_slice(&hex::decode("13000000000000000000000000000000").unwrap()).unwrap()
     );
 }
 
@@ -257,6 +235,6 @@ fn random_empty_update() {
         p.update(&[]).unwrap();
         let mut expected = [0u8; 16];
         expected.copy_from_slice(&key[16..32]);
-        assert_eq!(p.finalize(), expected);
+        assert_eq!(p.finalize(), Tag::<16>::new(expected));
     }
 }

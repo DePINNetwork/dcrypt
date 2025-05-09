@@ -43,11 +43,44 @@ pub use error::{Error, Result};
 
 // Re-export common types for convenience
 pub use types::{
-    Nonce, Salt, Digest, Key, 
-    Aes128Key, Aes256Key, ChaCha20Key, ChaCha20Poly1305Key,
+    Nonce, Salt, Digest, Tag, 
+    ValidKeySize, ValidSecretKeySize, ValidPublicKeySize,
+    SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey,
 };
-pub use types::nonce::{Nonce12, Nonce16, Nonce24};
-pub use types::digest::{Digest32, Digest64};
+// Add specific imports from submodules
+pub use types::nonce::{ChaCha20Compatible, XChaCha20Compatible, AesGcmCompatible, AesCtrCompatible};
+pub use types::tag::{Poly1305Compatible, HmacCompatible, GcmCompatible, ChaCha20Poly1305Compatible};
+pub use types::salt::{Pbkdf2Compatible, Argon2Compatible, HkdfCompatible};
+
+// Re-export key types from dcrypt-core
+pub use dcrypt_core::types::Key;
+
+// Re-export algorithm types
+pub use types::algorithms::*;
+
+// Type aliases for common sizes
+pub type Nonce12 = Nonce<12>;
+pub type Nonce16 = Nonce<16>;
+pub type Nonce24 = Nonce<24>;
+pub type Salt16 = Salt<16>;
+pub type Salt32 = Salt<32>;
+pub type Digest32 = Digest<32>;
+pub type Digest64 = Digest<64>;
+pub type Tag16 = Tag<16>;
+pub type Tag32 = Tag<32>;
+pub type Tag64 = Tag<64>;
+
+// Additional algorithm-specific type aliases for key types
+pub type Aes128Key = SymmetricKey<Aes128, 16>;
+pub type Aes256Key = SymmetricKey<Aes256, 32>;
+pub type ChaCha20Key = SymmetricKey<ChaCha20, 32>;
+pub type ChaCha20Poly1305Key = SymmetricKey<ChaCha20Poly1305, 32>;
+
+// Asymmetric key type aliases
+pub type Ed25519SecretKey = AsymmetricSecretKey<Ed25519, 32>;
+pub type Ed25519PublicKey = AsymmetricPublicKey<Ed25519, 32>;
+pub type X25519SecretKey = AsymmetricSecretKey<X25519, 32>;
+pub type X25519PublicKey = AsymmetricPublicKey<X25519, 32>;
 
 // Re-export operation traits for ergonomic usage
 pub use operation::{
@@ -75,7 +108,7 @@ pub use hash::{
 pub use kdf::{
     hkdf::Hkdf,
     pbkdf2::{Pbkdf2, Pbkdf2Params},
-    argon2::{Argon2, Argon2Params},
+    argon2::{Argon2, Params as Argon2Params},
 };
 
 // Version information

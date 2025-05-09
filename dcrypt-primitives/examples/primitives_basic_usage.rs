@@ -15,11 +15,14 @@ fn main() {
     let plaintext = b"Hello, DCRYPT!";
     let aad = b"Additional data";
     
-    // Encrypt - pass the nonce array directly
-    let ciphertext = cipher.encrypt(&nonce_data, plaintext, Some(aad)).unwrap();
+    // Create a proper Nonce object instead of using raw array
+    let nonce = Nonce12::new(nonce_data);
+    
+    // Encrypt using the nonce object
+    let ciphertext = cipher.encrypt(&nonce, plaintext, Some(aad)).unwrap();
     println!("Ciphertext: {:?}", ciphertext);
     
-    // Decrypt - pass the nonce array directly
-    let decrypted = cipher.decrypt(&nonce_data, &ciphertext, Some(aad)).unwrap();
+    // Decrypt using the nonce object
+    let decrypted = cipher.decrypt(&nonce, &ciphertext, Some(aad)).unwrap();
     println!("Decrypted: {:?}", String::from_utf8_lossy(&decrypted));
 }

@@ -36,13 +36,15 @@ use core::sync::atomic::{compiler_fence, Ordering};
 // Fix import paths by using crate:: for internal modules
 use crate::block::BlockCipher;
 use dcrypt_core::traits::AuthenticatedCipher;
+use dcrypt_core::traits::SymmetricCipher;
+use dcrypt_core::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
 
 use crate::types::SecretBytes;
-use crate::Nonce12;
+use crate::types::Nonce; // Using generic Nonce type
+use crate::types::nonce::AesGcmCompatible; // Import the AesGcmCompatible trait
 use crate::error::{Error, Result};
 use dcrypt_core::error::DcryptError;
 use dcrypt_core::types::Ciphertext;
-use dcrypt_core::traits::symmetric::{SymmetricCipher, Operation, EncryptOperation, DecryptOperation};
 
 // Import the GHASH module
 mod ghash;
@@ -74,31 +76,37 @@ impl<B: BlockCipher> Drop for Gcm<B> {
 /// Operation for GCM encryption operations
 pub struct GcmEncryptOperation<'a, B: BlockCipher> {
     cipher: &'a Gcm<B>,
-    nonce: Option<&'a Nonce12>,
+    nonce: Option<&'a Nonce<12>>, // Using generic Nonce<12> instead of Nonce12
     aad: Option<&'a [u8]>,
 }
 
 /// Operation for GCM decryption operations
 pub struct GcmDecryptOperation<'a, B: BlockCipher> {
     cipher: &'a Gcm<B>,
-    nonce: Option<&'a Nonce12>,
+    nonce: Option<&'a Nonce<12>>, // Using generic Nonce<12> instead of Nonce12
     aad: Option<&'a [u8]>,
 }
 
 impl<B: BlockCipher> Gcm<B> {
     /// Creates a new GCM mode instance with default (16-byte) tag.
-    pub fn new(cipher: B, nonce: &[u8]) -> Result<Self> {
+    pub fn new<const N: usize>(cipher: B, nonce: &Nonce<N>) -> Result<Self> 
+    where
+        Nonce<N>: AesGcmCompatible
+    {
         Self::new_with_tag_len(cipher, nonce, GCM_TAG_SIZE)
     }
 
     /// Creates a new GCM mode instance with specified tag length (in bytes).
     ///
     /// tag_len must be between 1 and 16 (inclusive).
-    pub fn new_with_tag_len(
+    pub fn new_with_tag_len<const N: usize>(
         cipher: B,
-        nonce: &[u8],
+        nonce: &Nonce<N>,
         tag_len: usize,
-    ) -> Result<Self> {
+    ) -> Result<Self>
+    where
+        Nonce<N>: AesGcmCompatible
+    {
         // Ensure block size
         if B::block_size() != GCM_BLOCK_SIZE {
             return Err(Error::InvalidParameter("GCM only works with 128-bit block ciphers"));
@@ -123,7 +131,7 @@ impl<B: BlockCipher> Gcm<B> {
         Ok(Self {
             cipher,
             h,
-            nonce: Zeroizing::new(nonce.to_vec()),
+            nonce: Zeroizing::new(nonce.as_ref().to_vec()),
             tag_len,
         })
     }
@@ -273,7 +281,7 @@ impl<B: BlockCipher> AuthenticatedCipher for Gcm<B> {
 impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
     // We can't use B::KEY_SIZE in const generic expressions, so we'll use a different approach
     type Key = SecretBytes<32>; // Using a fixed size for demonstration - adjust based on your needs
-    type Nonce = Nonce12;  // GCM typically uses 12-byte nonces
+    type Nonce = Nonce<12>;  // Using generic Nonce<12> instead of Nonce12
     type Ciphertext = Ciphertext;
     type EncryptOperation<'a> = GcmEncryptOperation<'a, B> where Self: 'a;
     type DecryptOperation<'a> = GcmDecryptOperation<'a, B> where Self: 'a;
@@ -282,7 +290,7 @@ impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
         "GCM"
     }
     
-    fn encrypt<'a>(&'a self) -> Self::EncryptOperation<'a> {
+    fn encrypt<'a>(&'a self) -> <Self as SymmetricCipher>::EncryptOperation<'a> {
         GcmEncryptOperation {
             cipher: self,
             nonce: None,
@@ -290,7 +298,7 @@ impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
         }
     }
     
-    fn decrypt<'a>(&'a self) -> Self::DecryptOperation<'a> {
+    fn decrypt<'a>(&'a self) -> <Self as SymmetricCipher>::DecryptOperation<'a> {
         GcmDecryptOperation {
             cipher: self,
             nonce: None,
@@ -298,19 +306,19 @@ impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
         }
     }
     
-    fn generate_key<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<Self::Key, DcryptError> {
+    fn generate_key<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<<Self as SymmetricCipher>::Key, DcryptError> {
         let mut key_data = [0u8; 32]; // Using same fixed size as type Key
         rng.fill_bytes(&mut key_data);
         Ok(SecretBytes::new(key_data))
     }
     
-    fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<Self::Nonce, DcryptError> {
+    fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<<Self as SymmetricCipher>::Nonce, DcryptError> {
         let mut nonce_data = [0u8; 12];
         rng.fill_bytes(&mut nonce_data);
-        Ok(Nonce12::new(nonce_data))
+        Ok(Nonce::<12>::new(nonce_data)) // Using generic Nonce::<12> instead of Nonce12
     }
     
-    fn derive_key_from_bytes(bytes: &[u8]) -> std::result::Result<Self::Key, DcryptError> {
+    fn derive_key_from_bytes(bytes: &[u8]) -> std::result::Result<<Self as SymmetricCipher>::Key, DcryptError> {
         if bytes.len() < 32 { // Using same fixed size as type Key
             return Err(DcryptError::InvalidLength {
                 context: "GCM key derivation",

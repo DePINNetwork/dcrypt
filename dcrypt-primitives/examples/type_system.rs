@@ -15,8 +15,8 @@ fn main() {
     let digest = Sha256::digest(b"Hello, type system!").unwrap();
     println!("Digest: {:?}", digest);
     
-    // Type-safe salt example
+    // Type-safe salt example with explicit type annotation added
     let mut rng = rand::thread_rng();
-    let salt = Salt::random_with_size(&mut rng, 16).unwrap();
+    let salt: Salt<16> = Salt::random_with_size(&mut rng, 16).unwrap();
     println!("Salt: {:?}", salt);
 }

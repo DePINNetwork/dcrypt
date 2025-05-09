@@ -2,6 +2,7 @@ use super::*;
 use crate::block::aes::{Aes128, Aes192, Aes256};
 use crate::block::CipherAlgorithm; // Add this import
 use crate::types::SecretBytes; // Add this import
+use crate::types::Nonce; // Add this import for the Nonce type
 use hex;
 use byteorder::BigEndian;
 
@@ -432,8 +433,14 @@ fn test_aes_ctr() {
     // The NIST counter block is: f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
     
     // Use just the first 12 bytes as the nonce
-    let nonce = &nist_counter_block[0..12];
-    let mut ctr = Ctr::with_counter_params(cipher, nonce, CounterPosition::Postfix, 4).unwrap();
+    let nonce_bytes = &nist_counter_block[0..12];
+    
+    // Convert to Nonce<12>
+    let mut nonce_array = [0u8; 12];
+    nonce_array.copy_from_slice(nonce_bytes);
+    let nonce = Nonce::<12>::new(nonce_array);
+    
+    let mut ctr = Ctr::with_counter_params(cipher, &nonce, CounterPosition::Postfix, 4).unwrap();
     
     // Now manually set the last 4 bytes to match the NIST counter
     ctr.counter_block[12] = nist_counter_block[12]; // fc
@@ -446,7 +453,7 @@ fn test_aes_ctr() {
     
     // Test decryption
     let cipher = Aes128::new(&key);
-    let mut ctr = Ctr::with_counter_params(cipher, nonce, CounterPosition::Postfix, 4).unwrap();
+    let mut ctr = Ctr::with_counter_params(cipher, &nonce, CounterPosition::Postfix, 4).unwrap();
     ctr.counter_block[12] = nist_counter_block[12];
     ctr.counter_block[13] = nist_counter_block[13];
     ctr.counter_block[14] = nist_counter_block[14];
@@ -460,7 +467,10 @@ fn test_aes_ctr() {
 fn test_ctr_with_custom_params() {
     let key_data = [0x42; 16]; // 16-byte key for AES-128
     let key = SecretBytes::<16>::new(key_data);
-    let nonce = [0x24; 8]; // 8-byte nonce
+    
+    // Create 8-byte nonce using Nonce<8>
+    let nonce_array = [0x24; 8]; // 8-byte nonce
+    let nonce = Nonce::<8>::new(nonce_array);
     
     // Test with 8-byte counter at beginning
     let plaintext = vec![0xAA; 32];
@@ -496,7 +506,10 @@ fn test_ctr_with_custom_params() {
 fn test_ctr_counter_overflow() {
     let key_data = [0x42; 16]; // 16-byte key for AES-128
     let key = SecretBytes::<16>::new(key_data);
-    let nonce = [0x24; 12]; // 12-byte nonce
+    
+    // Create 12-byte nonce using Nonce<12>
+    let nonce_array = [0x24; 12]; // 12-byte nonce
+    let nonce = Nonce::<12>::new(nonce_array);
     
     // Test with a small 1-byte counter to ensure overflow works correctly
     let cipher = Aes128::new(&key);
@@ -522,7 +535,10 @@ fn test_ctr_counter_overflow() {
 fn test_ctr_long_message() {
     let key_data = [0x42; 16]; // 16-byte key for AES-128
     let key = SecretBytes::<16>::new(key_data);
-    let nonce = [0x24; 12]; // 12-byte nonce
+    
+    // Create 12-byte nonce using Nonce<12>
+    let nonce_array = [0x24; 12]; // 12-byte nonce
+    let nonce = Nonce::<12>::new(nonce_array);
     
     // Generate a longer message (multiple blocks)
     let plaintext = vec![0xAA; 1000];
@@ -551,23 +567,35 @@ fn test_different_counter_sizes() {
     // Test with different counter sizes (1-byte, 2-byte, 8-byte)
     let key_data = [0x42; 16]; // 16-byte key for AES-128
     let key = SecretBytes::<16>::new(key_data);
-    let nonce = [0x24; 12]; // 12-byte nonce
     let plaintext = vec![0xAA; 64];
+    
+    // Create properly sized nonce for each test case
+    
+    // 1-byte counter - needs 11-byte nonce (since 11+1=12 for nonce+counter)
+    let nonce_array1 = [0x24; 11];
+    let nonce1 = Nonce::<11>::new(nonce_array1);
+    
+    // 2-byte counter - needs 10-byte nonce
+    let nonce_array2 = [0x24; 10];
+    let nonce2 = Nonce::<10>::new(nonce_array2);
+    
+    // 8-byte counter - needs 8-byte nonce
+    let nonce_array3 = [0x24; 8];
+    let nonce3 = Nonce::<8>::new(nonce_array3);
     
     // 1-byte counter
     let cipher = Aes128::new(&key);
-    // Adjust nonce slices to avoid out-of-bounds error (max 15 bytes with 1-byte counter)
-    let mut ctr = Ctr::with_counter_params(cipher, &nonce[..11], CounterPosition::Postfix, 1).unwrap();
+    let mut ctr = Ctr::with_counter_params(cipher, &nonce1, CounterPosition::Postfix, 1).unwrap();
     let ciphertext1 = ctr.encrypt(&plaintext).unwrap();
     
     // 2-byte counter
     let cipher = Aes128::new(&key);
-    let mut ctr = Ctr::with_counter_params(cipher, &nonce[..10], CounterPosition::Postfix, 2).unwrap();
+    let mut ctr = Ctr::with_counter_params(cipher, &nonce2, CounterPosition::Postfix, 2).unwrap();
     let ciphertext2 = ctr.encrypt(&plaintext).unwrap();
     
     // 8-byte counter
     let cipher = Aes128::new(&key);
-    let mut ctr = Ctr::with_counter_params(cipher, &nonce[..8], CounterPosition::Postfix, 8).unwrap();
+    let mut ctr = Ctr::with_counter_params(cipher, &nonce3, CounterPosition::Postfix, 8).unwrap();
     let ciphertext3 = ctr.encrypt(&plaintext).unwrap();
     
     // Verify different counter sizes produce different ciphertexts
@@ -577,17 +605,17 @@ fn test_different_counter_sizes() {
     
     // Verify decryption works for each
     let cipher = Aes128::new(&key);
-    let mut ctr = Ctr::with_counter_params(cipher, &nonce[..11], CounterPosition::Postfix, 1).unwrap();
+    let mut ctr = Ctr::with_counter_params(cipher, &nonce1, CounterPosition::Postfix, 1).unwrap();
     let decrypted = ctr.decrypt(&ciphertext1).unwrap();
     assert_eq!(decrypted, plaintext);
     
     let cipher = Aes128::new(&key);
-    let mut ctr = Ctr::with_counter_params(cipher, &nonce[..10], CounterPosition::Postfix, 2).unwrap();
+    let mut ctr = Ctr::with_counter_params(cipher, &nonce2, CounterPosition::Postfix, 2).unwrap();
     let decrypted = ctr.decrypt(&ciphertext2).unwrap();
     assert_eq!(decrypted, plaintext);
     
     let cipher = Aes128::new(&key);
-    let mut ctr = Ctr::with_counter_params(cipher, &nonce[..8], CounterPosition::Postfix, 8).unwrap();
+    let mut ctr = Ctr::with_counter_params(cipher, &nonce3, CounterPosition::Postfix, 8).unwrap();
     let decrypted = ctr.decrypt(&ciphertext3).unwrap();
     assert_eq!(decrypted, plaintext);
 }

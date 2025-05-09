@@ -62,8 +62,7 @@ use alloc::vec::Vec;
 use zeroize::Zeroize;
 use core::marker::PhantomData;
 use rand::{CryptoRng, RngCore};
-use crate::types::{SecretBytes, Tag};
-use crate::{Nonce12, Nonce16, Nonce24};
+use crate::types::{SecretBytes, Tag, Nonce};
 
 /// Marker trait for AEAD algorithms
 pub trait AeadAlgorithm {
@@ -100,8 +99,8 @@ pub trait Operation<T> {
 
 /// Trait for encryption operations with AEAD algorithms
 pub trait AeadEncryptOperation<'a, A: AeadAlgorithm>: Operation<Vec<u8>> {
-    /// Set the nonce for encryption - ChaCha20Poly1305 uses Nonce12
-    fn with_nonce(self, nonce: &'a Nonce12) -> Self;
+    /// Set the nonce for encryption 
+    fn with_nonce(self, nonce: &'a Nonce<12>) -> Self;
     
     /// Set associated data for authenticated encryption
     fn with_aad(self, aad: &'a [u8]) -> Self;
@@ -112,8 +111,8 @@ pub trait AeadEncryptOperation<'a, A: AeadAlgorithm>: Operation<Vec<u8>> {
 
 /// Trait for decryption operations with AEAD algorithms
 pub trait AeadDecryptOperation<'a, A: AeadAlgorithm>: Operation<Vec<u8>> {
-    /// Set the nonce for decryption - ChaCha20Poly1305 uses Nonce12
-    fn with_nonce(self, nonce: &'a Nonce12) -> Self;
+    /// Set the nonce for decryption
+    fn with_nonce(self, nonce: &'a Nonce<12>) -> Self;
     
     /// Set associated data for authenticated decryption
     fn with_aad(self, aad: &'a [u8]) -> Self;
@@ -143,7 +142,7 @@ pub trait AeadCipher {
     fn generate_key<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self::Key>;
     
     /// Generate a random nonce for ChaCha20Poly1305
-    fn generate_nonce<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Nonce12>;
+    fn generate_nonce<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Nonce<12>>;
     
     /// Returns the cipher name
     fn name() -> &'static str {
@@ -207,10 +206,10 @@ impl AeadCipher for ChaCha20Poly1305Cipher {
         Ok(SecretBytes::new(key))
     }
     
-    fn generate_nonce<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Nonce12> {
+    fn generate_nonce<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Nonce<12>> {
         let mut nonce = [0u8; 12];
         rng.fill_bytes(&mut nonce);
-        Ok(Nonce12::new(nonce))
+        Ok(Nonce::<12>::new(nonce))
     }
 }
 
@@ -218,7 +217,7 @@ impl AeadCipher for ChaCha20Poly1305Cipher {
 #[cfg(feature = "alloc")]
 pub struct ChaCha20Poly1305EncryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305Cipher,
-    nonce: Option<&'a Nonce12>,
+    nonce: Option<&'a Nonce<12>>,
     aad: Option<&'a [u8]>,
 }
 
@@ -238,7 +237,7 @@ impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305EncryptOperation<'a> {
 impl<'a> AeadEncryptOperation<'a, ChaCha20Poly1305Algorithm> 
     for ChaCha20Poly1305EncryptOperation<'a> 
 {
-    fn with_nonce(mut self, nonce: &'a Nonce12) -> Self {
+    fn with_nonce(mut self, nonce: &'a Nonce<12>) -> Self {
         self.nonce = Some(nonce);
         self
     }
@@ -251,12 +250,9 @@ impl<'a> AeadEncryptOperation<'a, ChaCha20Poly1305Algorithm>
     fn encrypt(self, plaintext: &'a [u8]) -> Result<Vec<u8>> {
         let nonce = self.nonce.ok_or_else(|| Error::InvalidParameter("Nonce is required"))?;
         
-        // Convert nonce to array
-        let mut nonce_array = [0u8; 12];
-        nonce_array.copy_from_slice(nonce.as_ref());
-        
+        // No need to create a raw nonce array - pass the Nonce object directly
         self.cipher.inner.encrypt(
-            &nonce_array,
+            nonce,  // Pass the Nonce<12> directly
             plaintext,
             self.aad,
         )
@@ -267,7 +263,7 @@ impl<'a> AeadEncryptOperation<'a, ChaCha20Poly1305Algorithm>
 #[cfg(feature = "alloc")]
 pub struct ChaCha20Poly1305DecryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305Cipher,
-    nonce: Option<&'a Nonce12>,
+    nonce: Option<&'a Nonce<12>>,
     aad: Option<&'a [u8]>,
 }
 
@@ -287,7 +283,7 @@ impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305DecryptOperation<'a> {
 impl<'a> AeadDecryptOperation<'a, ChaCha20Poly1305Algorithm> 
     for ChaCha20Poly1305DecryptOperation<'a> 
 {
-    fn with_nonce(mut self, nonce: &'a Nonce12) -> Self {
+    fn with_nonce(mut self, nonce: &'a Nonce<12>) -> Self {
         self.nonce = Some(nonce);
         self
     }
@@ -300,12 +296,9 @@ impl<'a> AeadDecryptOperation<'a, ChaCha20Poly1305Algorithm>
     fn decrypt(self, ciphertext: &'a [u8]) -> Result<Vec<u8>> {
         let nonce = self.nonce.ok_or_else(|| Error::InvalidParameter("Nonce is required"))?;
         
-        // Convert nonce to array
-        let mut nonce_array = [0u8; 12];
-        nonce_array.copy_from_slice(nonce.as_ref());
-        
+        // No need to create a raw nonce array - pass the Nonce object directly
         self.cipher.inner.decrypt(
-            &nonce_array,
+            nonce,  // Pass the Nonce<12> directly
             ciphertext,
             self.aad,
         )

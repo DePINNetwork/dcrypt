@@ -9,7 +9,6 @@ use zeroize::Zeroize;
 use hex;
 
 use dcrypt_core::error::{DcryptError, Result};
-use dcrypt_core::types::SecretBytes;
 use crate::types::{ConstantTimeEq, SecureZeroingType, FixedSize, ByteSerializable};
 
 /// A cryptographic digest with a fixed size
@@ -36,7 +35,7 @@ impl<const N: usize> Digest<N> {
     
     /// Create from a slice, if it has the correct length
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
-        if slice.len() != N {
+        if slice.len() > N {
             return Err(DcryptError::InvalidLength {
                 context: "Digest::from_slice",
                 expected: N,
@@ -45,9 +44,9 @@ impl<const N: usize> Digest<N> {
         }
         
         let mut data = [0u8; N];
-        data.copy_from_slice(slice);
+        data[..slice.len()].copy_from_slice(slice);
         
-        Ok(Self { data, len: N })
+        Ok(Self { data, len: slice.len() })
     }
     
     /// Get the length of the digest
@@ -67,14 +66,6 @@ impl<const N: usize> Digest<N> {
     
     /// Create from a hexadecimal string
     pub fn from_hex(hex_str: &str) -> Result<Self> {
-        if hex_str.len() != N * 2 {
-            return Err(DcryptError::InvalidLength {
-                context: "Digest::from_hex",
-                expected: N * 2,
-                actual: hex_str.len(),
-            });
-        }
-        
         let bytes = hex::decode(hex_str).map_err(|_| {
             DcryptError::InvalidParameter {
                 context: "Digest::from_hex",
@@ -100,16 +91,16 @@ impl<const N: usize> AsMut<[u8]> for Digest<N> {
 }
 
 impl<const N: usize> Deref for Digest<N> {
-    type Target = [u8; N];
+    type Target = [u8];
     
     fn deref(&self) -> &Self::Target {
-        &self.data
+        &self.data[..self.len]
     }
 }
 
 impl<const N: usize> DerefMut for Digest<N> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.data
+        &mut self.data[..self.len]
     }
 }
 
@@ -164,8 +155,16 @@ impl<const N: usize> ByteSerializable for Digest<N> {
     }
 }
 
-// Common digest size type aliases
-pub type Digest20 = Digest<20>; // SHA-1
-pub type Digest32 = Digest<32>; // SHA-256
-pub type Digest48 = Digest<48>; // SHA-384
-pub type Digest64 = Digest<64>; // SHA-512
+// Algorithm compatibility marker traits
+/// SHA-256 compatible digest size
+pub trait Sha256Compatible {}
+impl Sha256Compatible for Digest<32> {}
+
+/// SHA-512 compatible digest size
+pub trait Sha512Compatible {}
+impl Sha512Compatible for Digest<64> {}
+
+/// BLAKE2b compatible digest sizes
+pub trait Blake2bCompatible {}
+impl Blake2bCompatible for Digest<32> {}
+impl Blake2bCompatible for Digest<64> {}

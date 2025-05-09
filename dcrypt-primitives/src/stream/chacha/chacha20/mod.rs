@@ -4,6 +4,8 @@
 
 use byteorder::{ByteOrder, LittleEndian};
 use zeroize::{Zeroize, ZeroizeOnDrop};
+use crate::types::Nonce;
+use crate::types::nonce::ChaCha20Compatible;
 
 /// Size of ChaCha20 key in bytes
 pub const CHACHA20_KEY_SIZE: usize = 32;
@@ -27,12 +29,18 @@ pub struct ChaCha20 {
 
 impl ChaCha20 {
     /// Creates a new ChaCha20 instance with the specified key and nonce
-    pub fn new(key: &[u8; CHACHA20_KEY_SIZE], nonce: &[u8; CHACHA20_NONCE_SIZE]) -> Self {
+    pub fn new<const N: usize>(key: &[u8; CHACHA20_KEY_SIZE], nonce: &Nonce<N>) -> Self
+    where
+        Nonce<N>: ChaCha20Compatible
+    {
         Self::with_counter(key, nonce, 0)
     }
     
     /// Creates a new ChaCha20 instance with the specified key, nonce, and counter
-    pub fn with_counter(key: &[u8; CHACHA20_KEY_SIZE], nonce: &[u8; CHACHA20_NONCE_SIZE], counter: u32) -> Self {
+    pub fn with_counter<const N: usize>(key: &[u8; CHACHA20_KEY_SIZE], nonce: &Nonce<N>, counter: u32) -> Self
+    where
+        Nonce<N>: ChaCha20Compatible
+    {
         // Initialize state with constants and key
         let mut state = [0u32; 16];
         
@@ -51,9 +59,10 @@ impl ChaCha20 {
         state[12] = counter;
         
         // Nonce (3 words)
-        state[13] = LittleEndian::read_u32(&nonce[0..4]);
-        state[14] = LittleEndian::read_u32(&nonce[4..8]);
-        state[15] = LittleEndian::read_u32(&nonce[8..12]);
+        let nonce_bytes = nonce.as_ref();
+        state[13] = LittleEndian::read_u32(&nonce_bytes[0..4]);
+        state[14] = LittleEndian::read_u32(&nonce_bytes[4..8]);
+        state[15] = LittleEndian::read_u32(&nonce_bytes[8..12]);
         
         Self {
             state,

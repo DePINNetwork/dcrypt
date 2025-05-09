@@ -7,6 +7,7 @@ use crate::error::{Error, Result};
 use dcrypt_primitives::aead::chacha20poly1305::ChaCha20Poly1305;
 use dcrypt_primitives::aead::xchacha20poly1305::XChaCha20Poly1305;
 use dcrypt_primitives::aead::chacha20poly1305::CHACHA20POLY1305_TAG_SIZE;
+use dcrypt_primitives::types::Nonce; // Import the generic Nonce type
 use rand::RngCore;
 use super::common::{ChaCha20Poly1305Key, ChaCha20Poly1305Nonce, ChaCha20Poly1305CiphertextPackage};
 use crate::cipher::{SymmetricCipher, Aead};
@@ -39,13 +40,25 @@ impl Aead for ChaCha20Poly1305Cipher {
     type Nonce = ChaCha20Poly1305Nonce;
     
     fn encrypt(&self, nonce: &Self::Nonce, plaintext: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
-        // With thiserror's From implementation, we can use ? directly
-        Ok(self.cipher.encrypt(nonce.as_bytes(), plaintext, aad)?)
+        // Convert our nonce type to the new Nonce<12> type
+        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
+            Ok(n) => n,
+            Err(e) => return Err(Error::from(e)),
+        };
+        
+        // Now use the converted nonce
+        Ok(self.cipher.encrypt(&primitives_nonce, plaintext, aad)?)
     }
     
     fn decrypt(&self, nonce: &Self::Nonce, ciphertext: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
-        // With thiserror's From implementation, we can use ? directly
-        Ok(self.cipher.decrypt(nonce.as_bytes(), ciphertext, aad)?)
+        // Convert our nonce type to the new Nonce<12> type
+        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
+            Ok(n) => n,
+            Err(e) => return Err(Error::from(e)),
+        };
+        
+        // Now use the converted nonce
+        Ok(self.cipher.decrypt(&primitives_nonce, ciphertext, aad)?)
     }
     
     fn generate_nonce() -> Self::Nonce {
@@ -169,13 +182,25 @@ impl Aead for XChaCha20Poly1305Cipher {
     type Nonce = XChaCha20Poly1305Nonce;
     
     fn encrypt(&self, nonce: &Self::Nonce, plaintext: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
-        // With thiserror's From implementation, we can use ? directly
-        Ok(self.cipher.encrypt(nonce.as_bytes(), plaintext, aad)?)
+        // Convert our nonce type to the new Nonce<24> type
+        let primitives_nonce = match Nonce::<24>::from_slice(nonce.as_bytes()) {
+            Ok(n) => n,
+            Err(e) => return Err(Error::from(e)),
+        };
+        
+        // Now use the converted nonce
+        Ok(self.cipher.encrypt(&primitives_nonce, plaintext, aad)?)
     }
     
     fn decrypt(&self, nonce: &Self::Nonce, ciphertext: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
-        // With thiserror's From implementation, we can use ? directly
-        Ok(self.cipher.decrypt(nonce.as_bytes(), ciphertext, aad)?)
+        // Convert our nonce type to the new Nonce<24> type
+        let primitives_nonce = match Nonce::<24>::from_slice(nonce.as_bytes()) {
+            Ok(n) => n,
+            Err(e) => return Err(Error::from(e)),
+        };
+        
+        // Now use the converted nonce
+        Ok(self.cipher.decrypt(&primitives_nonce, ciphertext, aad)?)
     }
     
     fn generate_nonce() -> Self::Nonce {

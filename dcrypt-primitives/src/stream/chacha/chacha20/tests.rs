@@ -1,5 +1,6 @@
 use super::*;
 use hex;
+use crate::types::Nonce; // Add this import for the Nonce type
 
 #[test]
 fn test_chacha20_rfc8439() {
@@ -15,10 +16,13 @@ fn test_chacha20_rfc8439() {
     
     // Convert to proper types
     let key_bytes: [u8; CHACHA20_KEY_SIZE] = key.try_into().expect("Invalid key length");
-    let nonce_bytes: [u8; CHACHA20_NONCE_SIZE] = nonce.try_into().expect("Invalid nonce length");
+    let nonce_array: [u8; CHACHA20_NONCE_SIZE] = nonce.try_into().expect("Invalid nonce length");
+    
+    // Create a Nonce<12> from the byte array
+    let nonce = Nonce::<CHACHA20_NONCE_SIZE>::new(nonce_array);
     
     // Create cipher with counter=1
-    let mut chacha = ChaCha20::with_counter(&key_bytes, &nonce_bytes, 1);
+    let mut chacha = ChaCha20::with_counter(&key_bytes, &nonce, 1);
     
     // Encrypt
     let mut output = plaintext.clone();
@@ -27,7 +31,7 @@ fn test_chacha20_rfc8439() {
     assert_eq!(output, expected_ciphertext);
     
     // Test decryption
-    let mut chacha = ChaCha20::with_counter(&key_bytes, &nonce_bytes, 1);
+    let mut chacha = ChaCha20::with_counter(&key_bytes, &nonce, 1);
     let mut decrypted = expected_ciphertext.clone();
     chacha.decrypt(&mut decrypted);
     
@@ -38,7 +42,10 @@ fn test_chacha20_rfc8439() {
 fn test_chacha20_keystream() {
     // Test with a sample key and nonce
     let key = [0x42; CHACHA20_KEY_SIZE];
-    let nonce = [0x24; CHACHA20_NONCE_SIZE];
+    let nonce_array = [0x24; CHACHA20_NONCE_SIZE];
+    
+    // Create a Nonce<12> from the byte array
+    let nonce = Nonce::<CHACHA20_NONCE_SIZE>::new(nonce_array);
     
     let mut chacha = ChaCha20::new(&key, &nonce);
     
@@ -66,7 +73,10 @@ fn test_chacha20_keystream() {
 fn test_chacha20_seek() {
     // Test seeking to a specific counter
     let key = [0x42; CHACHA20_KEY_SIZE];
-    let nonce = [0x24; CHACHA20_NONCE_SIZE];
+    let nonce_array = [0x24; CHACHA20_NONCE_SIZE];
+    
+    // Create a Nonce<12> from the byte array
+    let nonce = Nonce::<CHACHA20_NONCE_SIZE>::new(nonce_array);
     
     // Create two ciphers
     let mut chacha1 = ChaCha20::new(&key, &nonce);

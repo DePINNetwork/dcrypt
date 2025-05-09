@@ -12,6 +12,13 @@ use zeroize::Zeroize;
 
 use super::super::{BlockCipher, CipherAlgorithm};
 use crate::error::{Error, Result};
+use crate::types::Nonce;
+
+/// Marker trait for nonces that are compatible with CBC mode
+pub trait CbcCompatible: crate::types::sealed::Sealed {}
+
+// Implement CbcCompatible trait for Nonce types that match block sizes
+impl<const N: usize> CbcCompatible for Nonce<N> {}
 
 /// CBC mode implementation
 #[derive(Clone, Zeroize)]
@@ -22,19 +29,41 @@ pub struct Cbc<B: BlockCipher> {
 
 impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
     /// Creates a new CBC mode instance with the given cipher and IV
-    pub fn new(cipher: B, iv: &[u8]) -> Result<Self> {
-        if iv.len() != B::BLOCK_SIZE {
+    /// 
+    /// The IV (nonce) must be the same size as the block size of the cipher.
+    pub fn new<const N: usize>(cipher: B, iv: &Nonce<N>) -> Result<Self>
+    where 
+        Nonce<N>: CbcCompatible
+    {
+        // Validate that the nonce size matches the block size at runtime
+        if N != B::block_size() {
             return Err(Error::InvalidLength {
                 context: "CBC initialization vector",
-                needed: B::BLOCK_SIZE,
-                got: iv.len(),
+                needed: B::block_size(),
+                got: N,
             });
         }
         
         Ok(Self {
             cipher,
-            iv: iv.to_vec(),
+            iv: iv.as_ref().to_vec(),
         })
+    }
+    
+    /// Creates a new CBC mode instance with the given cipher and IV, with unchecked validation
+    /// 
+    /// # Safety
+    /// 
+    /// This method does not validate that the IV size matches the block size.
+    /// It is the caller's responsibility to ensure that the IV is the correct size.
+    pub(crate) fn new_unchecked<const N: usize>(cipher: B, iv: &Nonce<N>) -> Self
+    where 
+        Nonce<N>: CbcCompatible
+    {
+        Self {
+            cipher,
+            iv: iv.as_ref().to_vec(),
+        }
     }
     
     /// Encrypts a message using CBC mode
@@ -43,10 +72,10 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
     /// For plaintext that is not a multiple of the block size,
     /// padding must be applied before calling this function.
     pub fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
-        if plaintext.len() % B::BLOCK_SIZE != 0 {
+        if plaintext.len() % B::block_size() != 0 {
             return Err(Error::InvalidLength {
                 context: "CBC plaintext must be a multiple of the block size",
-                needed: (plaintext.len() / B::BLOCK_SIZE + 1) * B::BLOCK_SIZE,
+                needed: (plaintext.len() / B::block_size() + 1) * B::block_size(),
                 got: plaintext.len(),
             });
         }
@@ -55,12 +84,12 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
         let mut prev_block = self.iv.clone();
         
         // Process the plaintext in blocks
-        for chunk in plaintext.chunks(B::BLOCK_SIZE) {
+        for chunk in plaintext.chunks(B::block_size()) {
             let mut block = [0u8; 16]; // AES block size is 16 bytes
             block[..chunk.len()].copy_from_slice(chunk);
             
             // XOR with previous ciphertext block (or IV for the first block)
-            for i in 0..B::BLOCK_SIZE {
+            for i in 0..B::block_size() {
                 block[i] ^= prev_block[i];
             }
             
@@ -79,10 +108,10 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
     ///
     /// The ciphertext must be a multiple of the block size.
     pub fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>> {
-        if ciphertext.len() % B::BLOCK_SIZE != 0 {
+        if ciphertext.len() % B::block_size() != 0 {
             return Err(Error::InvalidLength {
                 context: "CBC ciphertext must be a multiple of the block size",
-                needed: (ciphertext.len() / B::BLOCK_SIZE + 1) * B::BLOCK_SIZE,
+                needed: (ciphertext.len() / B::block_size() + 1) * B::block_size(),
                 got: ciphertext.len(),
             });
         }
@@ -91,7 +120,7 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
         let mut prev_block = self.iv.clone();
         
         // Process the ciphertext in blocks
-        for chunk in ciphertext.chunks(B::BLOCK_SIZE) {
+        for chunk in ciphertext.chunks(B::block_size()) {
             let mut block = [0u8; 16]; // AES block size is 16 bytes
             block[..chunk.len()].copy_from_slice(chunk);
             
@@ -102,7 +131,7 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
             self.cipher.decrypt_block(&mut block)?;
             
             // XOR with previous ciphertext block (or IV for the first block)
-            for i in 0..B::BLOCK_SIZE {
+            for i in 0..B::block_size() {
                 block[i] ^= prev_block[i];
             }
             

@@ -243,7 +243,7 @@ impl<C: BlockCipher + CipherAlgorithm> BlockCipherMode<C> for TypedCbc<C> {
     type Nonce = Nonce16;
     
     fn new(cipher: C, nonce: &Self::Nonce) -> Result<Self> {
-        let inner = modes::Cbc::new(cipher, nonce.as_ref())?;
+        let inner = modes::Cbc::new(cipher, nonce)?;
         Ok(Self {
             inner,
             _phantom: core::marker::PhantomData,

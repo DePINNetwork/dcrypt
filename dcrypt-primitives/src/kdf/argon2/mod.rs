@@ -10,6 +10,7 @@ use crate::error::{Error, Result};
 use super::{KeyDerivationFunction, SecurityLevel, PasswordHashFunction, PasswordHash, ParamProvider};
 use super::{KdfAlgorithm, KdfOperation};
 use crate::types::{Salt, SecretBytes};
+use crate::Argon2Compatible; // Import the compatibility trait
 use std::collections::BTreeMap;
 use std::time::Duration;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
@@ -45,7 +46,7 @@ impl KdfAlgorithm for Argon2Algorithm {
 
 /// Parameters for Argon2 algorithm
 #[derive(Debug, Clone, Zeroize)]
-pub struct Params {
+pub struct Params<const S: usize = 16> {
     /// Algorithm variant (Argon2d, Argon2i, or Argon2id)
     #[zeroize(skip)]
     pub argon_type: Algorithm,
@@ -57,7 +58,7 @@ pub struct Params {
     pub parallelism: u32,
     /// Salt value
     #[zeroize(skip)]
-    pub salt: Zeroizing<Vec<u8>>,
+    pub salt: Salt<S>,
     /// Associated data (optional)
     #[zeroize(skip)]
     pub ad: Option<Zeroizing<Vec<u8>>>,
@@ -65,14 +66,17 @@ pub struct Params {
     pub output_len: usize,
 }
 
-impl Default for Params {
+impl<const S: usize> Default for Params<S>
+where
+    Salt<S>: Argon2Compatible
+{
     fn default() -> Self {
         Self {
             argon_type: Algorithm::Argon2i,
             memory_cost: 4096, // 4 MB
             time_cost: 3,      // 3 iterations
             parallelism: 1,    // Single-threaded
-            salt: Zeroizing::new(Vec::new()),
+            salt: Salt::zeroed(),
             ad: None,
             output_len: 32,    // 256 bits
         }
@@ -81,13 +85,16 @@ impl Default for Params {
 
 /// Argon2 password hashing function
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
-pub struct Argon2 {
-    params: Params,
+pub struct Argon2<const S: usize = 16> {
+    params: Params<S>,
 }
 
-impl Argon2 {
+impl<const S: usize> Argon2<S>
+where
+    Salt<S>: Argon2Compatible
+{
     /// Creates a new Argon2 instance with the specified parameters
-    pub fn new_with_params(params: Params) -> Self {
+    pub fn new_with_params(params: Params<S>) -> Self {
         Self { params }
     }
     
@@ -99,22 +106,28 @@ impl Argon2 {
 }
 
 /// Operation for Argon2 operations
-pub struct Argon2Builder<'a> {
-    kdf: &'a Argon2,
+pub struct Argon2Builder<'a, const S: usize> {
+    kdf: &'a Argon2<S>,
     ikm: Option<&'a [u8]>,
-    salt: Option<&'a [u8]>,
+    raw_salt: Option<&'a [u8]>,      // Store raw salt bytes
+    salt: Option<&'a Salt<S>>,       // Store typed salt reference if provided directly
     info: Option<&'a [u8]>,
     length: usize,
 }
 
-impl<'a> KdfOperation<'a, Argon2Algorithm> for Argon2Builder<'a> {
+impl<'a, const S: usize> KdfOperation<'a, Argon2Algorithm> for Argon2Builder<'a, S>
+where
+    Salt<S>: Argon2Compatible
+{
     fn with_ikm(mut self, ikm: &'a [u8]) -> Self {
         self.ikm = Some(ikm);
         self
     }
     
+    // Fixed implementation that accepts &[u8] per trait definition
     fn with_salt(mut self, salt: &'a [u8]) -> Self {
-        self.salt = Some(salt);
+        self.raw_salt = Some(salt);
+        self.salt = None; // Clear any direct salt reference since we're using raw bytes
         self
     }
     
@@ -131,7 +144,20 @@ impl<'a> KdfOperation<'a, Argon2Algorithm> for Argon2Builder<'a> {
     fn derive(self) -> Result<Vec<u8>> {
         let ikm = self.ikm.ok_or_else(|| Error::InvalidParameter("Input keying material is required"))?;
         
-        self.kdf.derive_key(ikm, self.salt, self.info, self.length)
+        // Handle salt priority:
+        // 1. If we have a typed Salt<S> reference, use it directly
+        // 2. If we have raw salt bytes, try to convert them to Salt<S>
+        // 3. Fall back to the KDF's default salt
+        let salt_ref = if let Some(typed_salt) = self.salt {
+            Some(typed_salt.as_ref())
+        } else if let Some(raw_salt) = self.raw_salt {
+            // Just pass the raw bytes - derive_key will handle it
+            Some(raw_salt)
+        } else {
+            None // derive_key will use default salt
+        };
+        
+        self.kdf.derive_key(ikm, salt_ref, self.info, self.length)
     }
     
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
@@ -153,8 +179,11 @@ impl<'a> KdfOperation<'a, Argon2Algorithm> for Argon2Builder<'a> {
     }
 }
 
-impl ParamProvider for Argon2 {
-    type Params = Params;
+impl<const S: usize> ParamProvider for Argon2<S>
+where
+    Salt<S>: Argon2Compatible
+{
+    type Params = Params<S>;
     
     fn with_params(params: Self::Params) -> Self {
         Self::new_with_params(params)
@@ -169,9 +198,12 @@ impl ParamProvider for Argon2 {
     }
 }
 
-impl KeyDerivationFunction for Argon2 {
+impl<const S: usize> KeyDerivationFunction for Argon2<S>
+where
+    Salt<S>: Argon2Compatible
+{
     type Algorithm = Argon2Algorithm;
-    type Salt = Salt;
+    type Salt = Salt<S>;
     
     fn new() -> Self {
         Self {
@@ -179,25 +211,55 @@ impl KeyDerivationFunction for Argon2 {
         }
     }
     
-    fn derive_key(&self, input: &[u8], salt: Option<&[u8]>, _info: Option<&[u8]>, length: usize) -> Result<Vec<u8>> {
+    fn derive_key(&self, input: &[u8], salt: Option<&[u8]>, info: Option<&[u8]>, length: usize) -> Result<Vec<u8>> {
         // Use provided salt or fallback to default from params
         let effective_salt = match salt {
-            Some(s) => s,
-            None => &self.params.salt,
+            Some(s) => {
+                // Validate that the provided salt is the correct size for S
+                if s.len() != S {
+                    return Err(Error::InvalidLength {
+                        context: "Argon2 salt",
+                        needed: S,
+                        got: s.len(),
+                    });
+                }
+                s
+            },
+            None => &self.params.salt.as_ref(),
         };
         
         // Use provided length or fallback to default from params
         let effective_length = if length > 0 { length } else { self.params.output_len };
         
-        // This is a stub implementation
-        let result = self.hash_password(input)?;
-        Ok(result.to_vec())
+        // Create a temporary parameter set with the provided values
+        let mut temp_params = self.params.clone();
+        
+        // If info is provided, use it as associated data
+        if let Some(ad_data) = info {
+            temp_params.ad = Some(Zeroizing::new(ad_data.to_vec()));
+        }
+        
+        // Create a temporary Argon2 instance with our modified parameters
+        let temp_instance = Argon2::new_with_params(temp_params);
+        
+        // This is a stub implementation - in real code we'd actually call Argon2
+        // with the effective parameters
+        let result = temp_instance.hash_password(input)?;
+        
+        // If the result is not the expected length, resize it
+        let mut output = result.to_vec();
+        if output.len() != effective_length {
+            output.resize(effective_length, 0);
+        }
+        
+        Ok(output)
     }
     
     fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
         Argon2Builder {
             kdf: self,
             ikm: None,
+            raw_salt: None,
             salt: None,
             info: None,
             length: Self::Algorithm::DEFAULT_OUTPUT_SIZE,
@@ -215,7 +277,10 @@ impl KeyDerivationFunction for Argon2 {
     }
 }
 
-impl PasswordHashFunction for Argon2 {
+impl<const S: usize> PasswordHashFunction for Argon2<S>
+where
+    Salt<S>: Argon2Compatible
+{
     type Password = SecretBytes<32>; // Using a 32-byte buffer for passwords
     
     fn hash_password(&self, password: &Self::Password) -> Result<PasswordHash> {

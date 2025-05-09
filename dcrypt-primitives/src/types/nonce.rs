@@ -1,7 +1,7 @@
-//! Type-safe nonce implementation with concrete sizes
+//! Type-safe nonce implementation with generic size parameter
 //!
-//! This module provides different nonce types with fixed sizes for various
-//! cryptographic algorithms, ensuring proper type safety and validation.
+//! This module provides a generic nonce type with compile-time size guarantees
+//! for various cryptographic algorithms, ensuring proper type safety and validation.
 
 use rand::{CryptoRng, RngCore};
 use core::fmt;
@@ -10,286 +10,156 @@ use zeroize::Zeroize;
 use subtle::ConstantTimeEq;
 
 use crate::error::{Error, Result};
+use crate::types::{ConstantTimeEq as LocalConstantEq, RandomGeneration, SecureZeroingType, FixedSize, ByteSerializable};
+use crate::types::sealed::Sealed;
 
-/// Base trait for all nonce types
-pub trait Nonce: AsRef<[u8]> + AsMut<[u8]> + Clone + Zeroize {
-    /// Get the size of this nonce type in bytes
-    fn size() -> usize where Self: Sized;
+/// Generic nonce type with compile-time size guarantee
+#[derive(Clone, Zeroize)]
+pub struct Nonce<const N: usize> {
+    data: [u8; N],
+}
+
+// Mark Nonce types as sealed
+impl<const N: usize> Sealed for Nonce<N> {}
+
+impl<const N: usize> Nonce<N> {
+    /// Create a new nonce from an existing array
+    pub fn new(data: [u8; N]) -> Self {
+        Self { data }
+    }
     
-    /// Create a new nonce from a slice, validating the length
-    fn from_slice(slice: &[u8]) -> Result<Self> where Self: Sized;
+    /// Create a zeroed nonce
+    pub fn zeroed() -> Self {
+        Self { data: [0u8; N] }
+    }
+    
+    /// Create from a slice, if it has the correct length
+    pub fn from_slice(slice: &[u8]) -> Result<Self> {
+        if slice.len() != N {
+            return Err(Error::InvalidLength {
+                context: "Nonce",
+                needed: N,
+                got: slice.len(),
+            });
+        }
+        
+        let mut data = [0u8; N];
+        data.copy_from_slice(slice);
+        
+        Ok(Self { data })
+    }
     
     /// Generate a random nonce
-    fn generate<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self> where Self: Sized;
-    
-    /// Check if two nonces are equal in constant time
-    fn ct_eq(&self, other: &Self) -> bool;
-}
-
-/// 12-byte nonce (for ChaCha20-Poly1305, AES-GCM)
-#[derive(Clone, Zeroize)]
-pub struct Nonce12([u8; 12]);
-
-impl Nonce12 {
-    /// Create a new nonce from an existing array
-    pub fn new(data: [u8; 12]) -> Self {
-        Self(data)
-    }
-    
-    /// Create a zeroed nonce
-    pub fn zeroed() -> Self {
-        Self([0u8; 12])
-    }
-}
-
-impl Nonce for Nonce12 {
-    fn size() -> usize {
-        12
-    }
-    
-    fn from_slice(slice: &[u8]) -> Result<Self> {
-        if slice.len() != 12 {
-            return Err(Error::InvalidLength {
-                context: "Nonce12",
-                needed: 12,
-                got: slice.len(),
-            });
-        }
-        
-        let mut data = [0u8; 12];
-        data.copy_from_slice(slice);
-        
-        Ok(Self(data))
-    }
-    
-    fn generate<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self> {
-        let mut data = [0u8; 12];
+    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+        let mut data = [0u8; N];
         rng.fill_bytes(&mut data);
-        Ok(Self(data))
+        Self { data }
     }
     
-    fn ct_eq(&self, other: &Self) -> bool {
-        self.0.ct_eq(&other.0).into()
+    /// Get the size of this nonce in bytes
+    pub fn size() -> usize {
+        N
+    }
+    
+    /// Unchecked constructor for internal use
+    #[doc(hidden)]
+    pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
+        Self { data }
     }
 }
 
-impl AsRef<[u8]> for Nonce12 {
+impl<const N: usize> AsRef<[u8]> for Nonce<N> {
     fn as_ref(&self) -> &[u8] {
-        &self.0
+        &self.data
     }
 }
 
-impl AsMut<[u8]> for Nonce12 {
+impl<const N: usize> AsMut<[u8]> for Nonce<N> {
     fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
+        &mut self.data
     }
 }
 
-impl Deref for Nonce12 {
-    type Target = [u8; 12];
+impl<const N: usize> Deref for Nonce<N> {
+    type Target = [u8; N];
     
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.data
     }
 }
 
-impl DerefMut for Nonce12 {
+impl<const N: usize> DerefMut for Nonce<N> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.data
     }
 }
 
-impl PartialEq for Nonce12 {
+impl<const N: usize> PartialEq for Nonce<N> {
     fn eq(&self, other: &Self) -> bool {
-        self.ct_eq(other)
+        self.data.ct_eq(&other.data).into()
     }
 }
 
-impl Eq for Nonce12 {}
+impl<const N: usize> Eq for Nonce<N> {}
 
-impl fmt::Debug for Nonce12 {
+impl<const N: usize> fmt::Debug for Nonce<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Nonce12({:?})", &self.0[..])
+        write!(f, "Nonce<{}>({:?})", N, &self.data[..])
     }
 }
 
-/// 16-byte nonce (for AES-CTR, other modes)
-#[derive(Clone, Zeroize)]
-pub struct Nonce16([u8; 16]);
-
-impl Nonce16 {
-    /// Create a new nonce from an existing array
-    pub fn new(data: [u8; 16]) -> Self {
-        Self(data)
-    }
-    
-    /// Create a zeroed nonce
-    pub fn zeroed() -> Self {
-        Self([0u8; 16])
-    }
-}
-
-impl Nonce for Nonce16 {
-    fn size() -> usize {
-        16
-    }
-    
-    fn from_slice(slice: &[u8]) -> Result<Self> {
-        if slice.len() != 16 {
-            return Err(Error::InvalidLength {
-                context: "Nonce16",
-                needed: 16,
-                got: slice.len(),
-            });
-        }
-        
-        let mut data = [0u8; 16];
-        data.copy_from_slice(slice);
-        
-        Ok(Self(data))
-    }
-    
-    fn generate<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self> {
-        let mut data = [0u8; 16];
-        rng.fill_bytes(&mut data);
-        Ok(Self(data))
-    }
-    
+impl<const N: usize> LocalConstantEq for Nonce<N> {
     fn ct_eq(&self, other: &Self) -> bool {
-        self.0.ct_eq(&other.0).into()
+        self.data.ct_eq(&other.data).into()
     }
 }
 
-impl AsRef<[u8]> for Nonce16 {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
+impl<const N: usize> RandomGeneration for Nonce<N> {
+    fn random<R: RngCore + CryptoRng>(rng: &mut R) -> dcrypt_core::error::Result<Self> {
+        Ok(Self::random(rng))
     }
 }
 
-impl AsMut<[u8]> for Nonce16 {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
+impl<const N: usize> SecureZeroingType for Nonce<N> {
+    fn zeroed() -> Self {
+        Self::zeroed()
     }
 }
 
-impl Deref for Nonce16 {
-    type Target = [u8; 16];
-    
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Nonce16 {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl PartialEq for Nonce16 {
-    fn eq(&self, other: &Self) -> bool {
-        self.ct_eq(other)
-    }
-}
-
-impl Eq for Nonce16 {}
-
-impl fmt::Debug for Nonce16 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Nonce16({:?})", &self.0[..])
-    }
-}
-
-/// 24-byte nonce (for XChaCha20-Poly1305)
-#[derive(Clone, Zeroize)]
-pub struct Nonce24([u8; 24]);
-
-impl Nonce24 {
-    /// Create a new nonce from an existing array
-    pub fn new(data: [u8; 24]) -> Self {
-        Self(data)
-    }
-    
-    /// Create a zeroed nonce
-    pub fn zeroed() -> Self {
-        Self([0u8; 24])
-    }
-}
-
-impl Nonce for Nonce24 {
+impl<const N: usize> FixedSize for Nonce<N> {
     fn size() -> usize {
-        24
+        N
+    }
+}
+
+impl<const N: usize> ByteSerializable for Nonce<N> {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.data.to_vec()
     }
     
-    fn from_slice(slice: &[u8]) -> Result<Self> {
-        if slice.len() != 24 {
-            return Err(Error::InvalidLength {
-                context: "Nonce24",
-                needed: 24,
-                got: slice.len(),
-            });
-        }
-        
-        let mut data = [0u8; 24];
-        data.copy_from_slice(slice);
-        
-        Ok(Self(data))
-    }
-    
-    fn generate<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self> {
-        let mut data = [0u8; 24];
-        rng.fill_bytes(&mut data);
-        Ok(Self(data))
-    }
-    
-    fn ct_eq(&self, other: &Self) -> bool {
-        self.0.ct_eq(&other.0).into()
+    fn from_bytes(bytes: &[u8]) -> dcrypt_core::error::Result<Self> {
+        Self::from_slice(bytes).map_err(|e| {
+            let core_err = dcrypt_core::error::DcryptError::from(e);
+            core_err.with_context("Nonce::from_bytes")
+        })
     }
 }
 
-impl AsRef<[u8]> for Nonce24 {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
+// Algorithm compatibility marker traits
+/// ChaCha20 compatible nonce sizes
+pub trait ChaCha20Compatible: Sealed {}
+impl ChaCha20Compatible for Nonce<12> {}
 
-impl AsMut<[u8]> for Nonce24 {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+/// XChaCha20 compatible nonce sizes
+pub trait XChaCha20Compatible: Sealed {}
+impl XChaCha20Compatible for Nonce<24> {}
 
-impl Deref for Nonce24 {
-    type Target = [u8; 24];
-    
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+/// AES-GCM compatible nonce sizes
+pub trait AesGcmCompatible: Sealed {}
+impl AesGcmCompatible for Nonce<12> {}
+impl AesGcmCompatible for Nonce<16> {}
 
-impl DerefMut for Nonce24 {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl PartialEq for Nonce24 {
-    fn eq(&self, other: &Self) -> bool {
-        self.ct_eq(other)
-    }
-}
-
-impl Eq for Nonce24 {}
-
-impl fmt::Debug for Nonce24 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Nonce24({:?})", &self.0[..])
-    }
-}
-
-// Common functions
-
-/// Generate a nonce of appropriate size for a given algorithm
-pub fn generate_nonce<R: RngCore + CryptoRng, T: Nonce>(rng: &mut R) -> Result<T> {
-    T::generate(rng)
-}
+/// AES-CTR compatible nonce sizes
+pub trait AesCtrCompatible: Sealed {}
+// Update to allow all nonce sizes with CTR mode
+impl<const N: usize> AesCtrCompatible for Nonce<N> {}

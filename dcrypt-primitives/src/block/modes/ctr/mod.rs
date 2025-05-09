@@ -13,6 +13,8 @@ use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use super::super::BlockCipher;
 use crate::error::{Error, Result};
+use crate::types::Nonce;
+use crate::types::nonce::AesCtrCompatible;
 
 /// Counter position within the counter block
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -52,11 +54,14 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
     /// Creates a new CTR mode instance with the default configuration
     /// 
     /// * `cipher` - The block cipher to use
-    /// * `nonce` - The nonce (must be at most block_size - 4 bytes)
+    /// * `nonce` - The nonce (must be compatible with CTR mode)
     ///
     /// This creates a standard CTR mode with the counter in the last 4 bytes
     /// and the nonce filling the beginning of the counter block.
-    pub fn new(cipher: B, nonce: &[u8]) -> Result<Self> {
+    pub fn new<const N: usize>(cipher: B, nonce: &Nonce<N>) -> Result<Self> 
+    where
+        Nonce<N>: AesCtrCompatible 
+    {
         // Standard CTR mode with 4-byte counter at the end
         Self::with_counter_params(cipher, nonce, CounterPosition::Postfix, 4)
     }
@@ -64,18 +69,21 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
     /// Creates a new CTR mode instance with custom counter parameters
     ///
     /// * `cipher` - The block cipher to use
-    /// * `nonce` - The nonce
+    /// * `nonce` - The nonce (must be compatible with CTR mode)
     /// * `counter_pos` - Position of the counter within the counter block
     /// * `counter_size` - Size of the counter in bytes (1-8)
     ///
     /// This allows for flexible counter block layouts to match different standards
     /// and implementations.
-    pub fn with_counter_params(
+    pub fn with_counter_params<const N: usize>(
         cipher: B, 
-        nonce: &[u8], 
+        nonce: &Nonce<N>, 
         counter_pos: CounterPosition, 
         counter_size: usize
-    ) -> Result<Self> {
+    ) -> Result<Self> 
+    where
+        Nonce<N>: AesCtrCompatible
+    {
         let block_size = B::block_size();
         
         // Validate counter size (1-8 bytes for u64 counter)
@@ -102,10 +110,10 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
         let max_nonce_size = block_size - counter_size;
         
         // If nonce is too large, truncate it
-        let effective_nonce = if nonce.len() > max_nonce_size {
-            &nonce[0..max_nonce_size]
+        let effective_nonce = if N > max_nonce_size {
+            &nonce.as_ref()[0..max_nonce_size]
         } else {
-            nonce
+            nonce.as_ref()
         };
         
         // Fill in the nonce
@@ -290,19 +298,21 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
     /// # Arguments
     /// * `nonce` - Optional new nonce to use (if not provided, keeps the current nonce)
     /// * `counter` - Optional initial counter value (defaults to 0)
-    pub fn reset(&mut self, nonce: Option<&[u8]>, counter: u32) -> Result<()> {
+    pub fn reset<const N: usize>(&mut self, nonce: Option<&Nonce<N>>, counter: u32) -> Result<()> 
+    where
+        Nonce<N>: AesCtrCompatible
+    {
         // Update nonce if provided
         if let Some(new_nonce) = nonce {
-            let max_nonce_size = B::block_size() - self.counter_size;
+            let block_size = B::block_size();
+            let max_nonce_size = block_size - self.counter_size;
             
-            // If nonce is too large, return error
-            if new_nonce.len() > max_nonce_size {
-                return Err(Error::InvalidLength {
-                    context: "CTR nonce",
-                    needed: max_nonce_size,
-                    got: new_nonce.len(),
-                });
-            }
+            // If nonce is too large, truncate it
+            let effective_nonce = if N > max_nonce_size {
+                &new_nonce.as_ref()[0..max_nonce_size]
+            } else {
+                new_nonce.as_ref()
+            };
             
             // Clear the counter block
             for b in &mut *self.counter_block {
@@ -316,12 +326,6 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
             };
             
             // Copy the new nonce
-            let effective_nonce = if new_nonce.len() > max_nonce_size {
-                &new_nonce[0..max_nonce_size]
-            } else {
-                new_nonce
-            };
-            
             self.counter_block[counter_pos..counter_pos + effective_nonce.len()]
                 .copy_from_slice(effective_nonce);
         }

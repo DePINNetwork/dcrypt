@@ -199,14 +199,14 @@ impl<H: HashFunction> KdfAlgorithm for HkdfAlgorithm<H> {
 /// Enhanced HKDF implementation with type-level guarantees
 #[cfg(feature = "alloc")]
 pub struct TypedHkdf<H: HashFunction> {
-    inner: hkdf::Hkdf<H>,
+    inner: hkdf::Hkdf<H, 16>, // Use default size of 16
     _phantom: PhantomData<H>,
 }
 
 #[cfg(feature = "alloc")]
 impl<H: HashFunction> KeyDerivationFunction for TypedHkdf<H> {
     type Algorithm = HkdfAlgorithm<H>;
-    type Salt = Salt;
+    type Salt = Salt<16>;  // Updated to use generic Salt with size
     
     fn new() -> Self {
         Self {
@@ -323,14 +323,14 @@ impl<H: HashFunction> KdfAlgorithm for Pbkdf2Algorithm<H> {
 /// Enhanced PBKDF2 implementation with type-level guarantees
 #[cfg(feature = "alloc")]
 pub struct TypedPbkdf2<H: HashFunction + Clone> {
-    inner: pbkdf2::Pbkdf2<H>,
+    inner: pbkdf2::Pbkdf2<H, 16>, // Use default size of 16
     _phantom: PhantomData<H>,
 }
 
 #[cfg(feature = "alloc")]
 impl<H: HashFunction + Clone> KeyDerivationFunction for TypedPbkdf2<H> {
     type Algorithm = Pbkdf2Algorithm<H>;
-    type Salt = Salt;
+    type Salt = Salt<16>;  // Updated to use generic Salt with size
     
     fn new() -> Self {
         Self {

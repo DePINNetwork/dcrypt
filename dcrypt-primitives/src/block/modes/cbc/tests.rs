@@ -1,6 +1,7 @@
 use super::*;
 use crate::block::aes::{Aes128, Aes192, Aes256};
 use crate::types::SecretBytes;  // Added import for SecretBytes
+use crate::types::Nonce;        // Add this import for the Nonce type
 use hex;
 
 #[test]
@@ -119,8 +120,13 @@ fn run_aes128_cbc_tests(filepath: &str, name: &str, is_encrypt: bool) {
         let key = hex::decode(&test.key).unwrap_or_else(|_| 
             panic!("Invalid hex key in test vector {}: {}", i, test.key));
         
-        let iv = hex::decode(&test.iv).unwrap_or_else(|_| 
+        let iv_bytes = hex::decode(&test.iv).unwrap_or_else(|_| 
             panic!("Invalid hex IV in test vector {}: {}", i, test.iv));
+        
+        // Convert iv_bytes to Nonce<16>
+        let mut iv_array = [0u8; 16];
+        iv_array.copy_from_slice(&iv_bytes);
+        let iv = Nonce::<16>::new(iv_array);
         
         // Ensure key has the expected size for AES-128
         assert_eq!(key.len(), 16, 
@@ -172,8 +178,13 @@ fn run_aes192_cbc_tests(filepath: &str, name: &str, is_encrypt: bool) {
         let key = hex::decode(&test.key).unwrap_or_else(|_| 
             panic!("Invalid hex key in test vector {}: {}", i, test.key));
         
-        let iv = hex::decode(&test.iv).unwrap_or_else(|_| 
+        let iv_bytes = hex::decode(&test.iv).unwrap_or_else(|_| 
             panic!("Invalid hex IV in test vector {}: {}", i, test.iv));
+        
+        // Convert iv_bytes to Nonce<16>
+        let mut iv_array = [0u8; 16];
+        iv_array.copy_from_slice(&iv_bytes);
+        let iv = Nonce::<16>::new(iv_array);
         
         // Ensure key has the expected size for AES-192
         assert_eq!(key.len(), 24, 
@@ -225,8 +236,13 @@ fn run_aes256_cbc_tests(filepath: &str, name: &str, is_encrypt: bool) {
         let key = hex::decode(&test.key).unwrap_or_else(|_| 
             panic!("Invalid hex key in test vector {}: {}", i, test.key));
         
-        let iv = hex::decode(&test.iv).unwrap_or_else(|_| 
+        let iv_bytes = hex::decode(&test.iv).unwrap_or_else(|_| 
             panic!("Invalid hex IV in test vector {}: {}", i, test.iv));
+        
+        // Convert iv_bytes to Nonce<16>
+        let mut iv_array = [0u8; 16];
+        iv_array.copy_from_slice(&iv_bytes);
+        let iv = Nonce::<16>::new(iv_array);
         
         // Ensure key has the expected size for AES-256
         assert_eq!(key.len(), 32, 
@@ -278,7 +294,13 @@ fn test_aes_cbc() {
     // Ciphertext: 7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b273bed6b8e3c1743b7116e69e222295163ff1caa1681fac09120eca307586e1a7
     
     let key = hex::decode("2b7e151628aed2a6abf7158809cf4f3c").unwrap();
-    let iv = hex::decode("000102030405060708090a0b0c0d0e0f").unwrap();
+    let iv_bytes = hex::decode("000102030405060708090a0b0c0d0e0f").unwrap();
+    
+    // Convert iv_bytes to Nonce<16>
+    let mut iv_array = [0u8; 16];
+    iv_array.copy_from_slice(&iv_bytes);
+    let iv = Nonce::<16>::new(iv_array);
+    
     let plaintext = hex::decode("6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710").unwrap();
     let expected_ciphertext = hex::decode("7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b273bed6b8e3c1743b7116e69e222295163ff1caa1681fac09120eca307586e1a7").unwrap();
     
@@ -302,7 +324,8 @@ fn test_aes_cbc() {
 #[test]
 fn test_cbc_multiple_blocks() {
     let key_array = [0x42; 16]; // 16-byte key for AES-128
-    let iv = [0x24; 16];  // 16-byte IV
+    let iv_array = [0x24; 16];  // 16-byte IV
+    let iv = Nonce::<16>::new(iv_array);  // Create Nonce<16> from array
     
     // Generate a three-block plaintext
     let plaintext = vec![0xAA; 48]; // 3 blocks of 16 bytes

@@ -12,7 +12,7 @@ pub mod key;
 pub mod tag;
 pub mod algorithms;
 
-// Re-export common types
+// Re-export common types - all with generic parameter pattern
 pub use nonce::Nonce;
 pub use salt::Salt;
 pub use digest::Digest;
@@ -23,6 +23,16 @@ pub use algorithms::*;
 
 // Import and re-export core types
 pub use dcrypt_core::types::{SecretBytes, SecretVec};
+
+// Sealed trait hierarchy to prevent external implementations
+pub mod sealed {
+    pub trait Sealed {}
+}
+
+// Validation traits for cryptographic types
+pub trait ValidKeySize<A: key::SymmetricAlgorithm, const N: usize>: sealed::Sealed {}
+pub trait ValidSecretKeySize<A: key::AsymmetricAlgorithm, const N: usize>: sealed::Sealed {}
+pub trait ValidPublicKeySize<A: key::AsymmetricAlgorithm, const N: usize>: sealed::Sealed {}
 
 /// Trait for cryptographic types with constant-time equality
 pub trait ConstantTimeEq {
@@ -56,3 +66,6 @@ pub trait ByteSerializable: Sized {
     /// Try to create from a byte array
     fn from_bytes(bytes: &[u8]) -> dcrypt_core::error::Result<Self>;
 }
+
+/// Trait for types compatible with algorithms that have specific size requirements
+pub trait AlgorithmCompatible<A> {}

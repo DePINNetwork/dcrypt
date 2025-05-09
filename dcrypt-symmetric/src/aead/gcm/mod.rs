@@ -82,8 +82,8 @@ use dcrypt_primitives::block::BlockCipher;
 use dcrypt_core::traits::symmetric::SymmetricCipher as CoreSymmetricCipher;
 use dcrypt_core::traits::symmetric::{EncryptOperation, DecryptOperation};
 use dcrypt_core::types::{SecretBytes, Ciphertext};
-// Fix the import of Nonce12
-use dcrypt_primitives::Nonce12;
+// Import the new Nonce type
+use dcrypt_primitives::types::Nonce;
 use dcrypt_core::error::DcryptError;
 
 use crate::aes::keys::{Aes128Key, Aes256Key};
@@ -165,8 +165,14 @@ impl Aead for Aes128Gcm {
         
         let aes = Aes128::new(&key_bytes);
         
+        // Convert the GcmNonce to a Nonce<12>
+        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
+            Ok(n) => n,
+            Err(e) => return Err(Error::from(e)),
+        };
+        
         // Create Gcm instance with proper error handling
-        let gcm = match Gcm::new(aes, nonce.as_bytes()) {
+        let gcm = match Gcm::new(aes, &primitives_nonce) {
             Ok(g) => g,
             Err(e) => return Err(Error::from(e)),
         };
@@ -192,8 +198,14 @@ impl Aead for Aes128Gcm {
         
         let aes = Aes128::new(&key_bytes);
         
+        // Convert the GcmNonce to a Nonce<12>
+        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
+            Ok(n) => n,
+            Err(e) => return Err(Error::from(e)),
+        };
+        
         // Create Gcm instance with proper error handling
-        let gcm = match Gcm::new(aes, nonce.as_bytes()) {
+        let gcm = match Gcm::new(aes, &primitives_nonce) {
             Ok(g) => g,
             Err(e) => return Err(Error::from(e)),
         };
@@ -241,8 +253,14 @@ impl Aead for Aes256Gcm {
         
         let aes = Aes256::new(&key_bytes);
         
+        // Convert the GcmNonce to a Nonce<12>
+        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
+            Ok(n) => n,
+            Err(e) => return Err(Error::from(e)),
+        };
+        
         // Create Gcm instance with proper error handling
-        let gcm = match Gcm::new(aes, nonce.as_bytes()) {
+        let gcm = match Gcm::new(aes, &primitives_nonce) {
             Ok(g) => g,
             Err(e) => return Err(Error::from(e)),
         };
@@ -268,8 +286,14 @@ impl Aead for Aes256Gcm {
         
         let aes = Aes256::new(&key_bytes);
         
+        // Convert the GcmNonce to a Nonce<12>
+        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
+            Ok(n) => n,
+            Err(e) => return Err(Error::from(e)),
+        };
+        
         // Create Gcm instance with proper error handling
-        let gcm = match Gcm::new(aes, nonce.as_bytes()) {
+        let gcm = match Gcm::new(aes, &primitives_nonce) {
             Ok(g) => g,
             Err(e) => return Err(Error::from(e)),
         };

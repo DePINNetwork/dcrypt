@@ -5,6 +5,7 @@
 use alloc::vec::Vec;
 use crate::error::{Error, Result};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
+use crate::types::Tag;
 
 pub const POLY1305_KEY_SIZE: usize = 32;
 pub const POLY1305_TAG_SIZE: usize = 16;
@@ -67,7 +68,7 @@ impl Poly1305 {
     }
 
     /// Finalize and return the 16-byte tag
-    pub fn finalize(self) -> [u8; POLY1305_TAG_SIZE] {
+    pub fn finalize(self) -> Tag<POLY1305_TAG_SIZE> {
         // 1) Polynomial processing with mul-reduce
         let mut h = [0u64; 3];
         for block in self.data.chunks(16) {
@@ -138,10 +139,10 @@ impl Poly1305 {
         let (t1, _carry2)      = t1_tmp.overflowing_add(carry0 as u64);
 
         // Output tag = little-endian t0 || t1
-        let mut tag = [0u8; POLY1305_TAG_SIZE];
-        tag[..8].copy_from_slice(&t0.to_le_bytes());
-        tag[8..].copy_from_slice(&t1.to_le_bytes());
-        tag
+        let mut tag_bytes = [0u8; POLY1305_TAG_SIZE];
+        tag_bytes[..8].copy_from_slice(&t0.to_le_bytes());
+        tag_bytes[8..].copy_from_slice(&t1.to_le_bytes());
+        Tag::<POLY1305_TAG_SIZE>::new(tag_bytes)
     }
 }
 

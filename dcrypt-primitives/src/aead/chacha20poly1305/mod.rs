@@ -5,7 +5,7 @@
 //!
 //! ## Constant-Time Guarantees
 //!
-//! * No variable-length early-returns after authentication is checked.
+//! * No variable-length early-returns after authentication is checked.  
 //! * Heap allocations and frees are balanced in both success and failure paths.
 //! * Authentication is decided with a branch-free constant-time mask; the same
 //!   byte-wise loop executes whatever the tag's validity.
@@ -14,7 +14,9 @@ use crate::error::{Error, Result};
 use crate::stream::chacha::chacha20::{ChaCha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE};
 use crate::mac::poly1305::{Poly1305, POLY1305_KEY_SIZE, POLY1305_TAG_SIZE};
 use crate::types::SecretBytes;
-use crate::Nonce12; // Updated import path for Nonce12
+use crate::types::Nonce; // Changed: Import generic Nonce type
+use crate::types::Tag; // Added: Import generic Tag type
+use crate::types::nonce::ChaCha20Compatible; // Added: Import the compatibility trait
 use dcrypt_core::types::Ciphertext;
 use dcrypt_core::traits::{AuthenticatedCipher, SymmetricCipher};
 use dcrypt_core::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
@@ -37,14 +39,14 @@ pub struct ChaCha20Poly1305 {
 /// Operation for ChaCha20Poly1305 encryption operations
 pub struct ChaCha20Poly1305EncryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305,
-    nonce: Option<&'a Nonce12>, // Changed from Nonce<CHACHA20POLY1305_NONCE_SIZE> to Nonce12
+    nonce: Option<&'a Nonce<CHACHA20POLY1305_NONCE_SIZE>>, // Changed from Nonce12 to Nonce<CHACHA20POLY1305_NONCE_SIZE>
     aad: Option<&'a [u8]>,
 }
 
 /// Operation for ChaCha20Poly1305 decryption operations
 pub struct ChaCha20Poly1305DecryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305,
-    nonce: Option<&'a Nonce12>, // Changed from Nonce<CHACHA20POLY1305_NONCE_SIZE> to Nonce12
+    nonce: Option<&'a Nonce<CHACHA20POLY1305_NONCE_SIZE>>, // Changed from Nonce12 to Nonce<CHACHA20POLY1305_NONCE_SIZE>
     aad: Option<&'a [u8]>,
 }
 
@@ -58,7 +60,11 @@ impl ChaCha20Poly1305 {
 
     /// Derive the one-time Poly1305 key (RFC 8439 §2.8).
     fn poly1305_key(&self, nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE]) -> [u8; POLY1305_KEY_SIZE] {
-        let mut chacha = ChaCha20::new(&self.key, nonce);
+        // Create a Nonce object from the raw nonce bytes
+        let nonce_obj = Nonce::<CHACHA20_NONCE_SIZE>::from_slice(nonce)
+            .expect("Valid nonce"); // This should never fail in internal code
+            
+        let mut chacha = ChaCha20::new(&self.key, &nonce_obj);
         let mut poly_key = [0u8; POLY1305_KEY_SIZE];
         chacha.keystream(&mut poly_key);
         poly_key
@@ -81,11 +87,16 @@ impl ChaCha20Poly1305 {
 
         // --- encryption ----------------------------------------------------
         ct_buf.extend_from_slice(plaintext);
-        ChaCha20::with_counter(&self.key, nonce, 1).encrypt(&mut ct_buf);
+        
+        // Create a Nonce object from the raw nonce bytes for ChaCha20
+        let nonce_obj = Nonce::<CHACHA20_NONCE_SIZE>::from_slice(nonce)
+            .map_err(|_| Error::InvalidParameter("Failed to create nonce"))?;
+        
+        ChaCha20::with_counter(&self.key, &nonce_obj, 1).encrypt(&mut ct_buf);
 
         // --- tag -----------------------------------------------------------
         let tag = self.calculate_tag_ct(&poly_key, aad, &ct_buf)?;
-        ct_buf.extend_from_slice(&tag);
+        ct_buf.extend_from_slice(tag.as_ref());
         Ok(ct_buf)
     }
 
@@ -113,12 +124,17 @@ impl ChaCha20Poly1305 {
         // -------- one-time key & expected tag ------------------------------
         let poly_key = self.poly1305_key(nonce);
         let expected = self.calculate_tag_ct(&poly_key, aad, encrypted)?;
-        let tag_ok = expected.ct_eq(tag);               // subtle::Choice
+        let tag_ok = expected.as_ref().ct_eq(tag);               // subtle::Choice
 
         // -------- decrypt ---------------------------------------------------
         let mut m = Vec::with_capacity(encrypted.len());
         m.extend_from_slice(encrypted);
-        ChaCha20::with_counter(&self.key, nonce, 1).decrypt(&mut m);
+        
+        // Create a Nonce object from the raw nonce bytes for ChaCha20
+        let nonce_obj = Nonce::<CHACHA20_NONCE_SIZE>::from_slice(nonce)
+            .map_err(|_| Error::InvalidParameter("Failed to create nonce"))?;
+        
+        ChaCha20::with_counter(&self.key, &nonce_obj, 1).decrypt(&mut m);
 
         // -------- constant-time post-processing ----------------------------
         // mask = 0xFF when tag_ok == 1, else 0x00
@@ -152,7 +168,7 @@ impl ChaCha20Poly1305 {
         poly_key: &[u8; POLY1305_KEY_SIZE],
         aad: Option<&[u8]>,
         ciphertext: &[u8],
-    ) -> Result<[u8; POLY1305_TAG_SIZE]> {
+    ) -> Result<Tag<POLY1305_TAG_SIZE>> {
         let mut poly = Poly1305::new(poly_key);
         let aad_slice = aad.unwrap_or(&[]);
 
@@ -172,27 +188,39 @@ impl ChaCha20Poly1305 {
         len_block[8..].copy_from_slice(&(ciphertext.len() as u64).to_le_bytes());
         poly.update(&len_block)?;
 
-        Ok(poly.finalize())
+        // Get the finalized tag - it's already a Tag<16> so return directly
+        let tag = poly.finalize();
+        Ok(tag)
     }
     
     /// Encrypt data
-    pub fn encrypt(
+    pub fn encrypt<const N: usize>(
         &self,
-        nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE],
+        nonce: &Nonce<N>,
         plaintext: &[u8],
         aad: Option<&[u8]>,
-    ) -> Result<Vec<u8>> {
-        self.encrypt_with_nonce(nonce, plaintext, aad)
+    ) -> Result<Vec<u8>> 
+    where 
+        Nonce<N>: ChaCha20Compatible
+    {
+        let mut nonce_array = [0u8; CHACHA20POLY1305_NONCE_SIZE];
+        nonce_array.copy_from_slice(nonce.as_ref());
+        self.encrypt_with_nonce(&nonce_array, plaintext, aad)
     }
     
     /// Decrypt data
-    pub fn decrypt(
+    pub fn decrypt<const N: usize>(
         &self,
-        nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE],
+        nonce: &Nonce<N>,
         ciphertext: &[u8],
         aad: Option<&[u8]>,
-    ) -> Result<Vec<u8>> {
-        self.decrypt_with_nonce(nonce, ciphertext, aad)
+    ) -> Result<Vec<u8>> 
+    where 
+        Nonce<N>: ChaCha20Compatible
+    {
+        let mut nonce_array = [0u8; CHACHA20POLY1305_NONCE_SIZE];
+        nonce_array.copy_from_slice(nonce.as_ref());
+        self.decrypt_with_nonce(&nonce_array, ciphertext, aad)
     }
 }
 
@@ -205,7 +233,7 @@ impl AuthenticatedCipher for ChaCha20Poly1305 {
 // Implement SymmetricCipher trait
 impl SymmetricCipher for ChaCha20Poly1305 {
     type Key = SecretBytes<CHACHA20POLY1305_KEY_SIZE>;
-    type Nonce = Nonce12; // Changed from Nonce<CHACHA20POLY1305_NONCE_SIZE> to Nonce12
+    type Nonce = Nonce<CHACHA20POLY1305_NONCE_SIZE>; // Changed from Nonce12 to Nonce<CHACHA20POLY1305_NONCE_SIZE>
     type Ciphertext = Ciphertext;
     type EncryptOperation<'a> = ChaCha20Poly1305EncryptOperation<'a> where Self: 'a;
     type DecryptOperation<'a> = ChaCha20Poly1305DecryptOperation<'a> where Self: 'a;
@@ -239,7 +267,7 @@ impl SymmetricCipher for ChaCha20Poly1305 {
     fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<Self::Nonce, DcryptError> {
         let mut nonce_data = [0u8; CHACHA20POLY1305_NONCE_SIZE];
         rng.fill_bytes(&mut nonce_data);
-        Ok(Nonce12::new(nonce_data))
+        Ok(Nonce::new(nonce_data)) // Changed: Using generic Nonce constructor instead of Nonce12
     }
     
     fn derive_key_from_bytes(bytes: &[u8]) -> std::result::Result<Self::Key, DcryptError> {
