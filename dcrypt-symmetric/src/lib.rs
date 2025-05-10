@@ -14,7 +14,7 @@ pub mod aes;
 pub mod aead;
 pub mod cipher;
 pub mod error;
-pub mod streaming; // Add the new streaming module
+pub mod streaming;
 
 // Re-export main types for convenience
 pub use aes::{Aes128Key, Aes256Key};
@@ -25,7 +25,5 @@ pub use aead::chacha20poly1305::{
     derive_chacha20poly1305_key, generate_salt,
     XChaCha20Poly1305Nonce
 };
-// Remove the streaming-related types from here as they'll be re-exported from the streaming module
 pub use cipher::{SymmetricCipher, Aead};
 pub use error::{Error, Result};
-

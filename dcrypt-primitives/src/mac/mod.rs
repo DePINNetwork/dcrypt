@@ -1,10 +1,9 @@
-// File: src/mac/mod.rs
 //! Message Authentication Code (MAC) implementations with type-safe interfaces
 //!
 //! This module contains implementations of various Message Authentication Codes (MACs)
 //! used throughout the DCRYPT library, with improved type safety and ergonomic APIs.
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use zeroize::Zeroize;
 use subtle::ConstantTimeEq;
 
@@ -109,6 +108,7 @@ impl<'a, M: Mac> MacBuilder<'a, M> for GenericMacBuilder<'a, M> {
     
     fn verify(self, expected: &'a [u8]) -> Result<bool> {
         let tag = self.mac.finalize()?;
+        
         if tag.as_ref().len() != expected.len() {
             return Ok(false);
         }

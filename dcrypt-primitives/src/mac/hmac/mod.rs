@@ -4,12 +4,17 @@
 //! • Secret-dependent work happens on stack-fixed buffers (≤ 128 bytes)  
 //! • Error paths burn the same CPU cycles as success paths
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::hash::HashFunction;
 use subtle::ConstantTimeEq;
 
 const MAX_BLOCK: usize = 128;  // SHA-512 block size
 
+/// HMAC (Hash-based Message Authentication Code) implementation
+/// 
+/// This implementation is constant-time and allocation-free, using fixed buffers
+/// on the stack for secret-dependent operations. It follows RFC 2104 and FIPS 198-1
+/// specifications.
 #[derive(Clone)]
 pub struct Hmac<H: HashFunction> {
     hash: H,
@@ -31,6 +36,17 @@ where
     /*                           Construction                             */
     /* ------------------------------------------------------------------ */
 
+    /// Creates a new HMAC instance with the given key
+    /// 
+    /// The key is processed according to RFC 2104:
+    /// - If the key is longer than the block size, it's hashed first
+    /// - If the key is shorter than the block size, it's padded with zeros
+    /// 
+    /// # Arguments
+    /// * `key` - The secret key for HMAC authentication
+    /// 
+    /// # Returns
+    /// A new `Hmac` instance ready for use
     pub fn new(key: &[u8]) -> Result<Self> {
         let bs = H::block_size();
         debug_assert!(bs <= MAX_BLOCK);
@@ -72,18 +88,38 @@ where
     /*                           Incremental API                          */
     /* ------------------------------------------------------------------ */
 
+    /// Updates the HMAC computation with additional data
+    /// 
+    /// This method can be called multiple times to process data incrementally.
+    /// It performs constant-time operations to maintain security even on error paths.
+    /// 
+    /// # Arguments
+    /// * `data` - The message data to authenticate
+    /// 
+    /// # Errors
+    /// Returns an error if called after finalization
     pub fn update(&mut self, data: &[u8]) -> Result<()> {
         if self.is_finalized {
-            // equal-cost dummy hashing
+            // Equal-cost dummy hashing
             let mut dummy = H::new();
             dummy.update(data)?;
             let _ = dummy.finalize();
-            return Err(Error::InvalidParameter("Cannot update after finalization"));
+            return Err(Error::param("hmac_state", "Cannot update after finalization"));
         }
         // Discard the returned hash instance - just return success
         self.hash.update(data).map(|_| ())
     }
 
+    /// Finalizes the HMAC computation and returns the authentication tag
+    /// 
+    /// After calling this method, the HMAC instance cannot be updated further.
+    /// Constant-time operations ensure equal CPU cycles on all code paths.
+    /// 
+    /// # Returns
+    /// The computed HMAC tag as a byte vector
+    /// 
+    /// # Errors
+    /// Returns an error if called more than once
     pub fn finalize(&mut self) -> Result<Vec<u8>> {
         if self.is_finalized {
             // Burn the same cycles as a real finalisation
@@ -92,7 +128,7 @@ where
             outer.update(&self.opad[..self.block_size])?;
             outer.update(&dummy_inner[..H::output_size()])?;
             let _ = outer.finalize();
-            return Err(Error::InvalidParameter("HMAC already finalized"));
+            return Err(Error::param("hmac_state", "HMAC already finalized"));
         }
         self.is_finalized = true;
 
@@ -110,17 +146,40 @@ where
     /*                         Convenience helpers                        */
     /* ------------------------------------------------------------------ */
 
+    /// Computes an HMAC tag for the given key and data in one call
+    /// 
+    /// This is a convenience function that creates an HMAC instance,
+    /// processes the data, and returns the final tag.
+    /// 
+    /// # Arguments
+    /// * `key` - The secret key
+    /// * `data` - The message to authenticate
+    /// 
+    /// # Returns
+    /// The computed HMAC tag
     pub fn mac(key: &[u8], data: &[u8]) -> Result<Vec<u8>> {
         let mut h = Self::new(key)?;
         h.update(data)?;
         h.finalize()
     }
 
-    /// Constant-time verification even when `tag` length differs.
+    /// Verifies an HMAC tag in constant time
+    /// 
+    /// This function computes the expected HMAC tag and compares it with the provided tag
+    /// using constant-time comparison to prevent timing attacks. The comparison considers
+    /// all bytes even when lengths differ.
+    /// 
+    /// # Arguments
+    /// * `key` - The secret key
+    /// * `data` - The message data
+    /// * `tag` - The tag to verify
+    /// 
+    /// # Returns
+    /// `true` if the tag is valid, `false` otherwise
     pub fn verify(key: &[u8], data: &[u8], tag: &[u8]) -> Result<bool> {
         let expected = Self::mac(key, data)?;
         let max_len  = expected.len().max(tag.len());
-
+    
         let mut diff = 0u8;
         for i in 0..max_len {
             let a = *expected.get(i).unwrap_or(&0);
@@ -128,8 +187,9 @@ where
             diff |= a ^ b;
         }
         diff |= (expected.len() ^ tag.len()) as u8;
-
-        Ok(diff.ct_eq(&0u8).unwrap_u8() == 1)
+    
+        let is_valid = diff.ct_eq(&0u8).unwrap_u8() == 1;
+        Ok(is_valid)
     }
 }
 

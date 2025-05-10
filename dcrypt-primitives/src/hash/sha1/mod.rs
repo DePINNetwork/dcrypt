@@ -4,7 +4,7 @@
 //! Note: SHA-1 is considered cryptographically broken and should only be used
 //! for compatibility with existing systems.
 
-use crate::error::Result;
+use crate::error::{Error, Result, validate};
 use crate::hash::{Hash, HashFunction, HashAlgorithm};
 use crate::types::Digest;
 use byteorder::{BigEndian, ByteOrder};
@@ -104,9 +104,14 @@ impl Sha1 {
     /// Internal update implementation
     fn update_internal(&mut self, data: &[u8]) -> Result<()> {
         let mut data_idx = 0;
-        self.total_len = self
-            .total_len
-            .wrapping_add((data.len() as u64).wrapping_mul(8));
+        
+        // Check for overflow in total_len calculation
+        let new_bits = (data.len() as u64).wrapping_mul(8);
+        self.total_len = self.total_len.checked_add(new_bits)
+            .ok_or_else(|| Error::Processing {
+                operation: "SHA-1",
+                details: "Message length overflow"
+            })?;
 
         if self.buffer_len > 0 {
             let copy_len = core::cmp::min(SHA1_BLOCK_SIZE - self.buffer_len, data.len());
@@ -141,6 +146,7 @@ impl Sha1 {
 
     /// Internal finalize implementation
     fn finalize_internal(&mut self) -> Result<Hash> {
+        // Padding
         let mut buffer = [0u8; SHA1_BLOCK_SIZE];
         let mut buffer_idx = self.buffer_len;
 
@@ -168,6 +174,12 @@ impl Sha1 {
             result.extend_from_slice(&word.to_be_bytes());
         }
         Ok(result)
+    }
+}
+
+impl Default for Sha1 {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

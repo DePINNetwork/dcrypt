@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use zeroize::Zeroize;
 
 use super::super::{BlockCipher, CipherAlgorithm};
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::types::Nonce;
 
 /// Marker trait for nonces that are compatible with CBC mode
@@ -36,13 +36,11 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
         Nonce<N>: CbcCompatible
     {
         // Validate that the nonce size matches the block size at runtime
-        if N != B::block_size() {
-            return Err(Error::InvalidLength {
-                context: "CBC initialization vector",
-                needed: B::block_size(),
-                got: N,
-            });
-        }
+        validate::length(
+            "CBC initialization vector",
+            N,
+            B::block_size()
+        )?;
         
         Ok(Self {
             cipher,
@@ -72,11 +70,14 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
     /// For plaintext that is not a multiple of the block size,
     /// padding must be applied before calling this function.
     pub fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
-        if plaintext.len() % B::block_size() != 0 {
-            return Err(Error::InvalidLength {
-                context: "CBC plaintext must be a multiple of the block size",
-                needed: (plaintext.len() / B::block_size() + 1) * B::block_size(),
-                got: plaintext.len(),
+        // Validate plaintext length is a multiple of block size
+        let block_size = B::block_size();
+        if plaintext.len() % block_size != 0 {
+            let expected_len = ((plaintext.len() / block_size) + 1) * block_size;
+            return Err(Error::Length {
+                context: "CBC plaintext",
+                expected: expected_len,
+                actual: plaintext.len(),
             });
         }
         
@@ -84,12 +85,12 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
         let mut prev_block = self.iv.clone();
         
         // Process the plaintext in blocks
-        for chunk in plaintext.chunks(B::block_size()) {
+        for chunk in plaintext.chunks(block_size) {
             let mut block = [0u8; 16]; // AES block size is 16 bytes
             block[..chunk.len()].copy_from_slice(chunk);
             
             // XOR with previous ciphertext block (or IV for the first block)
-            for i in 0..B::block_size() {
+            for i in 0..block_size {
                 block[i] ^= prev_block[i];
             }
             
@@ -108,11 +109,14 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
     ///
     /// The ciphertext must be a multiple of the block size.
     pub fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>> {
-        if ciphertext.len() % B::block_size() != 0 {
-            return Err(Error::InvalidLength {
-                context: "CBC ciphertext must be a multiple of the block size",
-                needed: (ciphertext.len() / B::block_size() + 1) * B::block_size(),
-                got: ciphertext.len(),
+        // Validate ciphertext length is a multiple of block size
+        let block_size = B::block_size();
+        if ciphertext.len() % block_size != 0 {
+            let expected_len = ((ciphertext.len() / block_size) + 1) * block_size;
+            return Err(Error::Length {
+                context: "CBC ciphertext",
+                expected: expected_len,
+                actual: ciphertext.len(),
             });
         }
         
@@ -120,7 +124,7 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
         let mut prev_block = self.iv.clone();
         
         // Process the ciphertext in blocks
-        for chunk in ciphertext.chunks(B::block_size()) {
+        for chunk in ciphertext.chunks(block_size) {
             let mut block = [0u8; 16]; // AES block size is 16 bytes
             block[..chunk.len()].copy_from_slice(chunk);
             
@@ -131,7 +135,7 @@ impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
             self.cipher.decrypt_block(&mut block)?;
             
             // XOR with previous ciphertext block (or IV for the first block)
-            for i in 0..B::block_size() {
+            for i in 0..block_size {
                 block[i] ^= prev_block[i];
             }
             

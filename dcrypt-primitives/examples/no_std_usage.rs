@@ -1,117 +1,111 @@
-//! Simple no_std example for DCRYPT-Primitives
-//!
-//! This example shows how to use the library in a no_std environment.
-//! To build this example with no_std support:
-//!
-//! ```
-//! cargo build --example no_std_usage --no-default-features --features "alloc,hash,block"
-//! ```
+// This example demonstrates how the primitives can be used in a no_std environment
+// even though it's being compiled with std available for testing purposes
+#![cfg_attr(not(feature = "std"), no_std)]
 
-#![no_std]
-#![allow(unused_variables, dead_code)]  // For example purposes
-
-// For no_std environments that have alloc
-#[cfg(feature = "alloc")]
+#[cfg(not(feature = "std"))]
 extern crate alloc;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use dcrypt_primitives::hash::{HashFunction, Sha256};
-use dcrypt_primitives::block::aes::Aes128;
-use dcrypt_primitives::block::BlockCipher;
-use dcrypt_primitives::error::Result;
+use dcrypt_primitives::hash::{Blake2b, Blake2s, HashFunction, Sha256};
+use dcrypt_primitives::block::{Aes128, BlockCipher};
+use dcrypt_primitives::aead::Gcm;
+use dcrypt_primitives::mac::Poly1305;
+use dcrypt_primitives::types::{Nonce, Digest, SecretBytes};
+use dcrypt_core::traits::{SymmetricCipher, AuthenticatedCipher};
+use dcrypt_core::traits::symmetric::{EncryptOperation, DecryptOperation};
+use dcrypt_primitives::Error;
 
-/// Example function using hash functions in a no_std environment
-#[cfg(feature = "hash")]
-pub fn hash_data(data: &[u8]) -> Result<[u8; 32]> {
+// Function to demonstrate hash usage
+fn hash_example() -> Result<Digest<32>, Error> {
+    let data = b"Hello, no_std world!";
     let mut hasher = Sha256::new();
     hasher.update(data)?;
-    
-    let hash = hasher.finalize()?;
-    
-    // Convert Vec<u8> to fixed-size array for no_std environments
-    let mut result = [0u8; 32];
-    result.copy_from_slice(&hash[..32]);
-    
-    Ok(result)
+    hasher.finalize()
 }
 
-/// Example function using block ciphers in a no_std environment
-#[cfg(feature = "block")]
-pub fn encrypt_block(key: &[u8], data: &[u8]) -> Result<[u8; 16]> {
-    let cipher = Aes128::new(key);
+// Function to demonstrate blake2 usage  
+fn blake2_example() -> Result<(Digest<64>, Digest<32>), Error> {
+    let data = b"Blake2 in no_std!";
     
-    // Prepare a block for encryption
-    let mut block = [0u8; 16];
-    block.copy_from_slice(&data[..16]);
+    let digest_b = Blake2b::digest(data)?;
+    let digest_s = Blake2s::digest(data)?;
     
-    // Encrypt the block in place
-    cipher.encrypt_block(&mut block)?;
-    
-    Ok(block)
+    Ok((digest_b, digest_s))
 }
 
-/// Example function using AEAD with the alloc feature
-#[cfg(all(feature = "aead", feature = "alloc"))]
-pub fn encrypt_gcm(key: &[u8], nonce: &[u8], data: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
-    use dcrypt_primitives::aead::Gcm;
-    use dcrypt_primitives::block::AuthenticatedCipher;
+// Function to demonstrate Poly1305
+fn poly1305_example() -> Result<(), Error> {
+    // Just demonstrate that Poly1305 can be instantiated
+    let key = [0u8; 32];
+    let _mac = Poly1305::new(&key)?;
+    Ok(())
+}
+
+// Function to demonstrate AEAD encryption
+fn aead_example() -> Result<Vec<u8>, Error> {
+    let key_bytes = [0u8; 16]; // Would use proper key generation in real code
+    let key = SecretBytes::new(key_bytes); // Create the SecretBytes wrapper
+    let nonce = Nonce::<12>::new([0u8; 12]); // Would use random nonce in real code
+    let data = b"Secret message";
+    let aad_data = b"Additional authenticated data";
     
-    // Create AES-128-GCM instance
-    let mut key_bytes = [0u8; 16];
-    key_bytes.copy_from_slice(&key[..16]);
+    let aes = Aes128::new(&key);
+    let gcm = Gcm::new(aes, &nonce)?;
     
-    let mut nonce_bytes = [0u8; 12];
-    nonce_bytes.copy_from_slice(&nonce[..12]);
-    
-    let cipher = Aes128::new(&key_bytes);
-    let gcm = Gcm::new(cipher, &nonce_bytes)?;
-    
-    // Encrypt the data with associated data if provided
-    let ciphertext = gcm.encrypt(data, aad)?;
+    // Use the internal_encrypt method which returns the correct error type
+    let ciphertext = gcm.internal_encrypt(data, Some(aad_data))?;
     
     Ok(ciphertext)
 }
 
-/// Example function that works in a minimal no_std environment without alloc
-pub fn xor_encrypt(key: &[u8], data: &mut [u8]) {
-    // Simple XOR encryption (for illustration purposes only)
-    for (i, byte) in data.iter_mut().enumerate() {
-        *byte ^= key[i % key.len()];
+fn main() {
+    println!("DCRYPT Primitives no_std Usage Example");
+    println!("=====================================");
+    
+    // Hash example
+    match hash_example() {
+        Ok(hash) => println!("SHA-256 hash: {}", hex::encode(&hash)),
+        Err(e) => println!("Hash error: {:?}", e),
+    }
+    
+    // Blake2 example
+    match blake2_example() {
+        Ok((blake2b, blake2s)) => {
+            println!("Blake2b hash: {}", hex::encode(&blake2b));
+            println!("Blake2s hash: {}", hex::encode(&blake2s));
+        }
+        Err(e) => println!("Blake2 error: {:?}", e),
+    }
+    
+    // Poly1305 example
+    match poly1305_example() {
+        Ok(_) => println!("Poly1305 initialized successfully"),
+        Err(e) => println!("Poly1305 error: {:?}", e),
+    }
+    
+    // AEAD example
+    match aead_example() {
+        Ok(ciphertext) => println!("AEAD ciphertext: {}", hex::encode(&ciphertext)),
+        Err(e) => println!("AEAD error: {:?}", e),
     }
 }
 
-// Minimal main function to satisfy the compiler
-fn main() -> Result<()> {
-    // Test data
-    let key = [0x42; 16];
-    let nonce = [0x24; 12];
-    let mut data = [0x55; 16];
-    
-    // Basic XOR encryption (always available in no_std)
-    xor_encrypt(&key, &mut data);
-    
-    // Use hash function if available
-    #[cfg(feature = "hash")]
-    {
-        let hash = hash_data(&data)?;
-        // In a real application, you'd use this hash
-    }
-    
-    // Use block cipher if available
-    #[cfg(feature = "block")]
-    {
-        let encrypted = encrypt_block(&key, &data)?;
-        // In a real application, you'd use this encrypted data
-    }
-    
-    // Use AEAD if available
-    #[cfg(all(feature = "aead", feature = "alloc"))]
-    {
-        let ciphertext = encrypt_gcm(&key, &nonce, &data, None)?;
-        // In a real application, you'd use this ciphertext
-    }
-    
-    Ok(())
-}
+// If you need to test actual no_std behavior, create a separate binary crate
+// with the following in Cargo.toml:
+//
+// [package]
+// name = "no_std_example"
+// 
+// [dependencies]
+// dcrypt-primitives = { path = ".", default-features = false, features = ["alloc"] }
+//
+// [[bin]]
+// name = "no_std_example"
+// path = "examples/true_no_std.rs"
+//
+// And then use #![no_std] and #![no_main] attributes in that file.

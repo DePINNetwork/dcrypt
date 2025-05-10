@@ -3,7 +3,7 @@
 use crate::error::{Error, Result};
 use crate::aes::keys::Aes256Key;
 use super::types::{GcmNonce, AesCiphertextPackage};
-use super::Aes256Gcm; // This now works because Aes256Gcm is defined in mod.rs
+use super::Aes256Gcm;
 use crate::cipher::{SymmetricCipher, Aead};
 
 impl Aes256Gcm {

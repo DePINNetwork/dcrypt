@@ -5,6 +5,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod error;  // Add this line
 pub mod rsa;
 pub mod dh;
 pub mod ecdh;

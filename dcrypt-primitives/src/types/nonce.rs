@@ -9,7 +9,7 @@ use core::ops::{Deref, DerefMut};
 use zeroize::Zeroize;
 use subtle::ConstantTimeEq;
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::types::{ConstantTimeEq as LocalConstantEq, RandomGeneration, SecureZeroingType, FixedSize, ByteSerializable};
 use crate::types::sealed::Sealed;
 
@@ -35,13 +35,8 @@ impl<const N: usize> Nonce<N> {
     
     /// Create from a slice, if it has the correct length
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
-        if slice.len() != N {
-            return Err(Error::InvalidLength {
-                context: "Nonce",
-                needed: N,
-                got: slice.len(),
-            });
-        }
+        // Use the validation helper instead of direct error creation
+        validate::length("Nonce", slice.len(), N)?;
         
         let mut data = [0u8; N];
         data.copy_from_slice(slice);
@@ -115,7 +110,7 @@ impl<const N: usize> LocalConstantEq for Nonce<N> {
 }
 
 impl<const N: usize> RandomGeneration for Nonce<N> {
-    fn random<R: RngCore + CryptoRng>(rng: &mut R) -> dcrypt_core::error::Result<Self> {
+    fn random<R: RngCore + CryptoRng>(rng: &mut R) -> crate::error::Result<Self> {
         Ok(Self::random(rng))
     }
 }
@@ -137,11 +132,8 @@ impl<const N: usize> ByteSerializable for Nonce<N> {
         self.data.to_vec()
     }
     
-    fn from_bytes(bytes: &[u8]) -> dcrypt_core::error::Result<Self> {
-        Self::from_slice(bytes).map_err(|e| {
-            let core_err = dcrypt_core::error::DcryptError::from(e);
-            core_err.with_context("Nonce::from_bytes")
-        })
+    fn from_bytes(bytes: &[u8]) -> crate::error::Result<Self> {
+        Self::from_slice(bytes)
     }
 }
 

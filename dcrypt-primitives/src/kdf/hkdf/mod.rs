@@ -5,7 +5,7 @@
 //! uniform and produce output keying material (OKM) suitable for use in cryptographic
 //! contexts.
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::hash::HashFunction;
 use crate::mac::hmac::Hmac;
 use crate::kdf::{KeyDerivationFunction, ParamProvider, SecurityLevel, KdfAlgorithm, KdfOperation};
@@ -103,7 +103,7 @@ where
     }
     
     fn derive(self) -> Result<Vec<u8>> {
-        let ikm = self.ikm.ok_or_else(|| Error::InvalidParameter("Input keying material is required"))?;
+        let ikm = self.ikm.ok_or_else(|| Error::param("ikm", "Input keying material is required"))?;
         
         let salt_bytes = self.salt.map(|s| s.as_ref());
         let info_bytes = self.info;
@@ -115,13 +115,7 @@ where
     
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
         // Ensure the requested size matches
-        if self.length != N {
-            return Err(Error::InvalidLength {
-                context: "HKDF output",
-                needed: N,
-                got: self.length,
-            });
-        }
+        validate::length("HKDF output", self.length, N)?;
         
         let vec = self.derive()?;
         
@@ -149,22 +143,10 @@ where
         let max_len = 255 * hash_len;
 
         // Specified max-length check (length is public)
-        if length > max_len {
-            return Err(Error::InvalidLength {
-                context: "Output length for HKDF-Expand",
-                needed: length,
-                got: max_len,
-            });
-        }
+        validate::max_length("HKDF-Expand output", length, max_len)?;
 
         // PRK length check (must be at least one hash block)
-        if prk.len() < hash_len {
-            return Err(Error::InvalidLength {
-                context: "PRK for HKDF-Expand",
-                needed: hash_len,
-                got: prk.len(),
-            });
-        }
+        validate::min_length("PRK for HKDF-Expand", prk.len(), hash_len)?;
 
         // Number of blocks needed
         let n = (length + hash_len - 1) / hash_len;

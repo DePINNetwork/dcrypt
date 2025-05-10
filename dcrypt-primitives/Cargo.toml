@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 
 [features]
 # Feature configuration for different environments
-default = ["std"]
+default = ["std", "xof"] 
 
 # Standard library support - enables all features
 std = ["alloc", "byteorder/std", "subtle/std", "hex/std", "rand/std", "getrandom/std", "serde_json"]

@@ -31,10 +31,9 @@
 /// - GF(2^128) multiplication is implemented in a constant-time manner
 /// - Memory barriers prevent compiler optimizations that could introduce timing variation
 
-
 use byteorder::{BigEndian, ByteOrder};
 use zeroize::Zeroize;
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use core::sync::atomic::{compiler_fence, Ordering};
 
 const GCM_BLOCK_SIZE: usize = 16;
@@ -137,13 +136,7 @@ impl GHash {
     /// # Returns
     /// `Ok(())` on success, or an error if the block length is invalid.
     pub fn update_block(&mut self, block: &[u8], block_len: usize) -> Result<()> {
-        if block_len > GCM_BLOCK_SIZE {
-            return Err(Error::InvalidLength {
-                context: "GHASH block",
-                needed: GCM_BLOCK_SIZE,
-                got: block_len
-            });
-        }
+        validate::max_length("GHASH block", block_len, GCM_BLOCK_SIZE)?;
         
         // Create a temporary block with zeros
         let mut temp_block = [0u8; GCM_BLOCK_SIZE];

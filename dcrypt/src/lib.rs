@@ -10,7 +10,8 @@ pub mod sign;
 
 /// Re-exports commonly used items
 pub mod prelude {
-    pub use dcrypt_core::{DcryptError, Result, Kem, Signature, SymmetricCipher, Serialize};
+    pub use dcrypt_core::error::{Error, Result, ResultExt, SecureErrorHandling};
+    pub use dcrypt_core::{Kem, Signature, SymmetricCipher, Serialize};
     pub use crate::kem::*;
     pub use crate::sign::*;
 }

@@ -7,6 +7,52 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 #[test]
+fn test_shake128_empty_output() {
+    let mut xof = ShakeXof128::new();
+    let result = xof.squeeze_into_vec(0);
+    assert!(result.is_err());
+    
+    let mut empty_buffer = [];
+    let result = xof.squeeze(&mut empty_buffer);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_shake256_state_errors() {
+    let mut xof = ShakeXof256::new();
+    xof.finalize().unwrap();
+    
+    // Should error when updating after finalization
+    let result = xof.update(b"test");
+    assert!(matches!(result, Err(Error::Processing { .. })));
+    
+    // Should work to squeeze after finalization
+    let mut output = [0u8; 32];
+    assert!(xof.squeeze(&mut output).is_ok());
+    
+    // Should error when updating after squeezing
+    let result = xof.update(b"test");
+    assert!(matches!(result, Err(Error::Processing { .. })));
+}
+
+#[test]
+fn test_shake_reset() {
+    let mut xof = ShakeXof128::new();
+    xof.update(b"test").unwrap();
+    xof.finalize().unwrap();
+    
+    let mut first_output = [0u8; 32];
+    xof.squeeze(&mut first_output).unwrap();
+    
+    // Reset should clear all state
+    xof.reset().unwrap();
+    
+    // Should be able to update again
+    assert!(xof.update(b"test").is_ok());
+    assert!(!xof.is_finalized);
+    assert!(!xof.squeezing);
+}
+
 fn test_shake128_xof_variable_length() {
     // NIST test vectors for SHAKE-128
     let empty_32_expected = "7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26";

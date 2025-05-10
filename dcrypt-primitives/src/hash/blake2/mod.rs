@@ -14,7 +14,7 @@ use core::cmp::min;
 use core::convert::TryInto;
 use zeroize::Zeroize;
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::hash::{HashFunction, HashAlgorithm, Hash};
 use crate::types::Digest;
 
@@ -67,12 +67,22 @@ pub struct Blake2b {
 }
 
 impl Blake2b {
+    /// Creates a new Blake2b instance with a custom output size.
+    ///
+    /// # Arguments
+    ///
+    /// * `out_len` - The desired output size in bytes (must be between 1 and 64)
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if `out_len` is 0 or greater than 64.
     pub fn with_output_size(out_len: usize) -> Self {
         let mut h = BLAKE2B_IV;
         let param0 = 0x0101_0000u64 + (out_len as u64);
         h[0] ^= param0;
         Blake2b { h, t: [0;2], f: [0;2], buf: [0;BLAKE2B_BLOCK_SIZE], buf_len: 0, out_len }
     }
+
 
     fn g(v: &mut [u64; 16], a: usize, b: usize, c: usize, d: usize, x: u64, y: u64) {
         v[a] = v[a].wrapping_add(v[b]).wrapping_add(x);
@@ -96,19 +106,20 @@ impl Blake2b {
         let mut m = [0u64; 16];
         for i in 0..16 {
             let idx = i*8;
-            // Safety check: ensure we don't access out of bounds
-            if idx + 8 > self.buf.len() {
-                return Err(Error::InvalidLength {
-                    context: "BLAKE2b buffer slice",
-                    needed: idx + 8,
-                    got: self.buf.len(),
-                });
-            }
+            // Validate buffer bounds
+            validate::max_length(
+                "BLAKE2b buffer slice",
+                idx + 8,
+                self.buf.len()
+            )?;
             
-            // Replace unwrap with proper error handling
+            // Convert bytes to u64 with proper error handling
             m[i] = u64::from_le_bytes(
                 self.buf[idx..idx+8].try_into()
-                    .map_err(|_| Error::Other("Failed to convert bytes to u64 in BLAKE2b"))?
+                    .map_err(|_| Error::Processing {
+                        operation: "BLAKE2b compression",
+                        details: "Failed to convert bytes to u64",
+                    })?
             );
         }
         
@@ -141,7 +152,7 @@ impl Blake2b {
                 let inc = BLAKE2B_BLOCK_SIZE as u64;
                 self.t[0] = self.t[0].wrapping_add(inc);
                 if self.t[0] < inc { self.t[1] = self.t[1].wrapping_add(1); }
-                self.compress(false)?; // Propagate error
+                self.compress(false)?;
                 self.buf_len = 0;
             }
         }
@@ -157,7 +168,7 @@ impl Blake2b {
             for b in &mut self.buf[self.buf_len..] { *b = 0; }
         }
         
-        self.compress(true)?; // Propagate error
+        self.compress(true)?;
         
         let mut out = Vec::with_capacity(self.out_len);
         for &w in &self.h {
@@ -246,6 +257,15 @@ pub struct Blake2s {
 }
 
 impl Blake2s {
+    /// Creates a new Blake2s instance with a custom output size.
+    ///
+    /// # Arguments
+    ///
+    /// * `out_len` - The desired output size in bytes (must be between 1 and 32)
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if `out_len` is 0 or greater than 32.
     pub fn with_output_size(out_len: usize) -> Self {
         let mut h = BLAKE2S_IV;
         h[0] ^= 0x01010000 ^ (out_len as u32);
@@ -274,19 +294,20 @@ impl Blake2s {
         let mut m = [0u32;16];
         for i in 0..16 {
             let idx = i*4;
-            // Safety check: ensure we don't access out of bounds
-            if idx + 4 > self.buf.len() {
-                return Err(Error::InvalidLength {
-                    context: "BLAKE2s buffer slice",
-                    needed: idx + 4,
-                    got: self.buf.len(),
-                });
-            }
+            // Validate buffer bounds
+            validate::max_length(
+                "BLAKE2s buffer slice",
+                idx + 4,
+                self.buf.len()
+            )?;
             
-            // Replace unwrap with proper error handling
+            // Convert bytes to u32 with proper error handling
             m[i] = u32::from_le_bytes(
                 self.buf[idx..idx+4].try_into()
-                    .map_err(|_| Error::Other("Failed to convert bytes to u32 in BLAKE2s"))?
+                    .map_err(|_| Error::Processing {
+                        operation: "BLAKE2s compression",
+                        details: "Failed to convert bytes to u32",
+                    })?
             );
         }
         
@@ -319,7 +340,7 @@ impl Blake2s {
                 let inc = BLAKE2S_BLOCK_SIZE as u32;
                 self.t[0] = self.t[0].wrapping_add(inc);
                 if self.t[0] < inc { self.t[1] = self.t[1].wrapping_add(1); }
-                self.compress(false)?; // Propagate error
+                self.compress(false)?;
                 self.buf_len = 0;
             }
         }
@@ -335,7 +356,7 @@ impl Blake2s {
             for b in &mut self.buf[self.buf_len..] { *b = 0; }
         }
         
-        self.compress(true)?; // Propagate error
+        self.compress(true)?;
         
         let mut out = Vec::with_capacity(self.out_len);
         for &w in &self.h {

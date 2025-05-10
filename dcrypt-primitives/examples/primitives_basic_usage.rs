@@ -1,6 +1,6 @@
 use dcrypt_primitives::{
     aead::ChaCha20Poly1305,
-    Nonce12,
+    types::Nonce,  // Import the generic Nonce type
 };
 
 fn main() {
@@ -15,8 +15,8 @@ fn main() {
     let plaintext = b"Hello, DCRYPT!";
     let aad = b"Additional data";
     
-    // Create a proper Nonce object instead of using raw array
-    let nonce = Nonce12::new(nonce_data);
+    // Create a Nonce<12> object (12-byte nonce for ChaCha20)
+    let nonce = Nonce::<12>::new(nonce_data);
     
     // Encrypt using the nonce object
     let ciphertext = cipher.encrypt(&nonce, plaintext, Some(aad)).unwrap();

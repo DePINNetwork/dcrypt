@@ -42,8 +42,8 @@ use dcrypt_core::traits::symmetric::{Operation, EncryptOperation, DecryptOperati
 use crate::types::SecretBytes;
 use crate::types::Nonce; // Using generic Nonce type
 use crate::types::nonce::AesGcmCompatible; // Import the AesGcmCompatible trait
-use crate::error::{Error, Result};
-use dcrypt_core::error::DcryptError;
+use crate::error::{Error, Result, validate};
+use dcrypt_core::error::Error as CoreError;
 use dcrypt_core::types::Ciphertext;
 
 // Import the GHASH module
@@ -108,21 +108,23 @@ impl<B: BlockCipher> Gcm<B> {
         Nonce<N>: AesGcmCompatible
     {
         // Ensure block size
-        if B::block_size() != GCM_BLOCK_SIZE {
-            return Err(Error::InvalidParameter("GCM only works with 128-bit block ciphers"));
-        }
+        validate::parameter(
+            B::block_size() == GCM_BLOCK_SIZE,
+            "block_size",
+            "GCM only works with 128-bit block ciphers"
+        )?;
 
-        if nonce.len() < 1 || nonce.len() > 16 {
-            return Err(Error::InvalidParameter(
-                "GCM nonce must be between 1 and 16 bytes",
-            ));
-        }
+        validate::parameter(
+            nonce.len() >= 1 && nonce.len() <= 16,
+            "nonce_length",
+            "GCM nonce must be between 1 and 16 bytes"
+        )?;
 
-        if tag_len < 1 || tag_len > GCM_TAG_SIZE {
-            return Err(Error::InvalidParameter(
-                "GCM tag length must be between 1 and 16 bytes",
-            ));
-        }
+        validate::parameter(
+            tag_len >= 1 && tag_len <= GCM_TAG_SIZE,
+            "tag_length",
+            "GCM tag length must be between 1 and 16 bytes"
+        )?;
 
         // Generate GHASH key H (encrypt all-zero block)
         let mut h = [0u8; GCM_BLOCK_SIZE];
@@ -226,13 +228,11 @@ impl<B: BlockCipher> Gcm<B> {
         associated_data: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
         // Length check is not a secret-dependent branch
-        if ciphertext.len() < self.tag_len {
-            return Err(Error::InvalidLength {
-                context: "GCM ciphertext",
-                needed: self.tag_len,
-                got: ciphertext.len(),
-            });
-        }
+        validate::min_length(
+            "GCM ciphertext",
+            ciphertext.len(),
+            self.tag_len
+        )?;
         
         let aad = associated_data.unwrap_or(&[]);
         let ciphertext_len = ciphertext.len() - self.tag_len;
@@ -262,9 +262,9 @@ impl<B: BlockCipher> Gcm<B> {
         // Convert the constant-time comparison result to an error if needed
         if tag_matches.unwrap_u8() == 0 {
             // Zeroize the plaintext securely before returning to avoid leaking data
-            // This run on the error path, but doesn't leak timing information about the tag
+            // This runs on the error path, but doesn't leak timing information about the tag
             // since all cryptographic work is already done by this point
-            return Err(Error::AuthenticationFailed);
+            return Err(Error::Authentication { algorithm: "GCM" });
         } else {
             Ok(plaintext.to_vec())
         }
@@ -306,21 +306,21 @@ impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
         }
     }
     
-    fn generate_key<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<<Self as SymmetricCipher>::Key, DcryptError> {
+    fn generate_key<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<<Self as SymmetricCipher>::Key, CoreError> {
         let mut key_data = [0u8; 32]; // Using same fixed size as type Key
         rng.fill_bytes(&mut key_data);
         Ok(SecretBytes::new(key_data))
     }
     
-    fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<<Self as SymmetricCipher>::Nonce, DcryptError> {
+    fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<<Self as SymmetricCipher>::Nonce, CoreError> {
         let mut nonce_data = [0u8; 12];
         rng.fill_bytes(&mut nonce_data);
         Ok(Nonce::<12>::new(nonce_data)) // Using generic Nonce::<12> instead of Nonce12
     }
     
-    fn derive_key_from_bytes(bytes: &[u8]) -> std::result::Result<<Self as SymmetricCipher>::Key, DcryptError> {
+    fn derive_key_from_bytes(bytes: &[u8]) -> std::result::Result<<Self as SymmetricCipher>::Key, CoreError> {
         if bytes.len() < 32 { // Using same fixed size as type Key
-            return Err(DcryptError::InvalidLength {
+            return Err(CoreError::InvalidLength {
                 context: "GCM key derivation",
                 expected: 32,
                 actual: bytes.len(),
@@ -335,8 +335,8 @@ impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
 
 // Implement Operation for GcmEncryptOperation
 impl<'a, B: BlockCipher> Operation<Ciphertext> for GcmEncryptOperation<'a, B> {
-    fn execute(self) -> std::result::Result<Ciphertext, DcryptError> {
-        let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
+    fn execute(self) -> std::result::Result<Ciphertext, CoreError> {
+        let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
             context: "GCM encryption",
             #[cfg(feature = "std")]
             message: "Nonce is required for GCM encryption".to_string(),
@@ -346,7 +346,7 @@ impl<'a, B: BlockCipher> Operation<Ciphertext> for GcmEncryptOperation<'a, B> {
         let ciphertext = self.cipher.internal_encrypt(
             plaintext,
             self.aad,
-        ).map_err(|e| DcryptError::from(e))?;
+        ).map_err(|e| CoreError::from(e))?;
         
         Ok(Ciphertext::new(&ciphertext))
     }
@@ -364,8 +364,8 @@ impl<'a, B: BlockCipher> EncryptOperation<'a, Gcm<B>> for GcmEncryptOperation<'a
         self
     }
     
-    fn encrypt(self, plaintext: &'a [u8]) -> std::result::Result<Ciphertext, DcryptError> {
-        let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
+    fn encrypt(self, plaintext: &'a [u8]) -> std::result::Result<Ciphertext, CoreError> {
+        let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
             context: "GCM encryption",
             #[cfg(feature = "std")]
             message: "Nonce is required for GCM encryption".to_string(),
@@ -374,7 +374,7 @@ impl<'a, B: BlockCipher> EncryptOperation<'a, Gcm<B>> for GcmEncryptOperation<'a
         let ciphertext = self.cipher.internal_encrypt(
             plaintext,
             self.aad,
-        ).map_err(|e| DcryptError::from(e))?;
+        ).map_err(|e| CoreError::from(e))?;
         
         Ok(Ciphertext::new(&ciphertext))
     }
@@ -382,8 +382,8 @@ impl<'a, B: BlockCipher> EncryptOperation<'a, Gcm<B>> for GcmEncryptOperation<'a
 
 // Implement Operation for GcmDecryptOperation
 impl<'a, B: BlockCipher> Operation<Vec<u8>> for GcmDecryptOperation<'a, B> {
-    fn execute(self) -> std::result::Result<Vec<u8>, DcryptError> {
-        Err(DcryptError::InvalidParameter {
+    fn execute(self) -> std::result::Result<Vec<u8>, CoreError> {
+        Err(CoreError::InvalidParameter {
             context: "GCM decryption",
             #[cfg(feature = "std")]
             message: "Use decrypt method instead".to_string(),
@@ -403,8 +403,8 @@ impl<'a, B: BlockCipher> DecryptOperation<'a, Gcm<B>> for GcmDecryptOperation<'a
         self
     }
     
-    fn decrypt(self, ciphertext: &'a <Gcm<B> as SymmetricCipher>::Ciphertext) -> std::result::Result<Vec<u8>, DcryptError> {
-        let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
+    fn decrypt(self, ciphertext: &'a <Gcm<B> as SymmetricCipher>::Ciphertext) -> std::result::Result<Vec<u8>, CoreError> {
+        let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
             context: "GCM decryption",
             #[cfg(feature = "std")]
             message: "Nonce is required for GCM decryption".to_string(),
@@ -413,7 +413,7 @@ impl<'a, B: BlockCipher> DecryptOperation<'a, Gcm<B>> for GcmDecryptOperation<'a
         self.cipher.internal_decrypt(
             ciphertext.as_ref(),
             self.aad,
-        ).map_err(|e| DcryptError::from(e))
+        ).map_err(|e| CoreError::from(e))
     }
 }
 

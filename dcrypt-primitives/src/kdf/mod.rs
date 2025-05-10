@@ -64,7 +64,9 @@ use core::time::Duration;
 
 use core::marker::PhantomData;
 use rand::{CryptoRng, RngCore};
-use crate::error::{Error, Result};
+
+// Import the new error types
+use crate::error::{Error, Result, validate};
 use crate::types::{Salt, SecretBytes};
 use crate::hash::HashFunction;
 use zeroize::Zeroize;
@@ -270,7 +272,7 @@ impl<'a, H: HashFunction> KdfOperation<'a, HkdfAlgorithm<H>> for HKdfOperation<'
     }
     
     fn derive(self) -> Result<Vec<u8>> {
-        let ikm = self.ikm.ok_or_else(|| Error::InvalidParameter("Input keying material is required"))?;
+        let ikm = self.ikm.ok_or_else(|| Error::param("ikm", "Input keying material is required"))?;
         
         self.kdf.derive_key(ikm, self.salt, self.info, self.length)
     }
@@ -278,10 +280,10 @@ impl<'a, H: HashFunction> KdfOperation<'a, HkdfAlgorithm<H>> for HKdfOperation<'
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
         // Ensure the requested size matches
         if self.length != N {
-            return Err(Error::InvalidLength {
+            return Err(Error::Length {
                 context: "HKDF output",
-                needed: N,
-                got: self.length,
+                expected: N,
+                actual: self.length,
             });
         }
         
@@ -403,8 +405,8 @@ impl<'a, H: HashFunction + Clone> KdfOperation<'a, Pbkdf2Algorithm<H>> for Pbkdf
     }
     
     fn derive(self) -> Result<Vec<u8>> {
-        let password = self.password.ok_or_else(|| Error::InvalidParameter("Password is required"))?;
-        let salt = self.salt.ok_or_else(|| Error::InvalidParameter("Salt is required"))?;
+        let password = self.password.ok_or_else(|| Error::param("password", "Password is required"))?;
+        let salt = self.salt.ok_or_else(|| Error::param("salt", "Salt is required"))?;
         
         // Adjust inner Pbkdf2Params
         let mut params = self.kdf.inner.params().clone();
@@ -421,10 +423,10 @@ impl<'a, H: HashFunction + Clone> KdfOperation<'a, Pbkdf2Algorithm<H>> for Pbkdf
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
         // Ensure the requested size matches
         if self.length != N {
-            return Err(Error::InvalidLength {
+            return Err(Error::Length {
                 context: "PBKDF2 output",
-                needed: N,
-                got: self.length,
+                expected: N,
+                actual: self.length,
             });
         }
         

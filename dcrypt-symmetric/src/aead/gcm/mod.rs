@@ -76,6 +76,7 @@
 use alloc::vec::Vec;
 
 use crate::error::{Error, Result};
+use crate::error::validate;
 use dcrypt_primitives::block::aes::{Aes128, Aes256};
 use dcrypt_primitives::aead::Gcm;
 use dcrypt_primitives::block::BlockCipher;
@@ -84,7 +85,7 @@ use dcrypt_core::traits::symmetric::{EncryptOperation, DecryptOperation};
 use dcrypt_core::types::{SecretBytes, Ciphertext};
 // Import the new Nonce type
 use dcrypt_primitives::types::Nonce;
-use dcrypt_core::error::DcryptError;
+use dcrypt_primitives::error::Error as PrimitiveError;
 
 use crate::aes::keys::{Aes128Key, Aes256Key};
 use crate::cipher::{SymmetricCipher as OurSymmetricCipher, Aead};
@@ -95,20 +96,6 @@ pub mod aes256;
 
 // Re-export GCM-specific types
 pub use types::{GcmNonce, AesCiphertextPackage};
-
-/// Helper function to convert DcryptError to Error
-fn convert_error(e: DcryptError) -> Error {
-    match e {
-        DcryptError::InvalidLength { context, expected, actual } => Error::InvalidLength {
-            context: context.to_string(), // Convert &str to String
-            needed: expected,
-            got: actual,
-        },
-        DcryptError::InvalidParameter { .. } => Error::InvalidParameter("Invalid GCM parameter".to_string()),
-        DcryptError::AuthenticationFailed { .. } => Error::AuthenticationError,
-        _ => Error::CryptoError(format!("{:?}", e)),
-    }
-}
 
 /// AES-128-GCM implementation
 pub struct Aes128Gcm {
@@ -157,31 +144,23 @@ impl Aead for Aes128Gcm {
         plaintext: &[u8],
         aad: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
+        // Validate nonce length
+        validate::length("GCM nonce", nonce.as_bytes().len(), 12)?;
+        
         // Convert key bytes to SecretBytes<16>
-        let key_bytes = match SecretBytes::<16>::from_slice(self.key.as_bytes()) {
-            Ok(kb) => kb,
-            Err(e) => return Err(convert_error(e)),
-        };
+        let key_bytes = SecretBytes::<16>::from_slice(self.key.as_bytes())?;
         
         let aes = Aes128::new(&key_bytes);
         
         // Convert the GcmNonce to a Nonce<12>
-        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
-            Ok(n) => n,
-            Err(e) => return Err(Error::from(e)),
-        };
+        let primitives_nonce = Nonce::<12>::from_slice(nonce.as_bytes())?;
         
         // Create Gcm instance with proper error handling
-        let gcm = match Gcm::new(aes, &primitives_nonce) {
-            Ok(g) => g,
-            Err(e) => return Err(Error::from(e)),
-        };
+        let gcm = Gcm::new(aes, &primitives_nonce)?;
         
-        // Use internal_encrypt method directly instead of operation pattern
-        match gcm.internal_encrypt(plaintext, aad) {
-            Ok(ciphertext) => Ok(ciphertext),
-            Err(e) => Err(Error::from(e)),
-        }
+        // Use internal_encrypt method directly
+        gcm.internal_encrypt(plaintext, aad)
+            .map_err(|e| Error::from(e))
     }
     
     fn decrypt(
@@ -190,31 +169,29 @@ impl Aead for Aes128Gcm {
         ciphertext: &[u8],
         aad: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
+        // Validate nonce length
+        validate::length("GCM nonce", nonce.as_bytes().len(), 12)?;
+        
         // Convert key bytes to SecretBytes<16>
-        let key_bytes = match SecretBytes::<16>::from_slice(self.key.as_bytes()) {
-            Ok(kb) => kb,
-            Err(e) => return Err(convert_error(e)),
-        };
+        let key_bytes = SecretBytes::<16>::from_slice(self.key.as_bytes())?;
         
         let aes = Aes128::new(&key_bytes);
         
         // Convert the GcmNonce to a Nonce<12>
-        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
-            Ok(n) => n,
-            Err(e) => return Err(Error::from(e)),
-        };
+        let primitives_nonce = Nonce::<12>::from_slice(nonce.as_bytes())?;
         
         // Create Gcm instance with proper error handling
-        let gcm = match Gcm::new(aes, &primitives_nonce) {
-            Ok(g) => g,
-            Err(e) => return Err(Error::from(e)),
-        };
+        let gcm = Gcm::new(aes, &primitives_nonce)?;
         
-        // Use internal_decrypt method directly instead of operation pattern
-        match gcm.internal_decrypt(ciphertext, aad) {
-            Ok(plaintext) => Ok(plaintext),
-            Err(e) => Err(Error::from(e)),
-        }
+        // Use internal_decrypt method directly with better error context
+        gcm.internal_decrypt(ciphertext, aad)
+            .map_err(|e| match e {
+                PrimitiveError::Authentication { .. } => 
+                    Error::Primitive(PrimitiveError::Authentication { 
+                        algorithm: "AES-128-GCM" 
+                    }),
+                _ => Error::from(e),
+            })
     }
     
     fn generate_nonce() -> Self::Nonce {
@@ -245,31 +222,23 @@ impl Aead for Aes256Gcm {
         plaintext: &[u8],
         aad: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
+        // Validate nonce length
+        validate::length("GCM nonce", nonce.as_bytes().len(), 12)?;
+        
         // Convert key bytes to SecretBytes<32>
-        let key_bytes = match SecretBytes::<32>::from_slice(self.key.as_bytes()) {
-            Ok(kb) => kb,
-            Err(e) => return Err(convert_error(e)),
-        };
+        let key_bytes = SecretBytes::<32>::from_slice(self.key.as_bytes())?;
         
         let aes = Aes256::new(&key_bytes);
         
         // Convert the GcmNonce to a Nonce<12>
-        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
-            Ok(n) => n,
-            Err(e) => return Err(Error::from(e)),
-        };
+        let primitives_nonce = Nonce::<12>::from_slice(nonce.as_bytes())?;
         
         // Create Gcm instance with proper error handling
-        let gcm = match Gcm::new(aes, &primitives_nonce) {
-            Ok(g) => g,
-            Err(e) => return Err(Error::from(e)),
-        };
+        let gcm = Gcm::new(aes, &primitives_nonce)?;
         
-        // Use internal_encrypt method directly instead of operation pattern
-        match gcm.internal_encrypt(plaintext, aad) {
-            Ok(ciphertext) => Ok(ciphertext),
-            Err(e) => Err(Error::from(e)),
-        }
+        // Use internal_encrypt method directly
+        gcm.internal_encrypt(plaintext, aad)
+            .map_err(|e| Error::from(e))
     }
     
     fn decrypt(
@@ -278,31 +247,29 @@ impl Aead for Aes256Gcm {
         ciphertext: &[u8],
         aad: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
+        // Validate nonce length
+        validate::length("GCM nonce", nonce.as_bytes().len(), 12)?;
+        
         // Convert key bytes to SecretBytes<32>
-        let key_bytes = match SecretBytes::<32>::from_slice(self.key.as_bytes()) {
-            Ok(kb) => kb,
-            Err(e) => return Err(convert_error(e)),
-        };
+        let key_bytes = SecretBytes::<32>::from_slice(self.key.as_bytes())?;
         
         let aes = Aes256::new(&key_bytes);
         
         // Convert the GcmNonce to a Nonce<12>
-        let primitives_nonce = match Nonce::<12>::from_slice(nonce.as_bytes()) {
-            Ok(n) => n,
-            Err(e) => return Err(Error::from(e)),
-        };
+        let primitives_nonce = Nonce::<12>::from_slice(nonce.as_bytes())?;
         
         // Create Gcm instance with proper error handling
-        let gcm = match Gcm::new(aes, &primitives_nonce) {
-            Ok(g) => g,
-            Err(e) => return Err(Error::from(e)),
-        };
+        let gcm = Gcm::new(aes, &primitives_nonce)?;
         
-        // Use internal_decrypt method directly instead of operation pattern
-        match gcm.internal_decrypt(ciphertext, aad) {
-            Ok(plaintext) => Ok(plaintext),
-            Err(e) => Err(Error::from(e)),
-        }
+        // Use internal_decrypt method directly with better error context
+        gcm.internal_decrypt(ciphertext, aad)
+            .map_err(|e| match e {
+                PrimitiveError::Authentication { .. } => 
+                    Error::Primitive(PrimitiveError::Authentication { 
+                        algorithm: "AES-256-GCM" 
+                    }),
+                _ => Error::from(e),
+            })
     }
     
     fn generate_nonce() -> Self::Nonce {

@@ -1,6 +1,9 @@
 //! Error handling helper functions for dcrypt-core
+//! 
+//! Note: This module is deprecated and will be removed in a future version.
+//! Please use the functionality in crate::error::validate instead.
 
-use crate::error::{DcryptError, Result};
+use crate::error::{Error, Result};
 
 /// Validate the length of a byte slice against minimum and optional maximum bounds
 ///
@@ -13,7 +16,8 @@ use crate::error::{DcryptError, Result};
 ///
 /// # Returns
 ///
-/// `Ok(())` if the length is valid, or an `DcryptError::InvalidLength` otherwise
+/// `Ok(())` if the length is valid, or an `Error::InvalidLength` otherwise
+#[deprecated(since = "0.2.0", note = "Use crate::error::validate::length instead")]
 pub fn validate_length(
     data: &[u8],
     min_len: usize,
@@ -21,7 +25,7 @@ pub fn validate_length(
     context: &'static str
 ) -> Result<()> {
     if data.len() < min_len {
-        return Err(DcryptError::InvalidLength {
+        return Err(Error::InvalidLength {
             context,
             expected: min_len,
             actual: data.len(),
@@ -30,7 +34,7 @@ pub fn validate_length(
     
     if let Some(max) = max_len {
         if data.len() > max {
-            return Err(DcryptError::InvalidLength {
+            return Err(Error::InvalidLength {
                 context,
                 expected: max,
                 actual: data.len(),
@@ -51,8 +55,9 @@ pub fn validate_length(
 ///
 /// # Returns
 ///
-/// `Ok(())` if the values match, or an `DcryptError::InvalidParameter` otherwise
+/// `Ok(())` if the values match, or an `Error::InvalidParameter` otherwise
 #[cfg(feature = "std")]
+#[deprecated(since = "0.2.0", note = "Use crate::error::validate::check_parameter instead")]
 pub fn validate_eq<T: PartialEq>(
     actual: T,
     expected: T,
@@ -62,7 +67,7 @@ where
     T: core::fmt::Debug,
 {
     if actual != expected {
-        return Err(DcryptError::InvalidParameter {
+        return Err(Error::InvalidParameter {
             context,
             message: format!("Expected {:?}, got {:?}", expected, actual),
         });
@@ -73,13 +78,14 @@ where
 
 /// No-std version of validate_eq
 #[cfg(not(feature = "std"))]
+#[deprecated(since = "0.2.0", note = "Use crate::error::validate::check_parameter instead")]
 pub fn validate_eq<T: PartialEq>(
     actual: T,
     expected: T,
     context: &'static str
 ) -> Result<()> {
     if actual != expected {
-        return Err(DcryptError::InvalidParameter {
+        return Err(Error::InvalidParameter {
             context,
         });
     }
@@ -98,8 +104,9 @@ pub fn validate_eq<T: PartialEq>(
 ///
 /// # Returns
 ///
-/// `Ok(())` if the value is within range, or an `DcryptError::InvalidParameter` otherwise
+/// `Ok(())` if the value is within range, or an `Error::InvalidParameter` otherwise
 #[cfg(feature = "std")]
+#[deprecated(since = "0.2.0", note = "Use crate::error::validate::range_length instead")]
 pub fn validate_range<T: PartialOrd>(
     value: T,
     min: T,
@@ -110,7 +117,7 @@ where
     T: core::fmt::Debug,
 {
     if value < min || value > max {
-        return Err(DcryptError::InvalidParameter {
+        return Err(Error::InvalidParameter {
             context,
             message: format!("Value {:?} outside range [{:?}, {:?}]", value, min, max),
         });
@@ -121,6 +128,7 @@ where
 
 /// No-std version of validate_range
 #[cfg(not(feature = "std"))]
+#[deprecated(since = "0.2.0", note = "Use crate::error::validate::range_length instead")]
 pub fn validate_range<T: PartialOrd>(
     value: T,
     min: T,
@@ -128,7 +136,7 @@ pub fn validate_range<T: PartialOrd>(
     context: &'static str
 ) -> Result<()> {
     if value < min || value > max {
-        return Err(DcryptError::InvalidParameter {
+        return Err(Error::InvalidParameter {
             context,
         });
     }
@@ -136,7 +144,7 @@ pub fn validate_range<T: PartialOrd>(
     Ok(())
 }
 
-/// Add context to any Result<T, E> that can be converted to DcryptError
+/// Add context to any Result<T, E> that can be converted to Error
 ///
 /// # Arguments
 ///
@@ -146,7 +154,8 @@ pub fn validate_range<T: PartialOrd>(
 /// # Returns
 ///
 /// The original result with updated context if it was an error
-pub fn with_context<T, E: Into<DcryptError>>(
+#[deprecated(since = "0.2.0", note = "Use crate::error::traits::ResultExt::with_context instead")]
+pub fn with_context<T, E: Into<Error>>(
     result: core::result::Result<T, E>,
     context: &'static str
 ) -> Result<T> {
@@ -166,15 +175,16 @@ pub fn with_context<T, E: Into<DcryptError>>(
 ///
 /// # Returns
 ///
-/// `Ok(())` if the condition is true, or an `DcryptError::InvalidParameter` otherwise
+/// `Ok(())` if the condition is true, or an `Error::InvalidParameter` otherwise
 #[cfg(feature = "std")]
+#[deprecated(since = "0.2.0", note = "Use crate::error::validate::check_parameter instead")]
 pub fn ensure(
     condition: bool, 
     context: &'static str,
     message: &str
 ) -> Result<()> {
     if !condition {
-        return Err(DcryptError::InvalidParameter {
+        return Err(Error::InvalidParameter {
             context,
             message: message.to_string(),
         });
@@ -185,12 +195,13 @@ pub fn ensure(
 
 /// No-std version of ensure
 #[cfg(not(feature = "std"))]
+#[deprecated(since = "0.2.0", note = "Use crate::error::validate::check_parameter instead")]
 pub fn ensure(
     condition: bool, 
     context: &'static str,
 ) -> Result<()> {
     if !condition {
-        return Err(DcryptError::InvalidParameter {
+        return Err(Error::InvalidParameter {
             context,
         });
     }
@@ -206,9 +217,10 @@ pub fn ensure(
 ///
 /// # Returns
 ///
-/// A `DcryptError::NotImplemented` error
-pub fn not_implemented(feature: &'static str) -> DcryptError {
-    DcryptError::NotImplemented {
+/// A `Error::NotImplemented` error
+#[deprecated(since = "0.2.0", note = "Use crate::error::validate::not_implemented instead")]
+pub fn not_implemented(feature: &'static str) -> Error {
+    Error::NotImplemented {
         feature,
     }
 }

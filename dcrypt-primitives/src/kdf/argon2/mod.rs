@@ -6,7 +6,7 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use super::{KeyDerivationFunction, SecurityLevel, PasswordHashFunction, PasswordHash, ParamProvider};
 use super::{KdfAlgorithm, KdfOperation};
 use crate::types::{Salt, SecretBytes};
@@ -101,7 +101,7 @@ where
     /// Hashes a password with the configured parameters
     pub fn hash_password(&self, _password: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
         // This is a stub implementation
-        Err(Error::NotImplemented("Argon2 password hashing"))
+        Err(Error::NotImplemented { feature: "Argon2 password hashing" })
     }
 }
 
@@ -142,7 +142,10 @@ where
     }
     
     fn derive(self) -> Result<Vec<u8>> {
-        let ikm = self.ikm.ok_or_else(|| Error::InvalidParameter("Input keying material is required"))?;
+        let ikm = self.ikm.ok_or_else(|| Error::param(
+            "ikm",
+            "Input keying material is required"
+        ))?;
         
         // Handle salt priority:
         // 1. If we have a typed Salt<S> reference, use it directly
@@ -162,13 +165,7 @@ where
     
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
         // Ensure the requested size matches
-        if self.length != N {
-            return Err(Error::InvalidLength {
-                context: "Argon2 output",
-                needed: N,
-                got: self.length,
-            });
-        }
+        validate::length("Argon2 output", self.length, N)?;
         
         let vec = self.derive()?;
         
@@ -216,13 +213,7 @@ where
         let effective_salt = match salt {
             Some(s) => {
                 // Validate that the provided salt is the correct size for S
-                if s.len() != S {
-                    return Err(Error::InvalidLength {
-                        context: "Argon2 salt",
-                        needed: S,
-                        got: s.len(),
-                    });
-                }
+                validate::length("Argon2 salt", s.len(), S)?;
                 s
             },
             None => &self.params.salt.as_ref(),
@@ -285,11 +276,11 @@ where
     
     fn hash_password(&self, password: &Self::Password) -> Result<PasswordHash> {
         // This is a stub implementation
-        Err(Error::NotImplemented("Argon2 password hash function"))
+        Err(Error::NotImplemented { feature: "Argon2 password hash function" })
     }
     
     fn verify(&self, _password: &Self::Password, _hash: &PasswordHash) -> Result<bool> {
-        Err(Error::NotImplemented("Argon2 password verification"))
+        Err(Error::NotImplemented { feature: "Argon2 password verification" })
     }
     
     fn benchmark(&self) -> Duration {

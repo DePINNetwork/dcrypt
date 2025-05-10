@@ -3,6 +3,7 @@
 use zeroize::Zeroize;
 use dcrypt_constants::utils::symmetric::{AES128_KEY_SIZE, AES256_KEY_SIZE};
 use crate::error::{Error, Result};
+use crate::error::validate;
 use std::fmt;
 use base64;
 use hmac::Hmac;
@@ -41,17 +42,20 @@ impl Aes128Key {
     
     /// Loads a key from a secure serialized format
     pub fn from_secure_string(serialized: &str) -> Result<Self> {
-        if !serialized.starts_with("DCRYPT-AES128-KEY:") {
-            return Err(Error::InvalidFormat);
-        }
+        validate::format(
+            serialized.starts_with("DCRYPT-AES128-KEY:"),
+            "key deserialization",
+            "invalid key format"
+        )?;
         
         let b64_part = &serialized["DCRYPT-AES128-KEY:".len()..];
         let key_bytes = base64::decode(b64_part)
-            .map_err(|_| Error::InvalidFormat)?;
+            .map_err(|_| Error::Format { 
+                context: "base64 decode", 
+                details: "invalid base64 encoding" 
+            })?;
             
-        if key_bytes.len() != AES128_KEY_SIZE {
-            return Err(Error::InvalidKeySize);
-        }
+        validate::length("AES-128 key", key_bytes.len(), AES128_KEY_SIZE)?;
         
         let mut key = [0u8; AES128_KEY_SIZE];
         key.copy_from_slice(&key_bytes);
@@ -97,17 +101,20 @@ impl Aes256Key {
     
     /// Loads a key from a secure serialized format
     pub fn from_secure_string(serialized: &str) -> Result<Self> {
-        if !serialized.starts_with("DCRYPT-AES256-KEY:") {
-            return Err(Error::InvalidFormat);
-        }
+        validate::format(
+            serialized.starts_with("DCRYPT-AES256-KEY:"),
+            "key deserialization",
+            "invalid key format"
+        )?;
         
         let b64_part = &serialized["DCRYPT-AES256-KEY:".len()..];
         let key_bytes = base64::decode(b64_part)
-            .map_err(|_| Error::InvalidFormat)?;
+            .map_err(|_| Error::Format { 
+                context: "base64 decode", 
+                details: "invalid base64 encoding" 
+            })?;
             
-        if key_bytes.len() != AES256_KEY_SIZE {
-            return Err(Error::InvalidKeySize);
-        }
+        validate::length("AES-256 key", key_bytes.len(), AES256_KEY_SIZE)?;
         
         let mut key = [0u8; AES256_KEY_SIZE];
         key.copy_from_slice(&key_bytes);
@@ -124,6 +131,10 @@ impl fmt::Debug for Aes256Key {
 
 /// Derives an AES-128 key from a password and salt using PBKDF2-HMAC-SHA256
 pub fn derive_aes128_key(password: &[u8], salt: &[u8], iterations: u32) -> Result<Aes128Key> {
+    validate::parameter(!password.is_empty(), "password", "cannot be empty")?;
+    validate::parameter(!salt.is_empty(), "salt", "cannot be empty")?;
+    validate::key_derivation(iterations > 0, "PBKDF2", "iterations must be greater than 0")?;
+    
     let mut key = [0u8; AES128_KEY_SIZE];
     
     // pbkdf2 returns () when successful, so we'll use a dummy result
@@ -134,6 +145,10 @@ pub fn derive_aes128_key(password: &[u8], salt: &[u8], iterations: u32) -> Resul
 
 /// Derives an AES-256 key from a password and salt using PBKDF2-HMAC-SHA256
 pub fn derive_aes256_key(password: &[u8], salt: &[u8], iterations: u32) -> Result<Aes256Key> {
+    validate::parameter(!password.is_empty(), "password", "cannot be empty")?;
+    validate::parameter(!salt.is_empty(), "salt", "cannot be empty")?;
+    validate::key_derivation(iterations > 0, "PBKDF2", "iterations must be greater than 0")?;
+    
     let mut key = [0u8; AES256_KEY_SIZE];
     
     // pbkdf2 returns () when successful, so we'll use a dummy result

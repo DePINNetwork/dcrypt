@@ -7,7 +7,7 @@
 use alloc::vec::Vec;
 use zeroize::Zeroize;
 
-use crate::error::Result;
+use crate::error::{Error, Result, validate};
 use crate::hash::{Hash, HashFunction, HashAlgorithm};
 use crate::types::Digest;
 
@@ -49,10 +49,16 @@ const PI: [usize; 24] = [
     15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1,
 ];
 
-// Define algorithm marker types for each SHA-3 variant
+/// Marker type for SHA3-224 algorithm
 pub enum Sha3_224Algorithm {}
+
+/// Marker type for SHA3-256 algorithm
 pub enum Sha3_256Algorithm {}
+
+/// Marker type for SHA3-384 algorithm
 pub enum Sha3_384Algorithm {}
+
+/// Marker type for SHA3-512 algorithm
 pub enum Sha3_512Algorithm {}
 
 // Implement HashAlgorithm for each marker type
@@ -113,6 +119,13 @@ impl Sha3_224 {
     }
     
     fn update_internal(&mut self, data: &[u8]) -> Result<()> {
+        // Validate input is not too large to process
+        validate::parameter(
+            self.pt + data.len() <= usize::MAX,
+            "data_length",
+            "Data length would cause integer overflow"
+        )?;
+        
         let rate = Self::rate();
         for &byte in data {
             xor_byte_in_state(&mut self.state, self.pt, byte);
@@ -165,6 +178,13 @@ impl Sha3_256 {
     }
     
     fn update_internal(&mut self, data: &[u8]) -> Result<()> {
+        // Validate input is not too large to process
+        validate::parameter(
+            self.pt + data.len() <= usize::MAX,
+            "data_length",
+            "Data length would cause integer overflow"
+        )?;
+        
         let rate = Self::rate();
         for &byte in data {
             xor_byte_in_state(&mut self.state, self.pt, byte);
@@ -215,6 +235,13 @@ impl Sha3_384 {
     }
     
     fn update_internal(&mut self, data: &[u8]) -> Result<()> {
+        // Validate input is not too large to process
+        validate::parameter(
+            self.pt + data.len() <= usize::MAX,
+            "data_length",
+            "Data length would cause integer overflow"
+        )?;
+        
         let rate = Self::rate();
         for &byte in data {
             xor_byte_in_state(&mut self.state, self.pt, byte);
@@ -265,6 +292,13 @@ impl Sha3_512 {
     }
     
     fn update_internal(&mut self, data: &[u8]) -> Result<()> {
+        // Validate input is not too large to process
+        validate::parameter(
+            self.pt + data.len() <= usize::MAX,
+            "data_length",
+            "Data length would cause integer overflow"
+        )?;
+        
         let rate = Self::rate();
         for &byte in data {
             xor_byte_in_state(&mut self.state, self.pt, byte);

@@ -21,7 +21,7 @@ use core::fmt;
 use core::str::FromStr;
 use zeroize::{Zeroize, Zeroizing};
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 
 /// Trait for algorithms with configurable parameters
 pub trait ParamProvider {
@@ -98,8 +98,15 @@ impl PasswordHash {
     pub fn param_as_u32(&self, key: &str) -> Result<u32> {
         match self.param(key) {
             Some(value) => value.parse::<u32>().map_err(|_| 
-                Error::InvalidParameter("Invalid parameter value")),
-            None => Err(Error::InvalidParameter("Missing parameter"))
+                Error::param(
+                    key.to_string(), // Convert to owned String for dynamic lifetime
+                    "Invalid parameter value - not a valid u32"
+                )
+            ),
+            None => Err(Error::param(
+                key.to_string(), // Convert to owned String for dynamic lifetime
+                "Missing required parameter"
+            ))
         }
     }
 }
@@ -135,12 +142,12 @@ impl FromStr for PasswordHash {
     
     fn from_str(s: &str) -> Result<Self> {
         if !s.starts_with('$') {
-            return Err(Error::InvalidParameter("Invalid password hash format"));
+            return Err(Error::param("password_hash", "Invalid password hash format - must start with '$'"));
         }
         
         let parts: Vec<&str> = s.split('$').skip(1).collect();
         if parts.len() < 3 {
-            return Err(Error::InvalidParameter("Invalid password hash format"));
+            return Err(Error::param("password_hash", "Invalid password hash format - insufficient components"));
         }
         
         let algorithm = parts[0].to_string();
@@ -155,7 +162,7 @@ impl FromStr for PasswordHash {
                 
                 let param_parts: Vec<&str> = param_str.split('=').collect();
                 if param_parts.len() != 2 {
-                    return Err(Error::InvalidParameter("Invalid parameter format"));
+                    return Err(Error::param("param", "Invalid parameter format - must be key=value"));
                 }
                 
                 params.insert(param_parts[0].to_string(), param_parts[1].to_string());
@@ -167,10 +174,10 @@ impl FromStr for PasswordHash {
         let hash_idx = if parts.len() > 3 { 3 } else { 2 };
         
         let salt = base64_decode(parts[salt_idx])
-            .map_err(|_| Error::InvalidParameter("Invalid salt encoding"))?;
+            .map_err(|_| Error::param("salt", "Invalid salt encoding - not valid base64"))?;
             
         let hash = base64_decode(parts[hash_idx])
-            .map_err(|_| Error::InvalidParameter("Invalid hash encoding"))?;
+            .map_err(|_| Error::param("hash", "Invalid hash encoding - not valid base64"))?;
         
         Ok(PasswordHash {
             algorithm,
@@ -198,11 +205,11 @@ fn base64_decode(s: &str) -> Result<Vec<u8>> {
     let mut chars = s.chars().peekable();
     
     while chars.peek().is_some() {
-        let high = chars.next().ok_or(Error::InvalidParameter("Invalid hex encoding"))?;
-        let low = chars.next().ok_or(Error::InvalidParameter("Invalid hex encoding"))?;
+        let high = chars.next().ok_or_else(|| Error::param("hex_string", "Invalid hex encoding - unexpected end of string"))?;
+        let low = chars.next().ok_or_else(|| Error::param("hex_string", "Invalid hex encoding - odd length"))?;
         
         let byte = u8::from_str_radix(&format!("{}{}", high, low), 16)
-            .map_err(|_| Error::InvalidParameter("Invalid hex encoding"))?;
+            .map_err(|_| Error::param("hex_string", "Invalid hex encoding - non-hex character"))?;
             
         result.push(byte);
     }

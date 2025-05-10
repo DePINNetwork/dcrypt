@@ -6,7 +6,7 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use crate::error::Result;
+use crate::error::{Error, Result, validate};
 use crate::stream::chacha::chacha20::{ChaCha20, CHACHA20_NONCE_SIZE};
 use crate::aead::chacha20poly1305::{
     ChaCha20Poly1305, CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_TAG_SIZE,
@@ -42,13 +42,11 @@ impl XChaCha20Poly1305 {
     
     /// Creates an instance from raw key bytes
     pub fn from_key(key: &[u8]) -> Result<Self> {
-        if key.len() < CHACHA20POLY1305_KEY_SIZE {
-            return Err(crate::error::Error::InvalidLength {
-                context: "XChaCha20Poly1305 key",
-                needed: CHACHA20POLY1305_KEY_SIZE,
-                got: key.len(),
-            });
-        }
+        validate::length(
+            "XChaCha20Poly1305 key",
+            key.len(),
+            CHACHA20POLY1305_KEY_SIZE
+        )?;
         
         let mut key_bytes = [0u8; CHACHA20POLY1305_KEY_SIZE];
         key_bytes.copy_from_slice(&key[..CHACHA20POLY1305_KEY_SIZE]);
@@ -71,13 +69,11 @@ impl XChaCha20Poly1305 {
         
         // Get the nonce bytes from the generic Nonce type
         let nonce_bytes = nonce.as_ref();
-        if nonce_bytes.len() != XCHACHA20POLY1305_NONCE_SIZE {
-            return Err(crate::error::Error::InvalidLength {
-                context: "XChaCha20Poly1305 nonce",
-                needed: XCHACHA20POLY1305_NONCE_SIZE,
-                got: nonce_bytes.len(),
-            });
-        }
+        validate::length(
+            "XChaCha20Poly1305 nonce",
+            nonce_bytes.len(),
+            XCHACHA20POLY1305_NONCE_SIZE
+        )?;
         
         nonce_prefix.copy_from_slice(&nonce_bytes[..CHACHA20_NONCE_SIZE]);
         
@@ -114,13 +110,11 @@ impl XChaCha20Poly1305 {
         
         // Get the nonce bytes from the generic Nonce type
         let nonce_bytes = nonce.as_ref();
-        if nonce_bytes.len() != XCHACHA20POLY1305_NONCE_SIZE {
-            return Err(crate::error::Error::InvalidLength {
-                context: "XChaCha20Poly1305 nonce",
-                needed: XCHACHA20POLY1305_NONCE_SIZE,
-                got: nonce_bytes.len(),
-            });
-        }
+        validate::length(
+            "XChaCha20Poly1305 nonce",
+            nonce_bytes.len(),
+            XCHACHA20POLY1305_NONCE_SIZE
+        )?;
         
         nonce_prefix.copy_from_slice(&nonce_bytes[..CHACHA20_NONCE_SIZE]);
         

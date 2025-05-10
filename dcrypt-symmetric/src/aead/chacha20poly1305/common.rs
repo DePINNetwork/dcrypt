@@ -4,7 +4,7 @@ use zeroize::Zeroize;
 use dcrypt_primitives::aead::chacha20poly1305::{
     CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_NONCE_SIZE
 };
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use std::fmt;
 // Fix base64 usage
 use base64;
@@ -44,17 +44,20 @@ impl ChaCha20Poly1305Key {
     
     /// Loads a key from a secure serialized format
     pub fn from_secure_string(serialized: &str) -> Result<Self> {
-        if !serialized.starts_with("DCRYPT-CHACHA20POLY1305-KEY:") {
-            return Err(Error::InvalidFormat);
-        }
+        validate::format(
+            serialized.starts_with("DCRYPT-CHACHA20POLY1305-KEY:"),
+            "key deserialization",
+            "invalid key format"
+        )?;
         
         let b64_part = &serialized["DCRYPT-CHACHA20POLY1305-KEY:".len()..];
         let key_bytes = base64::decode(b64_part)
-            .map_err(|_| Error::InvalidFormat)?;
+            .map_err(|_| Error::Format { 
+                context: "base64 decode", 
+                details: "invalid base64 encoding" 
+            })?;
             
-        if key_bytes.len() != CHACHA20POLY1305_KEY_SIZE {
-            return Err(Error::InvalidKeySize);
-        }
+        validate::length("ChaCha20Poly1305 key", key_bytes.len(), CHACHA20POLY1305_KEY_SIZE)?;
         
         let mut key = [0u8; CHACHA20POLY1305_KEY_SIZE];
         key.copy_from_slice(&key_bytes);
@@ -99,11 +102,12 @@ impl ChaCha20Poly1305Nonce {
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
         let bytes = base64::decode(s)
-            .map_err(|_| Error::InvalidFormat)?;
+            .map_err(|_| Error::Format { 
+                context: "nonce base64 decode", 
+                details: "invalid base64 encoding" 
+            })?;
             
-        if bytes.len() != CHACHA20POLY1305_NONCE_SIZE {
-            return Err(Error::InvalidFormat);
-        }
+        validate::length("ChaCha20Poly1305 nonce", bytes.len(), CHACHA20POLY1305_NONCE_SIZE)?;
         
         let mut nonce = [0u8; CHACHA20POLY1305_NONCE_SIZE];
         nonce.copy_from_slice(&bytes);
@@ -137,27 +141,35 @@ impl ChaCha20Poly1305CiphertextPackage {
     
     /// Parses a serialized package
     pub fn from_string(s: &str) -> Result<Self> {
-        if !s.starts_with("DCRYPT-CHACHA20POLY1305:") {
-            return Err(Error::InvalidFormat);
-        }
+        validate::format(
+            s.starts_with("DCRYPT-CHACHA20POLY1305:"),
+            "package deserialization",
+            "invalid package format"
+        )?;
         
         let parts: Vec<&str> = s["DCRYPT-CHACHA20POLY1305:".len()..].split(':').collect();
-        if parts.len() != 2 {
-            return Err(Error::InvalidFormat);
-        }
+        validate::format(
+            parts.len() == 2,
+            "package deserialization",
+            "expected format: DCRYPT-CHACHA20POLY1305:<nonce>:<ciphertext>"
+        )?;
         
         let nonce_bytes = base64::decode(parts[0])
-            .map_err(|_| Error::InvalidFormat)?;
+            .map_err(|_| Error::Format { 
+                context: "nonce base64 decode", 
+                details: "invalid base64 encoding" 
+            })?;
             
-        if nonce_bytes.len() != CHACHA20POLY1305_NONCE_SIZE {
-            return Err(Error::InvalidFormat);
-        }
+        validate::length("package nonce", nonce_bytes.len(), CHACHA20POLY1305_NONCE_SIZE)?;
         
         let mut nonce = [0u8; CHACHA20POLY1305_NONCE_SIZE];
         nonce.copy_from_slice(&nonce_bytes);
         
         let ciphertext = base64::decode(parts[1])
-            .map_err(|_| Error::InvalidFormat)?;
+            .map_err(|_| Error::Format { 
+                context: "ciphertext base64 decode", 
+                details: "invalid base64 encoding" 
+            })?;
             
         Ok(Self {
             nonce: ChaCha20Poly1305Nonce(nonce),
@@ -168,6 +180,10 @@ impl ChaCha20Poly1305CiphertextPackage {
 
 /// Derives a ChaCha20Poly1305 key from a password and salt using PBKDF2-HMAC-SHA256
 pub fn derive_chacha20poly1305_key(password: &[u8], salt: &[u8], iterations: u32) -> Result<ChaCha20Poly1305Key> {
+    validate::parameter(!password.is_empty(), "password", "cannot be empty")?;
+    validate::parameter(!salt.is_empty(), "salt", "cannot be empty")?;
+    validate::key_derivation(iterations > 0, "PBKDF2", "iterations must be greater than 0")?;
+    
     let mut key = [0u8; CHACHA20POLY1305_KEY_SIZE];
     
     // pbkdf2 returns () when successful, so we'll use a dummy result

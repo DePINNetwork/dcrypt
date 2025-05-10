@@ -1,31 +1,31 @@
-#![no_std]
-
 //! Block cipher implementations with advanced type-level guarantees
 //!
 //! This module contains implementations of various block ciphers and related
 //! algorithms with improved type-safety through compile-time constraints.
 //!
-/// ## Example usage
-///
-/// ```
-/// use dcrypt_primitives::block::{TypedAes128, TypedCbc, BlockCipher, BlockCipherMode, CipherAlgorithm};
-/// use rand::rngs::OsRng;
-/// 
-/// // Generate a random key and nonce
-/// let key = TypedAes128::generate_key(&mut OsRng);
-/// let nonce = TypedCbc::<TypedAes128>::generate_nonce(&mut OsRng);
-/// 
-/// // Create cipher and mode instances
-/// let cipher = TypedAes128::new(&key);
-/// let mode = TypedCbc::new(cipher, &nonce).unwrap();
-/// 
-/// // Encrypt and decrypt
-/// let plaintext = b"secret message with padding...!!"; // Exactly 32 bytes (multiple of 16)
-/// let ciphertext = mode.encrypt(plaintext).unwrap();
-/// let decrypted = mode.decrypt(&ciphertext).unwrap();
-/// 
-/// assert_eq!(plaintext, &decrypted[..]);
-/// ```
+//! ## Example usage
+//!
+//! ```
+//! use dcrypt_primitives::block::{TypedAes128, TypedCbc, BlockCipher, BlockCipherMode, CipherAlgorithm};
+//! use rand::rngs::OsRng;
+//! 
+//! // Generate a random key and nonce
+//! let key = TypedAes128::generate_key(&mut OsRng);
+//! let nonce = TypedCbc::<TypedAes128>::generate_nonce(&mut OsRng);
+//! 
+//! // Create cipher and mode instances
+//! let cipher = TypedAes128::new(&key);
+//! let mode = TypedCbc::new(cipher, &nonce).unwrap();
+//! 
+//! // Encrypt and decrypt
+//! let plaintext = b"secret message with padding...!!"; // Exactly 32 bytes (multiple of 16)
+//! let ciphertext = mode.encrypt(plaintext).unwrap();
+//! let decrypted = mode.decrypt(&ciphertext).unwrap();
+//! 
+//! assert_eq!(plaintext, &decrypted[..]);
+//! ```
+
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -34,10 +34,8 @@ extern crate alloc;
 use alloc::vec::Vec;
 use zeroize::Zeroize;
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::types::{Nonce, SecretBytes, Tag};
-// Import the Nonce16 type from the crate root
-use crate::Nonce16;
 use rand::{CryptoRng, RngCore};
 
 pub mod aes;
@@ -45,7 +43,7 @@ pub mod modes;
 
 // Re-exports
 pub use aes::{Aes128, Aes192, Aes256};
-pub use modes::{Cbc, Ctr};
+pub use modes::{cbc::Cbc, ctr::Ctr};
 
 /// Marker trait for cipher algorithms with compile-time properties
 pub trait CipherAlgorithm {
@@ -204,10 +202,12 @@ impl BlockCipher for TypedAes128 {
     }
     
     fn encrypt_block(&self, block: &mut [u8]) -> Result<()> {
+        validate::length("AES-128 block", block.len(), Self::Algorithm::BLOCK_SIZE)?;
         self.inner.encrypt_block(block)
     }
     
     fn decrypt_block(&self, block: &mut [u8]) -> Result<()> {
+        validate::length("AES-128 block", block.len(), Self::Algorithm::BLOCK_SIZE)?;
         self.inner.decrypt_block(block)
     }
     
@@ -234,16 +234,23 @@ impl CipherMode for CbcMode {
 
 /// Enhanced CBC mode implementation with type parameters
 pub struct TypedCbc<C: BlockCipher + CipherAlgorithm> {
-    inner: modes::Cbc<C>,
+    inner: modes::cbc::Cbc<C>,
     _phantom: core::marker::PhantomData<C>,
 }
 
 impl<C: BlockCipher + CipherAlgorithm> BlockCipherMode<C> for TypedCbc<C> {
     type Mode = CbcMode;
-    type Nonce = Nonce16;
+    type Nonce = Nonce<16>;
     
     fn new(cipher: C, nonce: &Self::Nonce) -> Result<Self> {
-        let inner = modes::Cbc::new(cipher, nonce)?;
+        // Validate that the nonce size matches the block size
+        validate::length(
+            "CBC initialization vector", 
+            nonce.as_ref().len(), 
+            C::BLOCK_SIZE
+        )?;
+        
+        let inner = modes::cbc::Cbc::new(cipher, nonce)?;
         Ok(Self {
             inner,
             _phantom: core::marker::PhantomData,
@@ -251,16 +258,34 @@ impl<C: BlockCipher + CipherAlgorithm> BlockCipherMode<C> for TypedCbc<C> {
     }
     
     fn encrypt(&self, plaintext: &[u8]) -> Result<Vec<u8>> {
+        // Validate that plaintext is a multiple of block size
+        if plaintext.len() % C::BLOCK_SIZE != 0 {
+            return Err(Error::Length {
+                context: "CBC plaintext",
+                expected: ((plaintext.len() / C::BLOCK_SIZE) + 1) * C::BLOCK_SIZE,
+                actual: plaintext.len(),
+            });
+        }
+        
         self.inner.encrypt(plaintext)
     }
     
     fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>> {
+        // Validate that ciphertext is a multiple of block size  
+        if ciphertext.len() % C::BLOCK_SIZE != 0 {
+            return Err(Error::Length {
+                context: "CBC ciphertext",
+                expected: ((ciphertext.len() / C::BLOCK_SIZE) + 1) * C::BLOCK_SIZE,
+                actual: ciphertext.len(),
+            });
+        }
+        
         self.inner.decrypt(ciphertext)
     }
     
     fn generate_nonce<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Nonce {
         let mut nonce = [0u8; 16];
         rng.fill_bytes(&mut nonce);
-        Nonce16::new(nonce)
+        Nonce::new(nonce)
     }
 }

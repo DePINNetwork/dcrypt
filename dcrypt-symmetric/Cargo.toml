@@ -29,6 +29,5 @@ rand = { workspace = true }
 hkdf = "0.12"  # Add this missing dependency
 byteorder = "1.4"  # Make sure this is included 
 subtle = "2.4"   # Make sure constant-time comparison is available
-thiserror = "1.0"
 
 [dev-dependencies]

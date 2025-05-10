@@ -10,23 +10,25 @@
 //! * Authentication is decided with a branch-free constant-time mask; the same
 //!   byte-wise loop executes whatever the tag's validity.
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::stream::chacha::chacha20::{ChaCha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE};
 use crate::mac::poly1305::{Poly1305, POLY1305_KEY_SIZE, POLY1305_TAG_SIZE};
 use crate::types::SecretBytes;
-use crate::types::Nonce; // Changed: Import generic Nonce type
-use crate::types::Tag; // Added: Import generic Tag type
-use crate::types::nonce::ChaCha20Compatible; // Added: Import the compatibility trait
+use crate::types::Nonce;
+use crate::types::Tag;
+use crate::types::nonce::ChaCha20Compatible;
 use dcrypt_core::types::Ciphertext;
 use dcrypt_core::traits::{AuthenticatedCipher, SymmetricCipher};
 use dcrypt_core::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
-use dcrypt_core::error::DcryptError;
+use dcrypt_core::error::Error as CoreError;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
 /// Size constants
 pub const CHACHA20POLY1305_KEY_SIZE: usize = CHACHA20_KEY_SIZE;
+/// Size of the nonce used by ChaCha20Poly1305 in bytes
 pub const CHACHA20POLY1305_NONCE_SIZE: usize = CHACHA20_NONCE_SIZE;
+/// Size of the authentication tag produced by ChaCha20Poly1305 in bytes
 pub const CHACHA20POLY1305_TAG_SIZE: usize = POLY1305_TAG_SIZE;
 
 /// ChaCha20-Poly1305 AEAD
@@ -39,14 +41,14 @@ pub struct ChaCha20Poly1305 {
 /// Operation for ChaCha20Poly1305 encryption operations
 pub struct ChaCha20Poly1305EncryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305,
-    nonce: Option<&'a Nonce<CHACHA20POLY1305_NONCE_SIZE>>, // Changed from Nonce12 to Nonce<CHACHA20POLY1305_NONCE_SIZE>
+    nonce: Option<&'a Nonce<CHACHA20POLY1305_NONCE_SIZE>>,
     aad: Option<&'a [u8]>,
 }
 
 /// Operation for ChaCha20Poly1305 decryption operations
 pub struct ChaCha20Poly1305DecryptOperation<'a> {
     cipher: &'a ChaCha20Poly1305,
-    nonce: Option<&'a Nonce<CHACHA20POLY1305_NONCE_SIZE>>, // Changed from Nonce12 to Nonce<CHACHA20POLY1305_NONCE_SIZE>
+    nonce: Option<&'a Nonce<CHACHA20POLY1305_NONCE_SIZE>>,
     aad: Option<&'a [u8]>,
 }
 
@@ -74,6 +76,18 @@ impl ChaCha20Poly1305 {
     /*                               ENCRYPT                                 */
     /* --------------------------------------------------------------------- */
 
+    /// Encrypt plaintext with a raw nonce array
+    ///
+    /// This method performs ChaCha20-Poly1305 encryption using a raw nonce array
+    /// instead of a type-safe Nonce object. It is primarily used internally.
+    ///
+    /// # Arguments
+    /// * `nonce` - A 12-byte array to use as the nonce
+    /// * `plaintext` - The data to encrypt
+    /// * `aad` - Optional associated data to authenticate but not encrypt
+    ///
+    /// # Returns
+    /// A vector containing the ciphertext followed by the 16-byte Poly1305 authentication tag
     pub fn encrypt_with_nonce(
         &self,
         nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE],
@@ -90,7 +104,7 @@ impl ChaCha20Poly1305 {
         
         // Create a Nonce object from the raw nonce bytes for ChaCha20
         let nonce_obj = Nonce::<CHACHA20_NONCE_SIZE>::from_slice(nonce)
-            .map_err(|_| Error::InvalidParameter("Failed to create nonce"))?;
+            .map_err(|_| Error::param("nonce", "Failed to create nonce from slice"))?;
         
         ChaCha20::with_counter(&self.key, &nonce_obj, 1).encrypt(&mut ct_buf);
 
@@ -104,19 +118,33 @@ impl ChaCha20Poly1305 {
     /*                               DECRYPT                                 */
     /* --------------------------------------------------------------------- */
 
+    /// Decrypt ciphertext with a raw nonce array
+    ///
+    /// This method performs ChaCha20-Poly1305 decryption using a raw nonce array
+    /// instead of a type-safe Nonce object. It is primarily used internally.
+    ///
+    /// # Arguments
+    /// * `nonce` - A 12-byte array to use as the nonce
+    /// * `ciphertext` - The ciphertext with appended authentication tag
+    /// * `aad` - Optional associated data that was authenticated
+    ///
+    /// # Returns
+    /// The decrypted plaintext if authentication succeeds
+    ///
+    /// # Errors
+    /// Returns an authentication error if the tag verification fails
     pub fn decrypt_with_nonce(
         &self,
         nonce: &[u8; CHACHA20POLY1305_NONCE_SIZE],
         ciphertext: &[u8],
         aad: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
-        if ciphertext.len() < POLY1305_TAG_SIZE {
-            return Err(Error::InvalidLength {
-                context: "ChaCha20Poly1305 ciphertext",
-                needed: POLY1305_TAG_SIZE,
-                got: ciphertext.len(),
-            });
-        }
+        // Length validation using utility
+        validate::min_length(
+            "ChaCha20Poly1305 ciphertext",
+            ciphertext.len(),
+            POLY1305_TAG_SIZE
+        )?;
         
         let ct_len = ciphertext.len() - POLY1305_TAG_SIZE;
         let (encrypted, tag) = ciphertext.split_at(ct_len);
@@ -132,7 +160,7 @@ impl ChaCha20Poly1305 {
         
         // Create a Nonce object from the raw nonce bytes for ChaCha20
         let nonce_obj = Nonce::<CHACHA20_NONCE_SIZE>::from_slice(nonce)
-            .map_err(|_| Error::InvalidParameter("Failed to create nonce"))?;
+            .map_err(|_| Error::param("nonce", "Failed to create nonce from slice"))?;
         
         ChaCha20::with_counter(&self.key, &nonce_obj, 1).decrypt(&mut m);
 
@@ -154,7 +182,7 @@ impl ChaCha20Poly1305 {
         if bool::from(tag_ok) {
             Ok(m)  // m lives on success
         } else {
-            Err(Error::AuthenticationFailed)  // drops m on failure
+            Err(Error::Authentication { algorithm: "ChaCha20Poly1305" })  // drops m on failure
         }
     }
 
@@ -169,7 +197,7 @@ impl ChaCha20Poly1305 {
         aad: Option<&[u8]>,
         ciphertext: &[u8],
     ) -> Result<Tag<POLY1305_TAG_SIZE>> {
-        let mut poly = Poly1305::new(poly_key);
+        let mut poly = Poly1305::new(poly_key)?;
         let aad_slice = aad.unwrap_or(&[]);
 
         const ZERO16: [u8; 16] = [0u8; 16];
@@ -233,7 +261,7 @@ impl AuthenticatedCipher for ChaCha20Poly1305 {
 // Implement SymmetricCipher trait
 impl SymmetricCipher for ChaCha20Poly1305 {
     type Key = SecretBytes<CHACHA20POLY1305_KEY_SIZE>;
-    type Nonce = Nonce<CHACHA20POLY1305_NONCE_SIZE>; // Changed from Nonce12 to Nonce<CHACHA20POLY1305_NONCE_SIZE>
+    type Nonce = Nonce<CHACHA20POLY1305_NONCE_SIZE>;
     type Ciphertext = Ciphertext;
     type EncryptOperation<'a> = ChaCha20Poly1305EncryptOperation<'a> where Self: 'a;
     type DecryptOperation<'a> = ChaCha20Poly1305DecryptOperation<'a> where Self: 'a;
@@ -258,21 +286,21 @@ impl SymmetricCipher for ChaCha20Poly1305 {
         }
     }
     
-    fn generate_key<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<Self::Key, DcryptError> {
+    fn generate_key<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<Self::Key, CoreError> {
         let mut key_data = [0u8; CHACHA20POLY1305_KEY_SIZE];
         rng.fill_bytes(&mut key_data);
         Ok(SecretBytes::new(key_data))
     }
     
-    fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<Self::Nonce, DcryptError> {
+    fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<Self::Nonce, CoreError> {
         let mut nonce_data = [0u8; CHACHA20POLY1305_NONCE_SIZE];
         rng.fill_bytes(&mut nonce_data);
-        Ok(Nonce::new(nonce_data)) // Changed: Using generic Nonce constructor instead of Nonce12
+        Ok(Nonce::new(nonce_data))
     }
     
-    fn derive_key_from_bytes(bytes: &[u8]) -> std::result::Result<Self::Key, DcryptError> {
+    fn derive_key_from_bytes(bytes: &[u8]) -> std::result::Result<Self::Key, CoreError> {
         if bytes.len() < CHACHA20POLY1305_KEY_SIZE {
-            return Err(DcryptError::InvalidLength {
+            return Err(CoreError::InvalidLength {
                 context: "ChaCha20Poly1305 key derivation",
                 expected: CHACHA20POLY1305_KEY_SIZE,
                 actual: bytes.len(),
@@ -287,8 +315,8 @@ impl SymmetricCipher for ChaCha20Poly1305 {
 
 // Implement Operation for ChaCha20Poly1305EncryptOperation
 impl<'a> Operation<Ciphertext> for ChaCha20Poly1305EncryptOperation<'a> {
-    fn execute(self) -> std::result::Result<Ciphertext, DcryptError> {
-        let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
+    fn execute(self) -> std::result::Result<Ciphertext, CoreError> {
+        let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
             context: "ChaCha20Poly1305 encryption",
             #[cfg(feature = "std")]
             message: "Nonce is required for ChaCha20Poly1305 encryption".to_string(),
@@ -303,7 +331,7 @@ impl<'a> Operation<Ciphertext> for ChaCha20Poly1305EncryptOperation<'a> {
             &nonce_array,
             plaintext,
             self.aad,
-        ).map_err(|e| DcryptError::from(e))?;
+        ).map_err(|e| CoreError::from(e))?;
         
         Ok(Ciphertext::new(&ciphertext))
     }
@@ -320,8 +348,8 @@ impl<'a> EncryptOperation<'a, ChaCha20Poly1305> for ChaCha20Poly1305EncryptOpera
         self
     }
     
-    fn encrypt(self, plaintext: &'a [u8]) -> std::result::Result<Ciphertext, DcryptError> {
-        let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
+    fn encrypt(self, plaintext: &'a [u8]) -> std::result::Result<Ciphertext, CoreError> {
+        let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
             context: "ChaCha20Poly1305 encryption",
             #[cfg(feature = "std")]
             message: "Nonce is required for ChaCha20Poly1305 encryption".to_string(),
@@ -334,7 +362,7 @@ impl<'a> EncryptOperation<'a, ChaCha20Poly1305> for ChaCha20Poly1305EncryptOpera
             &nonce_array,
             plaintext,
             self.aad,
-        ).map_err(|e| DcryptError::from(e))?;
+        ).map_err(|e| CoreError::from(e))?;
         
         Ok(Ciphertext::new(&ciphertext))
     }
@@ -342,8 +370,8 @@ impl<'a> EncryptOperation<'a, ChaCha20Poly1305> for ChaCha20Poly1305EncryptOpera
 
 // Implement Operation for ChaCha20Poly1305DecryptOperation
 impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305DecryptOperation<'a> {
-    fn execute(self) -> std::result::Result<Vec<u8>, DcryptError> {
-        Err(DcryptError::InvalidParameter {
+    fn execute(self) -> std::result::Result<Vec<u8>, CoreError> {
+        Err(CoreError::InvalidParameter {
             context: "ChaCha20Poly1305 decryption",
             #[cfg(feature = "std")]
             message: "Use decrypt method instead".to_string(),
@@ -362,8 +390,8 @@ impl<'a> DecryptOperation<'a, ChaCha20Poly1305> for ChaCha20Poly1305DecryptOpera
         self
     }
     
-    fn decrypt(self, ciphertext: &'a <ChaCha20Poly1305 as SymmetricCipher>::Ciphertext) -> std::result::Result<Vec<u8>, DcryptError> {
-        let nonce = self.nonce.ok_or_else(|| DcryptError::InvalidParameter {
+    fn decrypt(self, ciphertext: &'a <ChaCha20Poly1305 as SymmetricCipher>::Ciphertext) -> std::result::Result<Vec<u8>, CoreError> {
+        let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
             context: "ChaCha20Poly1305 decryption",
             #[cfg(feature = "std")]
             message: "Nonce is required for ChaCha20Poly1305 decryption".to_string(),
@@ -376,7 +404,7 @@ impl<'a> DecryptOperation<'a, ChaCha20Poly1305> for ChaCha20Poly1305DecryptOpera
             &nonce_array,
             ciphertext.as_ref(),
             self.aad,
-        ).map_err(|e| DcryptError::from(e))
+        ).map_err(|e| CoreError::from(e))
     }
 }
 

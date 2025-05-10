@@ -7,7 +7,7 @@ use core::fmt;
 use core::ops::{Deref, DerefMut};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use crate::traits::serialize::Serialize;
-use crate::error::{DcryptError, Result};
+use crate::error::{Error, Result};
 use crate::util::constant_time::ct_eq;
 
 /// A fixed-size array of bytes that is securely zeroed when dropped
@@ -31,7 +31,7 @@ impl<const N: usize> SecretBytes<N> {
     /// Create from a slice, if it has the correct length
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
         if slice.len() != N {
-            return Err(DcryptError::InvalidLength {
+            return Err(Error::InvalidLength {
                 context: "SecretBytes::from_slice",
                 expected: N,
                 actual: slice.len(),

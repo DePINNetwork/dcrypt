@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 use zeroize::Zeroize;
 
 use super::ExtendableOutputFunction;
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 
 // SHAKE constants
 const KECCAK_ROUNDS: usize = 24;
@@ -152,14 +152,10 @@ impl ExtendableOutputFunction for ShakeXof128 {
 
     fn update(&mut self, data: &[u8]) -> Result<()> {
         if self.is_finalized {
-            return Err(Error::InvalidParameter(
-                "Cannot update after finalization",
-            ));
+            return Err(Error::xof_finalized());
         }
         if self.squeezing {
-            return Err(Error::InvalidParameter(
-                "Cannot update after squeezing has begun",
-            ));
+            return Err(Error::xof_squeezing());
         }
 
         let mut idx = 0;
@@ -215,6 +211,12 @@ impl ExtendableOutputFunction for ShakeXof128 {
     }
 
     fn squeeze(&mut self, output: &mut [u8]) -> Result<()> {
+        validate::parameter(
+            output.len() > 0,
+            "output_length",
+            "Output buffer must not be empty"
+        )?;
+        
         if !self.is_finalized {
             self.finalize()?;
         }
@@ -251,6 +253,12 @@ impl ExtendableOutputFunction for ShakeXof128 {
     }
 
     fn squeeze_into_vec(&mut self, len: usize) -> Result<Vec<u8>> {
+        validate::parameter(
+            len > 0,
+            "output_length",
+            "Output length must be greater than 0"
+        )?;
+        
         let mut v = vec![0u8; len];
         self.squeeze(&mut v)?;
         Ok(v)
@@ -285,14 +293,10 @@ impl ExtendableOutputFunction for ShakeXof256 {
 
     fn update(&mut self, data: &[u8]) -> Result<()> {
         if self.is_finalized {
-            return Err(Error::InvalidParameter(
-                "Cannot update after finalization",
-            ));
+            return Err(Error::xof_finalized());
         }
         if self.squeezing {
-            return Err(Error::InvalidParameter(
-                "Cannot update after squeezing has begun",
-            ));
+            return Err(Error::xof_squeezing());
         }
 
         let mut idx = 0;
@@ -348,6 +352,12 @@ impl ExtendableOutputFunction for ShakeXof256 {
     }
 
     fn squeeze(&mut self, output: &mut [u8]) -> Result<()> {
+        validate::parameter(
+            output.len() > 0,
+            "output_length",
+            "Output buffer must not be empty"
+        )?;
+        
         if !self.is_finalized {
             self.finalize()?;
         }
@@ -384,6 +394,12 @@ impl ExtendableOutputFunction for ShakeXof256 {
     }
 
     fn squeeze_into_vec(&mut self, len: usize) -> Result<Vec<u8>> {
+        validate::parameter(
+            len > 0,
+            "output_length",
+            "Output length must be greater than 0"
+        )?;
+        
         let mut v = vec![0u8; len];
         self.squeeze(&mut v)?;
         Ok(v)

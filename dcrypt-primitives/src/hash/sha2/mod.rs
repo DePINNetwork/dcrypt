@@ -6,7 +6,7 @@
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::hash::{Hash, HashFunction, HashAlgorithm};
 use crate::types::Digest;
 use byteorder::{BigEndian, ByteOrder};
@@ -62,7 +62,7 @@ const K512: [u64; 80] = [
 ];
 
 // Define algorithm marker types for each hash function
-// SHA-256 algorithm marker type
+/// Marker type for SHA-256 algorithm
 pub enum Sha256Algorithm {}
 
 impl HashAlgorithm for Sha256Algorithm {
@@ -71,7 +71,7 @@ impl HashAlgorithm for Sha256Algorithm {
     const ALGORITHM_ID: &'static str = "SHA-256";
 }
 
-// SHA-224 algorithm marker type
+/// Marker type for SHA-224 algorithm
 pub enum Sha224Algorithm {}
 
 impl HashAlgorithm for Sha224Algorithm {
@@ -80,7 +80,7 @@ impl HashAlgorithm for Sha224Algorithm {
     const ALGORITHM_ID: &'static str = "SHA-224";
 }
 
-// SHA-384 algorithm marker type
+/// Marker type for SHA-384 algorithm
 pub enum Sha384Algorithm {}
 
 impl HashAlgorithm for Sha384Algorithm {
@@ -89,7 +89,7 @@ impl HashAlgorithm for Sha384Algorithm {
     const ALGORITHM_ID: &'static str = "SHA-384";
 }
 
-// SHA-512 algorithm marker type
+/// Marker type for SHA-512 algorithm
 pub enum Sha512Algorithm {}
 
 impl HashAlgorithm for Sha512Algorithm {
@@ -98,7 +98,10 @@ impl HashAlgorithm for Sha512Algorithm {
     const ALGORITHM_ID: &'static str = "SHA-512";
 }
 
-// SHA-224 state
+/// SHA-224 hash function state
+///
+/// This implements SHA-224 as specified in FIPS PUB 180-4.
+/// SHA-224 is a truncated version of SHA-256 with different initialization values.
 #[derive(Clone, Zeroize)]
 pub struct Sha224 {
     state: [u32; 8],
@@ -107,7 +110,10 @@ pub struct Sha224 {
     total_bytes: u64,
 }
 
-// SHA-256 state
+/// SHA-256 hash function state
+///
+/// This implements SHA-256 as specified in FIPS PUB 180-4.
+/// SHA-256 produces a 256-bit (32-byte) digest.
 #[derive(Clone, Zeroize)]
 pub struct Sha256 {
     state: [u32; 8],
@@ -116,7 +122,10 @@ pub struct Sha256 {
     total_bytes: u64,
 }
 
-// SHA-384 state
+/// SHA-384 hash function state
+///
+/// This implements SHA-384 as specified in FIPS PUB 180-4.
+/// SHA-384 is a truncated version of SHA-512 with different initialization values.
 #[derive(Clone, Zeroize)]
 pub struct Sha384 {
     state: [u64; 8],
@@ -125,7 +134,10 @@ pub struct Sha384 {
     total_bytes: u128,  // bits counter
 }
 
-// SHA-512 state
+/// SHA-512 hash function state
+///
+/// This implements SHA-512 as specified in FIPS PUB 180-4.
+/// SHA-512 produces a 512-bit (64-byte) digest.
 #[derive(Clone, Zeroize)]
 pub struct Sha512 {
     state: [u64; 8],
@@ -161,13 +173,22 @@ impl Sha256 {
     fn compress(state: &mut [u32; 8], block: &[u8; SHA256_BLOCK_SIZE]) -> Result<()> {
         let mut w = [0u32; 64];
         for i in 0..16 {
-            w[i] = BigEndian::read_u32(&block[i*4..]);
+            let start = i * 4;
+            // Validate that we don't read out of bounds
+            validate::max_length(
+                "SHA-256 block read",
+                start + 4,
+                SHA256_BLOCK_SIZE
+            )?;
+            w[i] = BigEndian::read_u32(&block[start..]);
         }
+        
         for i in 16..64 {
             let s0 = w[i-15].rotate_right(7) ^ w[i-15].rotate_right(18) ^ (w[i-15] >> 3);
             let s1 = w[i-2].rotate_right(17) ^ w[i-2].rotate_right(19) ^ (w[i-2] >> 10);
             w[i] = w[i-16].wrapping_add(s0).wrapping_add(w[i-7]).wrapping_add(s1);
         }
+        
         let mut a = state[0];
         let mut b = state[1];
         let mut c = state[2];
@@ -176,6 +197,7 @@ impl Sha256 {
         let mut f = state[5];
         let mut g = state[6];
         let mut h = state[7];
+        
         for i in 0..64 {
             let S1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e & f) ^ ((!e) & g);
@@ -196,6 +218,7 @@ impl Sha256 {
             b = a;
             a = temp1.wrapping_add(temp2);
         }
+        
         state[0] = state[0].wrapping_add(a);
         state[1] = state[1].wrapping_add(b);
         state[2] = state[2].wrapping_add(c);
@@ -228,6 +251,7 @@ impl Sha256 {
     fn finalize_internal(&mut self) -> Result<Hash> {
         self.total_bytes += self.buffer_idx as u64;
         let bit_len = self.total_bytes * 8;
+        
         // padding
         self.buffer[self.buffer_idx] = 0x80;
         if self.buffer_idx >= 56 {
@@ -239,6 +263,7 @@ impl Sha256 {
         } else {
             for b in &mut self.buffer[self.buffer_idx+1..56] { *b = 0; }
         }
+        
         BigEndian::write_u64(&mut self.buffer[56..], bit_len);
         let mut block = [0u8; SHA256_BLOCK_SIZE];
         block.copy_from_slice(&self.buffer);
@@ -295,13 +320,22 @@ impl Sha512 {
     fn compress(state: &mut [u64; 8], block: &[u8; SHA512_BLOCK_SIZE]) -> Result<()> {
         let mut w = [0u64; 80];
         for i in 0..16 {
-            w[i] = BigEndian::read_u64(&block[i*8..]);
+            let start = i * 8;
+            // Validate that we don't read out of bounds
+            validate::max_length(
+                "SHA-512 block read",
+                start + 8,
+                SHA512_BLOCK_SIZE
+            )?;
+            w[i] = BigEndian::read_u64(&block[start..]);
         }
+        
         for i in 16..80 {
             let s0 = w[i-15].rotate_right(1) ^ w[i-15].rotate_right(8) ^ (w[i-15] >> 7);
             let s1 = w[i-2].rotate_right(19) ^ w[i-2].rotate_right(61) ^ (w[i-2] >> 6);
             w[i] = w[i-16].wrapping_add(s0).wrapping_add(w[i-7]).wrapping_add(s1);
         }
+        
         let mut a = state[0];
         let mut b = state[1];
         let mut c = state[2];
@@ -310,6 +344,7 @@ impl Sha512 {
         let mut f = state[5];
         let mut g = state[6];
         let mut h = state[7];
+        
         for i in 0..80 {
             let S1 = e.rotate_right(14) ^ e.rotate_right(18) ^ e.rotate_right(41);
             let ch = (e & f) ^ ((!e) & g);
@@ -330,6 +365,7 @@ impl Sha512 {
             b = a;
             a = temp1.wrapping_add(temp2);
         }
+        
         state[0] = state[0].wrapping_add(a);
         state[1] = state[1].wrapping_add(b);
         state[2] = state[2].wrapping_add(c);
@@ -362,6 +398,7 @@ impl Sha512 {
     fn finalize_internal_u128(&mut self) -> Result<Hash> {
         self.total_bytes = self.total_bytes.wrapping_add(self.buffer_idx as u128);
         let bit_len = self.total_bytes.wrapping_mul(8);
+        
         self.buffer[self.buffer_idx] = 0x80;
         if self.buffer_idx >= SHA512_BLOCK_SIZE - 16 {
             for b in &mut self.buffer[self.buffer_idx+1..] { *b = 0; }
@@ -372,6 +409,7 @@ impl Sha512 {
         } else {
             for b in &mut self.buffer[self.buffer_idx+1..SHA512_BLOCK_SIZE-16] { *b = 0; }
         }
+        
         BigEndian::write_u64(&mut self.buffer[SHA512_BLOCK_SIZE-16..SHA512_BLOCK_SIZE-8], 0);
         BigEndian::write_u64(&mut self.buffer[SHA512_BLOCK_SIZE-8..], bit_len as u64);
         let mut block = [0u8; SHA512_BLOCK_SIZE];

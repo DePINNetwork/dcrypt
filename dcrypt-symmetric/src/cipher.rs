@@ -1,8 +1,11 @@
-// FILE: dcrypt-symmetric/src/cipher.rs
-// Update the SymmetricCipher trait to return Result from new()
+//! Symmetric cipher traits for dcrypt-symmetric
+//!
+//! This module defines the core traits used by all symmetric
+//! encryption algorithms in the library.
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
+
 use crate::error::Result;
 
 /// Common trait for all symmetric encryption algorithms

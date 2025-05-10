@@ -1,6 +1,6 @@
 //! Streaming ChaCha20Poly1305 implementations
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::streaming::{StreamingEncrypt, StreamingDecrypt};
 use crate::aead::chacha20poly1305::{
     ChaCha20Poly1305Key, 
@@ -100,9 +100,11 @@ impl<W: Write> ChaCha20Poly1305EncryptStream<W> {
 impl<W: Write> StreamingEncrypt<W> for ChaCha20Poly1305EncryptStream<W> {
     /// Writes plaintext data to the stream
     fn write(&mut self, data: &[u8]) -> Result<()> {
-        if self.finalized {
-            return Err(Error::StreamAlreadyFinalized);
-        }
+        validate::stream(
+            !self.finalized,
+            "write",
+            "stream already finalized"
+        )?;
         
         // Add data to internal buffer
         self.buffer.extend_from_slice(data);
@@ -117,9 +119,11 @@ impl<W: Write> StreamingEncrypt<W> for ChaCha20Poly1305EncryptStream<W> {
     
     /// Finalizes the stream, encrypting any remaining data
     fn finalize(mut self) -> Result<W> {
-        if self.finalized {
-            return Err(Error::StreamAlreadyFinalized);
-        }
+        validate::stream(
+            !self.finalized,
+            "finalize",
+            "stream already finalized"
+        )?;
         
         // Flush any remaining data
         self.flush_buffer()?;

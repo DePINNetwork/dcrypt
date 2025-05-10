@@ -7,7 +7,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::hash::HashFunction;
 use crate::mac::hmac::Hmac;
 use crate::kdf::{KeyDerivationFunction, ParamProvider, PasswordHashFunction};
@@ -146,7 +146,11 @@ where Salt<S>: Pbkdf2Compatible {
     }
     
     fn derive(self) -> Result<Vec<u8>> {
-        let ikm = self.ikm.ok_or_else(|| Error::InvalidParameter("Input keying material is required"))?;
+        let ikm = self.ikm.ok_or_else(|| Error::param(
+            "input_keying_material",
+            "Input keying material is required"
+        ))?;
+        
         let salt = match self.salt {
             Some(s) => s.as_ref(),
             None => self.kdf.params.salt.as_ref(),
@@ -159,13 +163,7 @@ where Salt<S>: Pbkdf2Compatible {
     
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
         // Ensure the requested size matches
-        if self.length != N {
-            return Err(Error::InvalidLength {
-                context: "PBKDF2 output",
-                needed: N,
-                got: self.length,
-            });
-        }
+        validate::length("PBKDF2 output", self.length, N)?;
         
         let vec = self.derive()?;
         
@@ -196,12 +194,18 @@ impl<H: HashFunction + Clone, const S: usize> Pbkdf2<H, S> {
         key_length: usize,
     ) -> Result<Zeroizing<Vec<u8>>> {
         // Strict parameter validation
-        if iterations == 0 {
-            return Err(Error::InvalidParameter("PBKDF2 iteration count must be > 0"));
-        }
-        if key_length == 0 {
-            return Err(Error::InvalidParameter("PBKDF2 output length must be > 0"));
-        }        
+        validate::parameter(
+            iterations > 0,
+            "iterations",
+            "PBKDF2 iteration count must be > 0"
+        )?;
+        
+        validate::parameter(
+            key_length > 0,
+            "key_length",
+            "PBKDF2 output length must be > 0"
+        )?;
+        
         let hash_len = H::output_size();
 
         // Calculate how many blocks we need to generate
@@ -210,10 +214,10 @@ impl<H: HashFunction + Clone, const S: usize> Pbkdf2<H, S> {
         // Check that the output length is not too large
         // RFC 8018 section 5.2 states that the maximum output length is (2^32 - 1) * hash_len
         if block_count > 0xFFFFFFFF {
-            return Err(Error::InvalidLength {
+            return Err(Error::Length {
                 context: "PBKDF2 output length",
-                needed: key_length,
-                got: 0xFFFFFFFF * hash_len,
+                expected: 0xFFFFFFFF * hash_len,
+                actual: key_length,
             });
         }
         
@@ -373,15 +377,22 @@ where Salt<S>: Pbkdf2Compatible {
     fn verify(&self, password: &Self::Password, hash: &PasswordHash) -> Result<bool> {
         // Verify the algorithm
         let expected_alg = format!("pbkdf2-{}", H::name().to_lowercase());
-        if hash.algorithm != expected_alg {
-            return Err(Error::InvalidParameter("Algorithm mismatch"));
-        }
+        validate::parameter(
+            hash.algorithm == expected_alg,
+            "algorithm",
+            "Algorithm mismatch"
+        )?;
         
         // Get iterations from the hash parameters
         let iterations = match hash.param("i") {
-            Some(i) => i.parse::<u32>().map_err(|_| 
-                Error::InvalidParameter("Invalid iterations parameter"))?,
-            None => return Err(Error::InvalidParameter("Missing iterations parameter")),
+            Some(i) => i.parse::<u32>().map_err(|_| Error::param(
+                "iterations",
+                "Invalid iterations parameter"
+            ))?,
+            None => return Err(Error::param(
+                "iterations",
+                "Missing iterations parameter"
+            )),
         };
         
         // Derive key with the same parameters

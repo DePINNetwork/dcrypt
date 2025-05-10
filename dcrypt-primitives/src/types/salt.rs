@@ -8,7 +8,7 @@ use core::fmt;
 use core::ops::{Deref, DerefMut};
 use zeroize::Zeroize;
 
-use dcrypt_core::error::{DcryptError, Result};
+use crate::error::{Error, Result, validate};
 use crate::types::{ConstantTimeEq, RandomGeneration, SecureZeroingType, ByteSerializable, FixedSize};
 use crate::types::sealed::Sealed;
 
@@ -29,13 +29,7 @@ impl<const N: usize> Salt<N> {
     
     /// Create from a slice, if it has the correct length
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
-        if slice.len() != N {
-            return Err(DcryptError::InvalidLength {
-                context: "Salt::from_slice",
-                expected: N,
-                actual: slice.len(),
-            });
-        }
+        validate::length("Salt::from_slice", slice.len(), N)?;
         
         let mut data = [0u8; N];
         data.copy_from_slice(slice);
@@ -57,14 +51,7 @@ impl<const N: usize> Salt<N> {
     
     /// Generate a random salt with a specific size
     pub fn random_with_size<R: RngCore + CryptoRng>(rng: &mut R, size: usize) -> Result<Self> {
-        if size != N {
-            return Err(DcryptError::InvalidLength {
-                context: "Salt::random_with_size",
-                expected: N,
-                actual: size,
-            });
-        }
-        
+        validate::length("Salt::random_with_size", size, N)?;
         Ok(Self::random(rng))
     }
     
@@ -170,7 +157,10 @@ impl<const N: usize> ByteSerializable for Salt<N> {
 pub const RECOMMENDED_MIN_SIZE: usize = 16;
 
 // Common salt size type aliases
+/// A 16-byte (128-bit) salt, suitable for most cryptographic applications.
 pub type Salt16 = Salt<16>;
+
+/// A 32-byte (256-bit) salt, providing extra security margin for high-security applications.
 pub type Salt32 = Salt<32>;
 
 // Algorithm compatibility marker traits

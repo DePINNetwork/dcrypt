@@ -1,115 +1,104 @@
-//! Cryptographic primitives for the DCRYPT library
+//! Cryptographic primitives library with constant-time implementation
 //!
-//! This crate provides essential cryptographic primitives with strong type safety
-//! guarantees through domain-specific types and operation patterns.
+//! This crate provides implementations of various cryptographic primitives
+//! with a focus on constant-time operations and resistance to side-channel attacks.
+//! The library is designed to be usable in both `std` and `no_std` environments.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![forbid(unsafe_code)]
+#![deny(missing_docs)]
 
-// Conditional imports based on features
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
-// Core modules
+// Error module and re-exports
 pub mod error;
-pub mod types;
+pub use error::{
+    Error, Result,
+    ResultExt, SecureErrorHandling,
+    validate,
+};
 
-// Operation pattern core traits
-pub mod operation;
-
-// Cryptographic primitive modules
-#[cfg(any(feature = "block", feature = "std"))]
+// Block cipher implementations
 pub mod block;
+pub use block::{Aes128, Aes192, Aes256, Cbc, Ctr};
 
-#[cfg(any(feature = "hash", feature = "std"))]
+// Hash function implementations
 pub mod hash;
-
-#[cfg(any(feature = "mac", feature = "std"))]
-pub mod mac;
-
-#[cfg(any(feature = "stream", feature = "std"))]
-pub mod stream;
-
-#[cfg(any(feature = "aead", feature = "std"))]
-pub mod aead;
-
-#[cfg(any(feature = "xof", feature = "std"))]
-pub mod xof;
-
-#[cfg(any(feature = "kdf", feature = "std"))]
-pub mod kdf;
-
-// Re-export error types
-pub use error::{Error, Result};
-
-// Re-export common types for convenience
-pub use types::{
-    Nonce, Salt, Digest, Tag, 
-    ValidKeySize, ValidSecretKeySize, ValidPublicKeySize,
-    SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey,
-};
-// Add specific imports from submodules
-pub use types::nonce::{ChaCha20Compatible, XChaCha20Compatible, AesGcmCompatible, AesCtrCompatible};
-pub use types::tag::{Poly1305Compatible, HmacCompatible, GcmCompatible, ChaCha20Poly1305Compatible};
-pub use types::salt::{Pbkdf2Compatible, Argon2Compatible, HkdfCompatible};
-
-// Re-export key types from dcrypt-core
-pub use dcrypt_core::types::Key;
-
-// Re-export algorithm types
-pub use types::algorithms::*;
-
-// Type aliases for common sizes
-pub type Nonce12 = Nonce<12>;
-pub type Nonce16 = Nonce<16>;
-pub type Nonce24 = Nonce<24>;
-pub type Salt16 = Salt<16>;
-pub type Salt32 = Salt<32>;
-pub type Digest32 = Digest<32>;
-pub type Digest64 = Digest<64>;
-pub type Tag16 = Tag<16>;
-pub type Tag32 = Tag<32>;
-pub type Tag64 = Tag<64>;
-
-// Additional algorithm-specific type aliases for key types
-pub type Aes128Key = SymmetricKey<Aes128, 16>;
-pub type Aes256Key = SymmetricKey<Aes256, 32>;
-pub type ChaCha20Key = SymmetricKey<ChaCha20, 32>;
-pub type ChaCha20Poly1305Key = SymmetricKey<ChaCha20Poly1305, 32>;
-
-// Asymmetric key type aliases
-pub type Ed25519SecretKey = AsymmetricSecretKey<Ed25519, 32>;
-pub type Ed25519PublicKey = AsymmetricPublicKey<Ed25519, 32>;
-pub type X25519SecretKey = AsymmetricSecretKey<X25519, 32>;
-pub type X25519PublicKey = AsymmetricPublicKey<X25519, 32>;
-
-// Re-export operation traits for ergonomic usage
-pub use operation::{
-    Operation, WithData, WithNonce, WithAssociatedData, WithOutputLength,
-    aead::{AeadEncryptOperation, AeadDecryptOperation},
-    kdf::KdfOperation
-};
-
-// Re-export algorithm implementations
-#[cfg(feature = "aead")]
-pub use aead::{
-    chacha20poly1305::ChaCha20Poly1305,
-    xchacha20poly1305::XChaCha20Poly1305,
-    gcm::Gcm,
-};
-
-#[cfg(feature = "hash")]
 pub use hash::{
-    sha2::{Sha256, Sha384, Sha512},
-    sha3::{Sha3_256, Sha3_384, Sha3_512},
-    blake2::{Blake2b, Blake2s},
+    Sha1, Sha224, Sha256, Sha384, Sha512,
+    Sha3_224, Sha3_256, Sha3_384, Sha3_512,
+    Shake128, Shake256, Blake2b, Blake2s,
 };
 
-#[cfg(feature = "kdf")]
+// AEAD cipher implementations
+#[cfg(feature = "alloc")]
+pub mod aead;
+#[cfg(feature = "alloc")]
+pub use aead::{
+    ChaCha20Poly1305, XChaCha20Poly1305, Gcm,
+    ChaCha20Poly1305Cipher, AeadCipher,
+};
+
+// MAC implementations
+pub mod mac;
+pub use mac::{Hmac, Poly1305};
+
+// Stream cipher implementations
+pub mod stream;
+pub use stream::chacha::chacha20::ChaCha20;
+
+// KDF implementations
+#[cfg(feature = "alloc")]
+pub mod kdf;
+#[cfg(feature = "alloc")]
 pub use kdf::{
-    hkdf::Hkdf,
-    pbkdf2::{Pbkdf2, Pbkdf2Params},
-    argon2::{Argon2, Params as Argon2Params},
+    Pbkdf2, Hkdf, Argon2,
+    KeyDerivationFunction, PasswordHashFunction
 };
 
-// Version information
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+// Type system
+pub mod types;
+pub use types::{
+    Nonce, Salt, Tag, Digest, SecretBytes,
+    ByteSerializable, FixedSize, ConstantTimeEq,
+    RandomGeneration, SecureZeroingType,
+};
+
+// Algorithm types and compatibility traits
+pub use types::{
+    // Algorithm marker types
+    algorithms::{
+        Aes128 as Aes128Algorithm,
+        Aes256 as Aes256Algorithm,
+        ChaCha20 as ChaCha20Algorithm,
+        ChaCha20Poly1305 as ChaCha20Poly1305Algorithm,
+        Ed25519 as Ed25519Algorithm,
+        X25519 as X25519Algorithm,
+    },
+    
+    // Key types
+    key::{SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey},
+    
+    // Compatibility traits for specific algorithms
+    nonce::{
+        ChaCha20Compatible, XChaCha20Compatible,
+        AesGcmCompatible, AesCtrCompatible,
+    },
+    salt::{
+        HkdfCompatible, Pbkdf2Compatible, Argon2Compatible,
+    },
+    digest::{
+        Sha256Compatible, Sha512Compatible, Blake2bCompatible,
+    },
+    tag::{
+        Poly1305Compatible, HmacCompatible, GcmCompatible,
+        ChaCha20Poly1305Compatible,
+    },
+};
+
+// XOF implementations (if enabled)
+#[cfg(feature = "xof")]
+pub mod xof;
+#[cfg(feature = "xof")]
+pub use xof::{ExtendableOutputFunction, ShakeXof128, ShakeXof256, Blake3Xof};

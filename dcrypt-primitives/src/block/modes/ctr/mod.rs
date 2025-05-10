@@ -12,7 +12,7 @@ use byteorder::{ByteOrder, BigEndian};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use super::super::BlockCipher;
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::types::Nonce;
 use crate::types::nonce::AesCtrCompatible;
 
@@ -87,18 +87,22 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
         let block_size = B::block_size();
         
         // Validate counter size (1-8 bytes for u64 counter)
-        if counter_size == 0 || counter_size > 8 {
-            return Err(Error::InvalidParameter("Counter size must be between 1 and 8 bytes"));
-        }
+        validate::parameter(
+            counter_size > 0 && counter_size <= 8,
+            "counter_size",
+            "Counter size must be between 1 and 8 bytes"
+        )?;
         
         // Determine the counter position
         let position = match counter_pos {
             CounterPosition::Prefix => 0,
             CounterPosition::Postfix => block_size - counter_size,
             CounterPosition::Custom(offset) => {
-                if offset + counter_size > block_size {
-                    return Err(Error::InvalidParameter("Counter with specified size doesn't fit at offset in block"));
-                }
+                validate::parameter(
+                    offset + counter_size <= block_size,
+                    "counter_position",
+                    "Counter with specified size doesn't fit at offset in block"
+                )?;
                 offset
             }
         };

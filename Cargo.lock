@@ -182,7 +182,6 @@ dependencies = [
  "serde",
  "sha2",
  "subtle",
- "thiserror",
  "zeroize",
 ]
 

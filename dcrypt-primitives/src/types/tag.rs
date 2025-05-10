@@ -8,7 +8,7 @@ use core::ops::{Deref, DerefMut};
 use rand::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
-use dcrypt_core::error::{DcryptError, Result};
+use crate::error::{Error, Result, validate};
 use crate::types::{ConstantTimeEq, RandomGeneration, SecureZeroingType, FixedSize, ByteSerializable};
 use crate::types::sealed::Sealed;
 
@@ -29,13 +29,7 @@ impl<const N: usize> Tag<N> {
     
     /// Create from a slice, if it has the correct length
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
-        if slice.len() != N {
-            return Err(DcryptError::InvalidLength {
-                context: "Tag::from_slice",
-                expected: N,
-                actual: slice.len(),
-            });
-        }
+        validate::length("Tag::from_slice", slice.len(), N)?;
         
         let mut data = [0u8; N];
         data.copy_from_slice(slice);

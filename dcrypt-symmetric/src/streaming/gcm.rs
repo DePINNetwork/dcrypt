@@ -1,6 +1,6 @@
 //! Streaming AES-GCM implementations
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 use crate::aead::gcm::{
     Aes128Gcm, Aes256Gcm, GcmNonce, AesCiphertextPackage
 };
@@ -96,9 +96,11 @@ impl<W: Write> Aes128GcmEncryptStream<W> {
 impl<W: Write> StreamingEncrypt<W> for Aes128GcmEncryptStream<W> {
     /// Writes plaintext data to the stream
     fn write(&mut self, data: &[u8]) -> Result<()> {
-        if self.finalized {
-            return Err(Error::StreamAlreadyFinalized);
-        }
+        validate::stream(
+            !self.finalized,
+            "write",
+            "stream already finalized"
+        )?;
         
         // Add data to internal buffer
         self.buffer.extend_from_slice(data);
@@ -113,9 +115,11 @@ impl<W: Write> StreamingEncrypt<W> for Aes128GcmEncryptStream<W> {
     
     /// Finalizes the stream, encrypting any remaining data
     fn finalize(mut self) -> Result<W> {
-        if self.finalized {
-            return Err(Error::StreamAlreadyFinalized);
-        }
+        validate::stream(
+            !self.finalized,
+            "finalize",
+            "stream already finalized"
+        )?;
         
         // Flush any remaining data
         self.flush_buffer()?;
@@ -303,9 +307,11 @@ impl<W: Write> Aes256GcmEncryptStream<W> {
 impl<W: Write> StreamingEncrypt<W> for Aes256GcmEncryptStream<W> {
     /// Writes plaintext data to the stream
     fn write(&mut self, data: &[u8]) -> Result<()> {
-        if self.finalized {
-            return Err(Error::StreamAlreadyFinalized);
-        }
+        validate::stream(
+            !self.finalized,
+            "write",
+            "stream already finalized"
+        )?;
         
         // Add data to internal buffer
         self.buffer.extend_from_slice(data);
@@ -320,9 +326,11 @@ impl<W: Write> StreamingEncrypt<W> for Aes256GcmEncryptStream<W> {
     
     /// Finalizes the stream, encrypting any remaining data
     fn finalize(mut self) -> Result<W> {
-        if self.finalized {
-            return Err(Error::StreamAlreadyFinalized);
-        }
+        validate::stream(
+            !self.finalized,
+            "finalize",
+            "stream already finalized"
+        )?;
         
         // Flush any remaining data
         self.flush_buffer()?;

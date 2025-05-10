@@ -95,13 +95,27 @@ impl AsymmetricAlgorithm for X25519 {
 use crate::types::key::{SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey};
 
 // Type aliases with explicit size parameters
+/// AES-128 symmetric key (128-bit/16-byte key size).
 pub type Aes128Key = SymmetricKey<Aes128, 16>;
+
+/// AES-256 symmetric key (256-bit/32-byte key size).
 pub type Aes256Key = SymmetricKey<Aes256, 32>;
+
+/// ChaCha20 symmetric key (256-bit/32-byte key size).
 pub type ChaCha20Key = SymmetricKey<ChaCha20, 32>;
+
+/// ChaCha20-Poly1305 AEAD symmetric key (256-bit/32-byte key size).
 pub type ChaCha20Poly1305Key = SymmetricKey<ChaCha20Poly1305, 32>;
 
 // Asymmetric key aliases
+/// Ed25519 secret key for digital signatures (256-bit/32-byte key size).
 pub type Ed25519SecretKey = AsymmetricSecretKey<Ed25519, 32>;
+
+/// Ed25519 public key for digital signatures (256-bit/32-byte key size).
 pub type Ed25519PublicKey = AsymmetricPublicKey<Ed25519, 32>;
+
+/// X25519 secret key for key exchange (256-bit/32-byte key size).
 pub type X25519SecretKey = AsymmetricSecretKey<X25519, 32>;
+
+/// X25519 public key for key exchange (256-bit/32-byte key size).
 pub type X25519PublicKey = AsymmetricPublicKey<X25519, 32>;

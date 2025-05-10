@@ -17,6 +17,12 @@ mod ntru_common;
 mod mceliece_common;
 
 // Public re-exports
-pub use error::{DcryptError, Result};
+pub use error::{Error, Result};
 pub use traits::*;
 pub use types::*;
+
+// Re-export error validation utilities for ease of use
+pub use error::validate;
+
+// Re-export error handling traits
+pub use error::traits::{ResultExt, SecureErrorHandling, ConstantTimeResult};

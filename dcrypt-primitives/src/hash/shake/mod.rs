@@ -9,7 +9,7 @@
 use alloc::vec::Vec;
 use zeroize::Zeroize;
 
-use crate::error::Result;
+use crate::error::{Error, Result, validate};
 use crate::hash::{HashFunction, HashAlgorithm};
 use crate::types::Digest;
 
@@ -18,8 +18,10 @@ use dcrypt_constants::utils::hash::{
     SHA3_256_BLOCK_SIZE, SHA3_512_BLOCK_SIZE
 };
 
-// SHAKE constants for fixed output sizes
+/// Default output size for SHAKE128 (256 bits / 32 bytes)
 pub const SHAKE128_OUTPUT_SIZE: usize = 32;  // 256 bits
+
+/// Default output size for SHAKE256 (512 bits / 64 bytes)
 pub const SHAKE256_OUTPUT_SIZE: usize = 64;  // 512 bits
 
 // SHAKE rates (in bytes): r = 1600 - 2*security_level
@@ -52,8 +54,10 @@ const PI: [usize; 24] = [
     15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1,
 ];
 
-// Define algorithm marker types for SHAKE variants
+/// Marker type for SHAKE128 algorithm
 pub enum Shake128Algorithm {}
+
+/// Marker type for SHAKE256 algorithm
 pub enum Shake256Algorithm {}
 
 // Implement HashAlgorithm for each marker type

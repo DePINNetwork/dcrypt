@@ -56,7 +56,7 @@ pub use self::chacha20poly1305::ChaCha20Poly1305;
 #[cfg(feature = "alloc")]
 pub use self::xchacha20poly1305::XChaCha20Poly1305;
 
-use crate::error::{Error, Result};
+use crate::error::{Error, Result, validate};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 use zeroize::Zeroize;
@@ -224,7 +224,7 @@ pub struct ChaCha20Poly1305EncryptOperation<'a> {
 #[cfg(feature = "alloc")]
 impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305EncryptOperation<'a> {
     fn execute(self) -> Result<Vec<u8>> {
-        Err(Error::InvalidParameter("Use encrypt method instead"))
+        Err(Error::param("operation", "use encrypt method instead"))
     }
     
     fn reset(&mut self) {
@@ -248,11 +248,13 @@ impl<'a> AeadEncryptOperation<'a, ChaCha20Poly1305Algorithm>
     }
     
     fn encrypt(self, plaintext: &'a [u8]) -> Result<Vec<u8>> {
-        let nonce = self.nonce.ok_or_else(|| Error::InvalidParameter("Nonce is required"))?;
+        let nonce = self.nonce.ok_or_else(|| Error::param(
+            "nonce",
+            "nonce is required for ChaCha20Poly1305 encryption"
+        ))?;
         
-        // No need to create a raw nonce array - pass the Nonce object directly
         self.cipher.inner.encrypt(
-            nonce,  // Pass the Nonce<12> directly
+            nonce,
             plaintext,
             self.aad,
         )
@@ -270,7 +272,7 @@ pub struct ChaCha20Poly1305DecryptOperation<'a> {
 #[cfg(feature = "alloc")]
 impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305DecryptOperation<'a> {
     fn execute(self) -> Result<Vec<u8>> {
-        Err(Error::InvalidParameter("Use decrypt method instead"))
+        Err(Error::param("operation", "use decrypt method instead"))
     }
     
     fn reset(&mut self) {
@@ -294,11 +296,13 @@ impl<'a> AeadDecryptOperation<'a, ChaCha20Poly1305Algorithm>
     }
     
     fn decrypt(self, ciphertext: &'a [u8]) -> Result<Vec<u8>> {
-        let nonce = self.nonce.ok_or_else(|| Error::InvalidParameter("Nonce is required"))?;
+        let nonce = self.nonce.ok_or_else(|| Error::param(
+            "nonce",
+            "nonce is required for ChaCha20Poly1305 decryption"
+        ))?;
         
-        // No need to create a raw nonce array - pass the Nonce object directly
         self.cipher.inner.decrypt(
-            nonce,  // Pass the Nonce<12> directly
+            nonce,
             ciphertext,
             self.aad,
         )

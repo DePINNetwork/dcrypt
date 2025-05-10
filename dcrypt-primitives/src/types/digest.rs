@@ -8,7 +8,7 @@ use core::ops::{Deref, DerefMut};
 use zeroize::Zeroize;
 use hex;
 
-use dcrypt_core::error::{DcryptError, Result};
+use crate::error::{Error, Result, validate};
 use crate::types::{ConstantTimeEq, SecureZeroingType, FixedSize, ByteSerializable};
 
 /// A cryptographic digest with a fixed size
@@ -35,8 +35,9 @@ impl<const N: usize> Digest<N> {
     
     /// Create from a slice, if it has the correct length
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
+        // Using custom check since we allow slices smaller than N
         if slice.len() > N {
-            return Err(DcryptError::InvalidLength {
+            return Err(Error::Length {
                 context: "Digest::from_slice",
                 expected: N,
                 actual: slice.len(),
@@ -67,11 +68,7 @@ impl<const N: usize> Digest<N> {
     /// Create from a hexadecimal string
     pub fn from_hex(hex_str: &str) -> Result<Self> {
         let bytes = hex::decode(hex_str).map_err(|_| {
-            DcryptError::InvalidParameter {
-                context: "Digest::from_hex",
-                #[cfg(feature = "std")]
-                message: "Invalid hexadecimal string".to_string(),
-            }
+            Error::param("hex_str", "Invalid hexadecimal string")
         })?;
         
         Self::from_slice(&bytes)

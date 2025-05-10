@@ -142,11 +142,11 @@ fn test_aes_invalid_block_size() {
     let result = aes.encrypt_block(&mut invalid_block);
     
     assert!(result.is_err());
-    if let Err(Error::InvalidLength { context, needed, got }) = result {
+    if let Err(Error::Length { context, expected, actual }) = result {
         assert_eq!(context, "AES block");
-        assert_eq!(needed, AES_BLOCK_SIZE);
-        assert_eq!(got, 8);
+        assert_eq!(expected, AES_BLOCK_SIZE);
+        assert_eq!(actual, 8);
     } else {
-        panic!("Expected InvalidLength error");
+        panic!("Expected Length error");
     }
 }

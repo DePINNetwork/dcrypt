@@ -13,7 +13,7 @@ fn rfc_key() -> [u8; 32] {
 #[test]
 fn test_poly1305_rfc8439_vector() {
     let key = rfc_key();
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     let msg = b"Cryptographic Forum Research Group";
     p.update(msg).unwrap();
     assert_eq!(
@@ -25,7 +25,7 @@ fn test_poly1305_rfc8439_vector() {
 #[test]
 fn test_empty_message() {
     let key = rfc_key();
-    let tag = Poly1305::new(&key).finalize();
+    let tag = Poly1305::new(&key).unwrap().finalize();
     let mut expected = [0u8; 16];
     expected.copy_from_slice(&key[16..32]);
     assert_eq!(tag, Tag::<16>::new(expected));
@@ -37,9 +37,9 @@ fn test_chunked_vs_single_update() {
     let msg: Vec<u8> =
         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
             .to_vec();
-    let mut p1 = Poly1305::new(&key);
+    let mut p1 = Poly1305::new(&key).unwrap();
     p1.update(&msg).unwrap();
-    let mut p2 = Poly1305::new(&key);
+    let mut p2 = Poly1305::new(&key).unwrap();
     for b in &msg {
         p2.update(&[*b]).unwrap();
     }
@@ -49,7 +49,7 @@ fn test_chunked_vs_single_update() {
 #[test]
 fn test_hello_message() {
     let key = rfc_key();
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     p.update(b"Hello").unwrap();
     assert_eq!(
         p.finalize(),
@@ -60,7 +60,7 @@ fn test_hello_message() {
 #[test]
 fn test_single_block_message() {
     let key = rfc_key();
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     p.update(b"0123456789ABCDEF").unwrap();
     assert_eq!(
         p.finalize(),
@@ -72,7 +72,7 @@ fn test_single_block_message() {
 fn test_multi_block_message() {
     let key = rfc_key();
     let msg = b"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF";
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     p.update(msg).unwrap();
     assert_eq!(
         p.finalize(),
@@ -86,7 +86,7 @@ fn test_poly1305_rfc8439_vector2() {
     key[16..32].copy_from_slice(
         &hex::decode("36e5f6b5c5e06070f0efca96227a863e").unwrap(),
     );
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     let text =
         b"Any submission to the IETF intended by the Contributor for \
 publication as all or part of an IETF Internet-Draft or RFC";
@@ -101,7 +101,7 @@ publication as all or part of an IETF Internet-Draft or RFC";
 fn test_poly1305_rfc8439_vector5() {
     let mut key = [0u8; 32];
     key[0] = 0x02;
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     p.update(&[0xFFu8; 16]).unwrap();
     assert_eq!(
         p.finalize(),
@@ -116,7 +116,7 @@ fn test_poly1305_rfc8439_vector6() {
     for b in &mut key[16..32] {
         *b = 0xFF;
     }
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     let mut block = [0u8; 16];
     block[0] = 0x02;
     p.update(&block).unwrap();
@@ -130,7 +130,7 @@ fn test_poly1305_rfc8439_vector6() {
 fn test_poly1305_rfc8439_vector7() {
     let mut key = [0u8; 32];
     key[0] = 0x01;
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     p.update(&[0xFFu8; 16]).unwrap();
     let mut b2 = [0xFFu8; 16];
     b2[0] = 0xF0;
@@ -148,7 +148,7 @@ fn test_poly1305_rfc8439_vector7() {
 fn test_poly1305_rfc8439_vector8() {
     let mut key = [0u8; 32];
     key[0] = 0x01;
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     p.update(&[0xFFu8; 16]).unwrap();
     let mut b2 = [0xFEu8; 16];
     b2[0] = 0xFB;
@@ -173,7 +173,7 @@ fn test_poly1305_rfc8439_vector10() {
          01000000000000000000000000000000",
     )
     .unwrap();
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     p.update(&data).unwrap();
     assert_eq!(
         p.finalize(),
@@ -193,7 +193,7 @@ fn test_poly1305_rfc8439_vector11() {
          00000000000000000000000000000000",
     )
     .unwrap();
-    let mut p = Poly1305::new(&key);
+    let mut p = Poly1305::new(&key).unwrap();
     p.update(&data).unwrap();
     assert_eq!(
         p.finalize(),
@@ -210,9 +210,9 @@ fn random_vs_chunked_update() {
         let msg_len = (rng.next_u32() % 256) as usize;
         let mut msg = vec![0u8; msg_len];
         rng.fill_bytes(&mut msg);
-        let mut p1 = Poly1305::new(&key);
+        let mut p1 = Poly1305::new(&key).unwrap();
         p1.update(&msg).unwrap();
-        let mut p2 = Poly1305::new(&key);
+        let mut p2 = Poly1305::new(&key).unwrap();
         let mut off = 0;
         while off < msg_len {
             let c = ((rng.next_u32() % 16) + 1) as usize;
@@ -230,7 +230,7 @@ fn random_empty_update() {
     for _ in 0..100 {
         let mut key = [0u8; 32];
         rng.fill_bytes(&mut key);
-        let mut p = Poly1305::new(&key);
+        let mut p = Poly1305::new(&key).unwrap();
         p.update(&[]).unwrap();
         p.update(&[]).unwrap();
         let mut expected = [0u8; 16];

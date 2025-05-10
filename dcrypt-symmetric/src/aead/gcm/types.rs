@@ -1,6 +1,7 @@
 //! Types specific to GCM mode of operation
 
 use crate::error::{Error, Result};
+use crate::error::validate;
 use rand::{RngCore, rngs::OsRng};
 use base64;
 
@@ -34,11 +35,12 @@ impl GcmNonce {
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
         let bytes = base64::decode(s)
-            .map_err(|_| Error::InvalidFormat)?;
+            .map_err(|_| Error::Format { 
+                context: "nonce base64", 
+                details: "invalid base64 encoding" 
+            })?;
             
-        if bytes.len() != 12 {
-            return Err(Error::InvalidFormat);
-        }
+        validate::length("GCM nonce", bytes.len(), 12)?;
         
         let mut nonce = [0u8; 12];
         nonce.copy_from_slice(&bytes);
@@ -72,27 +74,35 @@ impl AesCiphertextPackage {
     
     /// Parses a serialized package
     pub fn from_string(s: &str) -> Result<Self> {
-        if !s.starts_with("DCRYPT-AES-GCM:") {
-            return Err(Error::InvalidFormat);
-        }
+        validate::format(
+            s.starts_with("DCRYPT-AES-GCM:"),
+            "package deserialization",
+            "invalid package format"
+        )?;
         
         let parts: Vec<&str> = s["DCRYPT-AES-GCM:".len()..].split(':').collect();
-        if parts.len() != 2 {
-            return Err(Error::InvalidFormat);
-        }
+        validate::format(
+            parts.len() == 2,
+            "package deserialization",
+            "expected format: DCRYPT-AES-GCM:<nonce>:<ciphertext>"
+        )?;
         
         let nonce_bytes = base64::decode(parts[0])
-            .map_err(|_| Error::InvalidFormat)?;
+            .map_err(|_| Error::Format { 
+                context: "nonce base64", 
+                details: "invalid base64 encoding" 
+            })?;
             
-        if nonce_bytes.len() != 12 {
-            return Err(Error::InvalidFormat);
-        }
+        validate::length("GCM nonce", nonce_bytes.len(), 12)?;
         
         let mut nonce = [0u8; 12];
         nonce.copy_from_slice(&nonce_bytes);
         
         let ciphertext = base64::decode(parts[1])
-            .map_err(|_| Error::InvalidFormat)?;
+            .map_err(|_| Error::Format { 
+                context: "ciphertext base64", 
+                details: "invalid base64 encoding" 
+            })?;
             
         Ok(Self {
             nonce: GcmNonce(nonce),

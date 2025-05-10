@@ -17,8 +17,8 @@
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use core::sync::atomic::{compiler_fence, Ordering};
 use super::BlockCipher;
-use super::CipherAlgorithm; // Fixed import
-use crate::error::{Error, Result};
+use super::CipherAlgorithm;
+use crate::error::{Error, Result, validate};
 use dcrypt_constants::utils::symmetric::{
     AES128_KEY_SIZE, AES192_KEY_SIZE, AES256_KEY_SIZE, AES_BLOCK_SIZE,
 };
@@ -308,9 +308,9 @@ impl Aes128 {
 
     /// AddRoundKey step using precomputed bytes for constant-time behavior
     fn add_round_key(state: &mut [u8; 16], round_key_bytes: &[u8]) -> Result<()> {
-        if round_key_bytes.len() < 16 {
-            return Err(Error::InvalidParameter("Invalid AES round key"));
-        }
+        // Use validation utility for length check
+        validate::min_length("AES round key", round_key_bytes.len(), 16)?;
+        
         for i in 0..16 {
             state[i] ^= round_key_bytes[i];
         }
@@ -388,13 +388,8 @@ impl BlockCipher for Aes128 {
     }
 
     fn encrypt_block(&self, block: &mut [u8]) -> Result<()> {
-        if block.len() != AES_BLOCK_SIZE {
-            return Err(Error::InvalidLength {
-                context: "AES block",
-                needed: AES_BLOCK_SIZE,
-                got: block.len(),
-            });
-        }
+        // Use validation utility for length check
+        validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
@@ -431,13 +426,8 @@ impl BlockCipher for Aes128 {
     }
 
     fn decrypt_block(&self, block: &mut [u8]) -> Result<()> {
-        if block.len() != AES_BLOCK_SIZE {
-            return Err(Error::InvalidLength {
-                context: "AES block",
-                needed: AES_BLOCK_SIZE,
-                got: block.len(),
-            });
-        }
+        // Use validation utility for length check
+        validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
@@ -528,13 +518,8 @@ impl BlockCipher for Aes192 {
     }
 
     fn encrypt_block(&self, block: &mut [u8]) -> Result<()> {
-        if block.len() != AES_BLOCK_SIZE {
-            return Err(Error::InvalidLength {
-                context: "AES block",
-                needed: AES_BLOCK_SIZE,
-                got: block.len(),
-            });
-        }
+        // Use validation utility for length check
+        validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
@@ -571,13 +556,8 @@ impl BlockCipher for Aes192 {
     }
 
     fn decrypt_block(&self, block: &mut [u8]) -> Result<()> {
-        if block.len() != AES_BLOCK_SIZE {
-            return Err(Error::InvalidLength {
-                context: "AES block",
-                needed: AES_BLOCK_SIZE,
-                got: block.len(),
-            });
-        }
+        // Use validation utility for length check
+        validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
@@ -670,13 +650,8 @@ impl BlockCipher for Aes256 {
     }
 
     fn encrypt_block(&self, block: &mut [u8]) -> Result<()> {
-        if block.len() != AES_BLOCK_SIZE {
-            return Err(Error::InvalidLength {
-                context: "AES block",
-                needed: AES_BLOCK_SIZE,
-                got: block.len(),
-            });
-        }
+        // Use validation utility for length check
+        validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
@@ -713,13 +688,8 @@ impl BlockCipher for Aes256 {
     }
 
     fn decrypt_block(&self, block: &mut [u8]) -> Result<()> {
-        if block.len() != AES_BLOCK_SIZE {
-            return Err(Error::InvalidLength {
-                context: "AES block",
-                needed: AES_BLOCK_SIZE,
-                got: block.len(),
-            });
-        }
+        // Use validation utility for length check
+        validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;

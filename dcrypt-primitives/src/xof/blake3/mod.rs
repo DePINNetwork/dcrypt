@@ -1,8 +1,9 @@
 //! Minimal BLAKE3 implementation focusing on correctness over performance
 //! Directly adapted from the official reference implementation
 
-use super::ExtendableOutputFunction;
-use crate::error::{Error, Result};
+use super::{ExtendableOutputFunction, KeyedXof, DeriveKeyXof, Blake3Algorithm};
+use crate::error::{Error, Result, validate};
+use crate::xof::XofAlgorithm;
 use zeroize::Zeroize;
 
 #[cfg(not(feature = "std"))]
@@ -333,7 +334,10 @@ impl Blake3Xof {
     }
     
     fn pop_stack(&mut self) -> Result<[u32; 8]> {
-        self.cv_stack.pop().ok_or(Error::InternalError("Blake3 stack underflow"))
+        self.cv_stack.pop().ok_or_else(|| Error::Processing {
+            operation: "BLAKE3",
+            details: "Stack underflow",
+        })
     }
     
     fn add_chunk_chaining_value(&mut self, mut new_cv: [u32; 8], mut total_chunks: u64) -> Result<()> {
@@ -363,66 +367,11 @@ impl Blake3Xof {
         Ok(())
     }
 
-    /// Create a new Blake3Xof instance with a key for keyed hash mode
-    pub fn with_key(key: &[u8]) -> Result<Self> {
-        if key.len() != KEY_LEN {
-            return Err(Error::InvalidLength { 
-                context: "Blake3Xof key", 
-                needed: KEY_LEN, 
-                got: key.len() 
-            });
-        }
+    /// Utility function for digest generation
+    pub fn generate(data: &[u8], len: usize) -> Result<Vec<u8>> {
+        Blake3Algorithm::validate_output_length(len)?;
         
-        // Convert key to key words
-        let mut key_words = [0u32; 8];
-        words_from_little_endian_bytes(key, &mut key_words);
-        
-        Ok(Self {
-            chunk_state: ChunkState::new(key_words, 0, KEYED_HASH),
-            key_words,
-            cv_stack: Vec::new(),
-            flags: KEYED_HASH,
-        })
-    }
-    
-    /// Utility function for keyed hash generation
-    pub fn keyed_generate(key: &[u8], data: &[u8], len: usize) -> Result<Vec<u8>> {
-        let mut xof = Self::with_key(key)?;
-        xof.update(data)?;
-        let mut result = vec![0u8; len];
-        xof.squeeze(&mut result)?;
-        Ok(result)
-    }
-    
-    /// Create a new Blake3Xof instance for key derivation mode
-    pub fn for_derive_key(context: &[u8]) -> Result<Self> {
-        let mut context_hasher = Self::new();
-        context_hasher.update(context)?;
-        
-        // Create key from context using DERIVE_KEY_CONTEXT flag
-        let context_key = {
-            let mut tmp = [0u8; KEY_LEN];
-            let mut output = context_hasher.chunk_state.output();
-            output.flags |= DERIVE_KEY_CONTEXT;
-            output.root_output_bytes(&mut tmp);
-            tmp
-        };
-        
-        // Convert context key to key words
-        let mut key_words = [0u32; 8];
-        words_from_little_endian_bytes(&context_key, &mut key_words);
-        
-        Ok(Self {
-            chunk_state: ChunkState::new(key_words, 0, DERIVE_KEY_MATERIAL),
-            key_words,
-            cv_stack: Vec::new(),
-            flags: DERIVE_KEY_MATERIAL,
-        })
-    }
-    
-    /// Utility function for key derivation
-    pub fn derive_key(context: &[u8], data: &[u8], len: usize) -> Result<Vec<u8>> {
-        let mut xof = Self::for_derive_key(context)?;
+        let mut xof = Self::new();
         xof.update(data)?;
         let mut result = vec![0u8; len];
         xof.squeeze(&mut result)?;
@@ -463,10 +412,12 @@ impl ExtendableOutputFunction for Blake3Xof {
     }
     
     fn squeeze(&mut self, output: &mut [u8]) -> Result<()> {
+        Blake3Algorithm::validate_output_length(output.len())?;
         self.finalize(output)
     }
     
     fn squeeze_into_vec(&mut self, len: usize) -> Result<Vec<u8>> {
+        Blake3Algorithm::validate_output_length(len)?;
         let mut result = vec![0u8; len];
         self.squeeze(&mut result)?;
         Ok(result)
@@ -478,17 +429,51 @@ impl ExtendableOutputFunction for Blake3Xof {
     }
     
     fn security_level() -> usize {
-        256
+        Blake3Algorithm::SECURITY_LEVEL
     }
 }
 
-impl Blake3Xof {
-    pub fn generate(data: &[u8], len: usize) -> Result<Vec<u8>> {
-        let mut xof = Self::new();
-        xof.update(data)?;
-        let mut result = vec![0u8; len];
-        xof.squeeze(&mut result)?;
-        Ok(result)
+impl KeyedXof for Blake3Xof {
+    fn with_key(key: &[u8]) -> Result<Self> {
+        validate::length("BLAKE3 key", key.len(), KEY_LEN)?;
+        
+        // Convert key to key words
+        let mut key_words = [0u32; 8];
+        words_from_little_endian_bytes(key, &mut key_words);
+        
+        Ok(Self {
+            chunk_state: ChunkState::new(key_words, 0, KEYED_HASH),
+            key_words,
+            cv_stack: Vec::new(),
+            flags: KEYED_HASH,
+        })
+    }
+}
+
+impl DeriveKeyXof for Blake3Xof {
+    fn for_derive_key(context: &[u8]) -> Result<Self> {
+        let mut context_hasher = Self::new();
+        context_hasher.update(context)?;
+        
+        // Create key from context using DERIVE_KEY_CONTEXT flag
+        let context_key = {
+            let mut tmp = [0u8; KEY_LEN];
+            let mut output = context_hasher.chunk_state.output();
+            output.flags |= DERIVE_KEY_CONTEXT;
+            output.root_output_bytes(&mut tmp);
+            tmp
+        };
+        
+        // Convert context key to key words
+        let mut key_words = [0u32; 8];
+        words_from_little_endian_bytes(&context_key, &mut key_words);
+        
+        Ok(Self {
+            chunk_state: ChunkState::new(key_words, 0, DERIVE_KEY_MATERIAL),
+            key_words,
+            cv_stack: Vec::new(),
+            flags: DERIVE_KEY_MATERIAL,
+        })
     }
 }
 

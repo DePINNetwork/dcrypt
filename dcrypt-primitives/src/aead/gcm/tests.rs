@@ -66,7 +66,7 @@ fn test_gcm_tampered_ciphertext() {
     let gcm = Gcm::new(cipher, &nonce).unwrap();
     let result = gcm.internal_decrypt(&ciphertext, Some(&aad));
     assert!(result.is_err());
-    assert!(matches!(result, Err(Error::AuthenticationFailed)));
+    assert!(matches!(result, Err(Error::Authentication { algorithm: "GCM" })));
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn test_gcm_tampered_tag() {
     let gcm = Gcm::new(cipher, &nonce).unwrap();
     let result = gcm.internal_decrypt(&ciphertext, None);
     assert!(result.is_err());
-    assert!(matches!(result, Err(Error::AuthenticationFailed)));
+    assert!(matches!(result, Err(Error::Authentication { algorithm: "GCM" })));
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn test_gcm_short_ciphertext() {
     let gcm = Gcm::new(cipher, &nonce).unwrap();
     let result = gcm.internal_decrypt(&ciphertext, None);
     assert!(result.is_err());
-    assert!(matches!(result, Err(Error::InvalidLength { .. })));
+    assert!(matches!(result, Err(Error::Length { .. })));
 }
 
 #[test]

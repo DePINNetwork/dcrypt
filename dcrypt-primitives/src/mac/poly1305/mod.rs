@@ -1,29 +1,55 @@
 //! Poly1305 message authentication code
-//! Implements RFC 8439 using pure limb arithmetic
+//! Pure-Rust limb arithmetic implementation, constant-time throughout.
+//!
+//! Implements the algorithm described in RFC 8439.
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use crate::error::{Error, Result};
-use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
-use crate::types::Tag;
 
+use crate::error::{validate, Error, Result};
+use crate::mac::{Mac, MacAlgorithm};
+use crate::types::Tag;
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
+
+/// Size of the Poly1305 key in bytes (32 B)
 pub const POLY1305_KEY_SIZE: usize = 32;
+/// Size of the Poly1305 authentication tag in bytes (16 B)
 pub const POLY1305_TAG_SIZE: usize = 16;
 
-/// Poly1305 MAC using pure limb arithmetic
+/// Marker for the Poly1305 algorithm (type-level)
+pub enum Poly1305Algorithm {}
+
+impl MacAlgorithm for Poly1305Algorithm {
+    const KEY_SIZE: usize = POLY1305_KEY_SIZE;
+    const TAG_SIZE: usize = POLY1305_TAG_SIZE;
+    const BLOCK_SIZE: usize = 16;
+
+    fn name() -> &'static str { "Poly1305" }
+}
+
+/// Poly1305 MAC (branch-free limb arithmetic)
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct Poly1305 {
-    r: [u64; 3],    // Secret key material 
-    s: [u64; 2],    // Secret key material
-    data: Zeroizing<Vec<u8>>,  // May contain sensitive data
+    r: [u64; 3], // 130-bit key r
+    s: [u64; 2], // 128-bit key s
+    data: Zeroizing<Vec<u8>>, // buffered input
 }
 
 impl Poly1305 {
-    /// Create a new Poly1305 instance with a 32-byte key
-    pub fn new(key: &[u8; POLY1305_KEY_SIZE]) -> Self {
+    /* ------------------------------------------------------------------ */
+    /*                           INITIALISATION                           */
+    /* ------------------------------------------------------------------ */
+
+    /// Construct a new `Poly1305` context from a 32-byte key.
+    ///
+    /// The key is split into the clamped `r` portion (first 16 bytes) and the
+    /// `s` portion (last 16 bytes) exactly as specified in RFC 8439 §2.5.2.
+    pub fn new(key: &[u8]) -> Result<Self> {
+        validate::length("Poly1305 key", key.len(), POLY1305_KEY_SIZE)?;
+
+        // ---- split & clamp r -------------------------------------------
         let mut r_bytes = [0u8; 16];
         r_bytes.copy_from_slice(&key[..16]);
-        // clamp r per RFC 8439
         r_bytes[3]  &= 15;
         r_bytes[7]  &= 15;
         r_bytes[11] &= 15;
@@ -32,34 +58,30 @@ impl Poly1305 {
         r_bytes[8]  &= 252;
         r_bytes[12] &= 252;
 
-        // Safe conversion without unwrap() calls
-        let r0 = u64::from_le_bytes([
-            r_bytes[0], r_bytes[1], r_bytes[2], r_bytes[3],
-            r_bytes[4], r_bytes[5], r_bytes[6], r_bytes[7]
-        ]);
-        
-        let r1 = u64::from_le_bytes([
-            r_bytes[8], r_bytes[9], r_bytes[10], r_bytes[11],
-            r_bytes[12], r_bytes[13], r_bytes[14], r_bytes[15]
-        ]);
-        
+        let r0 = u64::from_le_bytes(r_bytes[0..8].try_into().unwrap());
+        let r1 = u64::from_le_bytes(r_bytes[8..16].try_into().unwrap());
         let r2 = 0;
 
-        // Safe conversion of s values
-        let s0 = u64::from_le_bytes([
-            key[16], key[17], key[18], key[19],
-            key[20], key[21], key[22], key[23]
-        ]);
-        
-        let s1 = u64::from_le_bytes([
-            key[24], key[25], key[26], key[27],
-            key[28], key[29], key[30], key[31]
-        ]);
+        // ---- split s ---------------------------------------------------
+        let s0 = u64::from_le_bytes(key[16..24].try_into().unwrap());
+        let s1 = u64::from_le_bytes(key[24..32].try_into().unwrap());
 
-        Poly1305 { r: [r0, r1, r2], s: [s0, s1], data: Zeroizing::new(Vec::new()) }
+        Ok(Self {
+            r: [r0, r1, r2],
+            s: [s0, s1],
+            data: Zeroizing::new(Vec::new()),
+        })
     }
 
-    /// Feed data into the Poly1305 computation
+    /* ------------------------------------------------------------------ */
+    /*                                UPDATE                               */
+    /* ------------------------------------------------------------------ */
+
+    /// Absorb additional message data into the MAC state.
+    ///
+    /// This can be called zero or more times before [`finalize`].  
+    /// Data is internally buffered in 16-byte blocks.  
+    /// Always returns `Ok(())` (provided for API symmetry).
     pub fn update(&mut self, chunk: &[u8]) -> Result<()> {
         if !chunk.is_empty() {
             self.data.extend_from_slice(chunk);
@@ -67,86 +89,86 @@ impl Poly1305 {
         Ok(())
     }
 
-    /// Finalize and return the 16-byte tag
-    pub fn finalize(self) -> Tag<POLY1305_TAG_SIZE> {
-        // 1) Polynomial processing with mul-reduce
+    /* ------------------------------------------------------------------ */
+    /*                               FINALISE                              */
+    /* ------------------------------------------------------------------ */
+
+    /// Consume the context and return the 16-byte authentication tag.
+    ///
+    /// After this call the `Poly1305` instance must be discarded because its
+    /// internal key material has been moved.
+    pub fn finalize(mut self) -> Tag<POLY1305_TAG_SIZE> {
+        // 1) polynomial evaluation h = Σ (block · r^i)
         let mut h = [0u64; 3];
         for block in self.data.chunks(16) {
-            // parse block into three limbs, with an appended 1-bit at the correct position
             let mut buf = [0u8; 16];
             buf[..block.len()].copy_from_slice(block);
-
-            // set the "pad" bit:
-            //  - if full 16-byte block, we'll add it via n2=1
-            //  - otherwise, put the 1 at buf[block.len()]
-            let n2 = if block.len() == 16 {
-                1
-            } else {
-                buf[block.len()] = 1;
-                0
+            let n2 = if block.len() == 16 { 1 } else {
+                buf[block.len()] = 1; 0
             };
+            let n0 = u64::from_le_bytes(buf[0..8].try_into().unwrap());
+            let n1 = u64::from_le_bytes(buf[8..16].try_into().unwrap());
 
-            // Safe conversion without unwrap() calls
-            let n0 = u64::from_le_bytes([
-                buf[0], buf[1], buf[2], buf[3],
-                buf[4], buf[5], buf[6], buf[7]
-            ]);
-            
-            let n1 = u64::from_le_bytes([
-                buf[8], buf[9], buf[10], buf[11],
-                buf[12], buf[13], buf[14], buf[15]
-            ]);
-
-            // h += n
-            let (h0, c0)    = h[0].overflowing_add(n0);
-            let (h1_tmp, c1a) = h[1].overflowing_add(n1);
-            let (h1, c1b)   = h1_tmp.overflowing_add(c0 as u64);
+            // h += n (carry-prop)
+            let (h0, c0) = h[0].overflowing_add(n0);
+            let (h1a, c1a) = h[1].overflowing_add(n1);
+            let (h1, c1b) = h1a.overflowing_add(c0 as u64);
             let c1 = (c1a || c1b) as u64;
-            let (h2_tmp, _)   = h[2].overflowing_add(n2);
-            let (h2, _)       = h2_tmp.overflowing_add(c1);
+            let (h2a, _) = h[2].overflowing_add(n2);
+            let (h2, _) = h2a.overflowing_add(c1);
 
-            h = [h0, h1, h2];
-            h = mul_reduce(h, self.r);
+            h = mul_reduce([h0, h1, h2], self.r);
         }
 
-        // 2) Final conditional reduction modulo p = 2^130 - 5
+        // 2) final reduction mod p = 2^130 − 5 (branch-free)
         const P0: u64 = 0xffff_ffff_ffff_fffb;
         const P1: u64 = 0xffff_ffff_ffff_ffff;
         const P2: u64 = 3;
 
-        let mut h0 = h[0];
-        let mut h1 = h[1];
-        let mut h2 = h[2];
+        let (g0, b0) = h[0].overflowing_sub(P0);
+        let (g1a, b1a) = h[1].overflowing_sub(P1);
+        let (g1, b1b) = g1a.overflowing_sub(b0 as u64);
+        let borrow1 = (b1a || b1b) as u64;
+        let (g2, borrow2_bool) = h[2].overflowing_sub(P2 + borrow1);
 
-        // compute h - p
-        let (h0_p, borrow0)     = h0.overflowing_sub(P0);
-        let (h1_p_tmp, b1a)      = h1.overflowing_sub(P1);
-        let (h1_p, b1b)          = h1_p_tmp.overflowing_sub(borrow0 as u64);
-        let borrow1              = b1a || b1b;
-        let (h2_p, borrow2)      = h2.overflowing_sub(P2 + (borrow1 as u64));
+        // mask = 0xFFFF… when borrow2 == 0, else 0x0
+        let mask = (borrow2_bool as u64).wrapping_sub(1);
+        h[0] = (h[0] & !mask) | (g0 & mask);
+        h[1] = (h[1] & !mask) | (g1 & mask);
+        h[2] = (h[2] & !mask) | (g2 & mask);
 
-        // Generate a mask based on borrow2 (0 if true, all 1's if false)
-        let mask = (!borrow2 as u64).wrapping_neg();  // This is 0 if borrow2 is true, !0u64 if borrow2 is false
+        // 3) add s (mod 2^128)
+        let (t0, carry0) = h[0].overflowing_add(self.s[0]);
+        let (t1a, _) = h[1].overflowing_add(self.s[1]);
+        let (t1, _) = t1a.overflowing_add(carry0 as u64);
 
-        // Select the correct value using bitwise operations
-        h0 = h0 ^ ((h0 ^ h0_p) & mask);
-        h1 = h1 ^ ((h1 ^ h1_p) & mask);
-        h2 = h2 ^ ((h2 ^ h2_p) & mask);
-
-        // 3) Add s to the low 128 bits (mod 2^128)
-        let (t0, carry0)       = h0.overflowing_add(self.s[0]);
-        let (t1_tmp, carry1)   = h1.overflowing_add(self.s[1]);
-        let (t1, _carry2)      = t1_tmp.overflowing_add(carry0 as u64);
-
-        // Output tag = little-endian t0 || t1
-        let mut tag_bytes = [0u8; POLY1305_TAG_SIZE];
-        tag_bytes[..8].copy_from_slice(&t0.to_le_bytes());
-        tag_bytes[8..].copy_from_slice(&t1.to_le_bytes());
-        Tag::<POLY1305_TAG_SIZE>::new(tag_bytes)
+        let mut out = [0u8; POLY1305_TAG_SIZE];
+        out[..8].copy_from_slice(&t0.to_le_bytes());
+        out[8..16].copy_from_slice(&t1.to_le_bytes());
+        Tag::new(out)
     }
 }
 
-/// Pure limb multiply and reduction: compute (h * r) mod (2^130 - 5)
+/* ---------------------------------------------------------------------- */
+/*                       TRAIT IMPLEMENTATIONS                            */
+/* ---------------------------------------------------------------------- */
+impl Mac for Poly1305 {
+    type Key = [u8; POLY1305_KEY_SIZE];
+    type Tag = Tag<POLY1305_TAG_SIZE>;
+
+    fn new(key: &[u8]) -> Result<Self> { Self::new(key) }
+    fn update(&mut self, data: &[u8]) -> Result<&mut Self> { self.update(data)?; Ok(self) }
+    fn finalize(&mut self) -> Result<Self::Tag> { Ok(self.clone().finalize()) }
+    fn reset(&mut self) -> Result<()> { self.data.clear(); Ok(()) }
+}
+
+impl Clone for Poly1305 {
+    fn clone(&self) -> Self { Self { r: self.r, s: self.s, data: self.data.clone() } }
+}
+
+/* ---------------------------------------------------------------------- */
+/*                SCHOOLBOOK MUL & REDUCE (2^130 − 5)                     */
+/* ---------------------------------------------------------------------- */
 fn mul_reduce(h: [u64; 3], r: [u64; 3]) -> [u64; 3] {
     let (h0, h1, h2) = (h[0] as u128, h[1] as u128, h[2] as u128);
     let (r0, r1, r2) = (r[0] as u128, r[1] as u128, r[2] as u128);
@@ -166,19 +188,17 @@ fn mul_reduce(h: [u64; 3], r: [u64; 3]) -> [u64; 3] {
     let _c5 = (t4 >> 64) as u64; t4 &= u128::from(u64::MAX);
 
     // fold bits ≥2^130 back in via 2^130 ≡ 5 (mod p)
-    let high = (t2 >> 2)
-             .wrapping_add(t3 << 62)
-             .wrapping_add(t4 << 126);
-    t2 &= 0x3;
+    let high = (t2 >> 2) + (t3 << 62) + (t4 << 126);
+    let low2 = t2 & 0x3;
 
     // combine low limbs with folded carry
-    let mut m0 = t0.wrapping_add(high * 5);
+    let mut m0 = t0 + high * 5;
     let mut m1 = t1;
-    let mut m2 = t2;
+    let mut m2 = low2;
 
     // final carry
-    let f1 = (m0 >> 64) as u64; m0 &= u128::from(u64::MAX); m1 = m1.wrapping_add(f1 as u128);
-    let f2 = (m1 >> 64) as u64; m1 &= u128::from(u64::MAX); m2 = m2.wrapping_add(f2 as u128);
+    let f1 = (m0 >> 64) as u64; m0 &= u128::from(u64::MAX); m1 += f1 as u128;
+    let f2 = (m1 >> 64) as u64; m1 &= u128::from(u64::MAX); m2 += f2 as u128;
 
     m2 &= 0x3fff_ffff_ffff_ffff;
     [m0 as u64, m1 as u64, m2 as u64]

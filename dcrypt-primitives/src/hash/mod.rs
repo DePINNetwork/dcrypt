@@ -6,7 +6,7 @@
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use crate::error::Result;
+use crate::error::{Result, validate};
 use crate::types::Digest;
 
 pub mod sha1;
@@ -22,7 +22,7 @@ pub use sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
 pub use shake::{Shake128, Shake256};
 pub use blake2::{Blake2b, Blake2s};
 
-/// A byte‐vector hash result for backward compatibility.
+/// A byte-vector hash result for backward compatibility.
 pub type Hash = Vec<u8>;
 
 /// Marker trait for hash algorithms with compile-time guarantees
@@ -94,14 +94,14 @@ pub trait HashFunction: Sized {
         Self::Algorithm::BLOCK_SIZE
     }
 
-    /// Convenience: one‐shot digest computation with fluent interface.
+    /// Convenience: one-shot digest computation with fluent interface.
     fn digest(data: &[u8]) -> Result<Self::Output> {
         let mut hasher = Self::new();
         hasher.update(data)?;
         hasher.finalize()
     }
 
-    /// Human‐readable name.
+    /// Human-readable name.
     fn name() -> String {
         Self::Algorithm::name()
     }
