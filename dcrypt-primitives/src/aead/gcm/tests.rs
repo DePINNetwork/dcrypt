@@ -5,6 +5,7 @@ use crate::types::Nonce;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 #[test]
 fn test_aes_gcm() {
@@ -341,7 +342,7 @@ fn test_aes_gcm_nist_encrypt_vectors() {
 }
 
 // Helper function to process test vectors with specific nonce sizes
-fn process_gcm_test_with_nonce<const N: usize, B: BlockCipher>(
+fn process_gcm_test_with_nonce<const N: usize, B: BlockCipher + Zeroize + ZeroizeOnDrop>(
     test_index: usize,
     test: &GcmTestVector,
     cipher: B,
@@ -496,7 +497,7 @@ fn run_gcm_decrypt_tests_256(filepath: &str) {
 }
 
 // Helper function for encryption test vectors too
-fn process_gcm_encrypt_test_with_nonce<const N: usize, B: BlockCipher>(
+fn process_gcm_encrypt_test_with_nonce<const N: usize, B: BlockCipher + Zeroize + ZeroizeOnDrop>(
     test_index: usize,
     test: &GcmTestVector,
     cipher: B

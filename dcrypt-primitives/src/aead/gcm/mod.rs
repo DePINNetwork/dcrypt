@@ -29,9 +29,12 @@ use alloc::vec::Vec;
 use std::vec::Vec;
 
 use byteorder::{BigEndian, ByteOrder};
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use subtle::ConstantTimeEq;
 use core::sync::atomic::{compiler_fence, Ordering};
+
+// Import security types from dcrypt-core
+use dcrypt_core::security::{SecretBuffer, SecureZeroingType};
 
 // Fix import paths by using crate:: for internal modules
 use crate::block::BlockCipher;
@@ -55,39 +58,29 @@ const GCM_BLOCK_SIZE: usize = 16;
 const GCM_TAG_SIZE: usize = 16;
 
 /// GCM mode implementation
-#[derive(Clone, Zeroize)]
-pub struct Gcm<B: BlockCipher> {
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+pub struct Gcm<B: BlockCipher + Zeroize + ZeroizeOnDrop> {
     cipher: B,
-    h: [u8; GCM_BLOCK_SIZE], // GHASH key (encrypted all-zero block)
+    h: SecretBuffer<GCM_BLOCK_SIZE>, // GHASH key (encrypted all-zero block) - now secured
     nonce: Zeroizing<Vec<u8>>,
     tag_len: usize,           // desired tag length in bytes
 }
 
-// Manual implementation of Drop to zero out the sensitive fields
-impl<B: BlockCipher> Drop for Gcm<B> {
-    fn drop(&mut self) {
-        // Explicitly zero only the sensitive fields
-        // We don't need to zero the cipher since it might not implement Zeroize
-        self.h.zeroize();
-        // nonce is already wrapped in Zeroizing<Vec<u8>> so it will be zeroed automatically
-    }
-}
-
 /// Operation for GCM encryption operations
-pub struct GcmEncryptOperation<'a, B: BlockCipher> {
+pub struct GcmEncryptOperation<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> {
     cipher: &'a Gcm<B>,
     nonce: Option<&'a Nonce<12>>, // Using generic Nonce<12> instead of Nonce12
     aad: Option<&'a [u8]>,
 }
 
 /// Operation for GCM decryption operations
-pub struct GcmDecryptOperation<'a, B: BlockCipher> {
+pub struct GcmDecryptOperation<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> {
     cipher: &'a Gcm<B>,
     nonce: Option<&'a Nonce<12>>, // Using generic Nonce<12> instead of Nonce12
     aad: Option<&'a [u8]>,
 }
 
-impl<B: BlockCipher> Gcm<B> {
+impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
     /// Creates a new GCM mode instance with default (16-byte) tag.
     pub fn new<const N: usize>(cipher: B, nonce: &Nonce<N>) -> Result<Self> 
     where
@@ -127,8 +120,11 @@ impl<B: BlockCipher> Gcm<B> {
         )?;
 
         // Generate GHASH key H (encrypt all-zero block)
-        let mut h = [0u8; GCM_BLOCK_SIZE];
-        cipher.encrypt_block(&mut h)?;
+        let mut h_bytes = [0u8; GCM_BLOCK_SIZE];
+        cipher.encrypt_block(&mut h_bytes)?;
+        
+        // Wrap the GHASH key in SecretBuffer for secure storage
+        let h = SecretBuffer::new(h_bytes);
 
         Ok(Self {
             cipher,
@@ -145,7 +141,11 @@ impl<B: BlockCipher> Gcm<B> {
             j0[..12].copy_from_slice(&self.nonce);
             j0[15] = 1;
         } else {
-            let mut g = GHash::new(&self.h);
+            // Convert SecretBuffer reference to array reference
+            let h_array: &[u8; GCM_BLOCK_SIZE] = self.h.as_ref().try_into()
+                .expect("SecretBuffer has correct size");
+            
+            let mut g = GHash::new(h_array);
             g.update(&self.nonce)?;
             let rem = self.nonce.len() % GCM_BLOCK_SIZE;
             if rem != 0 {
@@ -184,8 +184,12 @@ impl<B: BlockCipher> Gcm<B> {
         aad: &[u8],
         ciphertext: &[u8],
     ) -> Result<[u8; GCM_TAG_SIZE]> {
+        // Convert SecretBuffer reference to array reference
+        let h_array: &[u8; GCM_BLOCK_SIZE] = self.h.as_ref().try_into()
+            .expect("SecretBuffer has correct size");
+        
         // Process the AAD and ciphertext with GHASH
-        let mut tag = process_ghash(&self.h, aad, ciphertext)?;
+        let mut tag = process_ghash(h_array, aad, ciphertext)?;
         
         // Encrypt the initial counter block
         let mut j0_copy = *j0;
@@ -271,14 +275,27 @@ impl<B: BlockCipher> Gcm<B> {
     }
 }
 
+// Implement SecureZeroingType for Gcm
+impl<B: BlockCipher + Clone + Zeroize + ZeroizeOnDrop> SecureZeroingType for Gcm<B> {
+    fn zeroed() -> Self {
+        // This is a bit tricky since we need a cipher instance
+        // For now, we'll panic if called, as this shouldn't be used directly
+        panic!("Cannot create a zeroed GCM instance without a cipher")
+    }
+    
+    fn secure_clone(&self) -> Self {
+        self.clone()
+    }
+}
+
 // Implement the marker trait AuthenticatedCipher
-impl<B: BlockCipher> AuthenticatedCipher for Gcm<B> {
+impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> AuthenticatedCipher for Gcm<B> {
     const TAG_SIZE: usize = GCM_TAG_SIZE;
     const ALGORITHM_ID: &'static str = "GCM";
 }
 
 // Implement SymmetricCipher trait
-impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
+impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> SymmetricCipher for Gcm<B> {
     // We can't use B::KEY_SIZE in const generic expressions, so we'll use a different approach
     type Key = SecretBytes<32>; // Using a fixed size for demonstration - adjust based on your needs
     type Nonce = Nonce<12>;  // Using generic Nonce<12> instead of Nonce12
@@ -334,7 +351,7 @@ impl<B: BlockCipher> SymmetricCipher for Gcm<B> {
 }
 
 // Implement Operation for GcmEncryptOperation
-impl<'a, B: BlockCipher> Operation<Ciphertext> for GcmEncryptOperation<'a, B> {
+impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Ciphertext> for GcmEncryptOperation<'a, B> {
     fn execute(self) -> std::result::Result<Ciphertext, CoreError> {
         let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
             context: "GCM encryption",
@@ -353,7 +370,7 @@ impl<'a, B: BlockCipher> Operation<Ciphertext> for GcmEncryptOperation<'a, B> {
 }
 
 // Implement EncryptOperation for GcmEncryptOperation
-impl<'a, B: BlockCipher> EncryptOperation<'a, Gcm<B>> for GcmEncryptOperation<'a, B> {
+impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> EncryptOperation<'a, Gcm<B>> for GcmEncryptOperation<'a, B> {
     fn with_nonce(mut self, nonce: &'a <Gcm<B> as SymmetricCipher>::Nonce) -> Self {
         self.nonce = Some(nonce);
         self
@@ -381,7 +398,7 @@ impl<'a, B: BlockCipher> EncryptOperation<'a, Gcm<B>> for GcmEncryptOperation<'a
 }
 
 // Implement Operation for GcmDecryptOperation
-impl<'a, B: BlockCipher> Operation<Vec<u8>> for GcmDecryptOperation<'a, B> {
+impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Vec<u8>> for GcmDecryptOperation<'a, B> {
     fn execute(self) -> std::result::Result<Vec<u8>, CoreError> {
         Err(CoreError::InvalidParameter {
             context: "GCM decryption",
@@ -392,7 +409,7 @@ impl<'a, B: BlockCipher> Operation<Vec<u8>> for GcmDecryptOperation<'a, B> {
 }
 
 // Implement DecryptOperation for GcmDecryptOperation
-impl<'a, B: BlockCipher> DecryptOperation<'a, Gcm<B>> for GcmDecryptOperation<'a, B> {
+impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> DecryptOperation<'a, Gcm<B>> for GcmDecryptOperation<'a, B> {
     fn with_nonce(mut self, nonce: &'a <Gcm<B> as SymmetricCipher>::Nonce) -> Self {
         self.nonce = Some(nonce);
         self

@@ -1,10 +1,10 @@
-//! Counter (CTR) mode with proper error propagation
+//! Counter (CTR) mode with proper error propagation and secure memory handling
 //!
 //! Counter mode turns a block cipher into a stream cipher by encrypting
 //! successive values of a counter and XORing the result with the plaintext.
 //!
 //! This implementation follows NIST SP 800-38A recommendations for CTR mode,
-//! using a flexible nonce-counter format.
+//! using a flexible nonce-counter format with secure memory handling.
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
@@ -15,6 +15,9 @@ use super::super::BlockCipher;
 use crate::error::{Error, Result, validate};
 use crate::types::Nonce;
 use crate::types::nonce::AesCtrCompatible;
+
+// Import security types for memory safety
+use dcrypt_core::security::barrier;
 
 /// Counter position within the counter block
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -32,8 +35,8 @@ pub enum CounterPosition {
     Custom(usize),
 }
 
-/// Counter mode implementation
-#[derive(Clone, Zeroize)]
+/// Counter mode implementation with secure memory handling
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Ctr<B: BlockCipher + Zeroize> {
     cipher: B,
     counter_block: Zeroizing<Vec<u8>>,
@@ -41,13 +44,6 @@ pub struct Ctr<B: BlockCipher + Zeroize> {
     counter_size: usize,
     keystream: Zeroizing<Vec<u8>>,
     keystream_pos: usize,
-}
-
-// Manually implement ZeroizeOnDrop to avoid conflict
-impl<B: BlockCipher + Zeroize> Drop for Ctr<B> {
-    fn drop(&mut self) {
-        self.zeroize();
-    }
 }
 
 impl<B: BlockCipher + Zeroize> Ctr<B> {
@@ -107,7 +103,7 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
             }
         };
         
-        // Create and initialize the counter block
+        // Create and initialize the counter block with Zeroizing
         let mut counter_block = Zeroizing::new(vec![0u8; block_size]);
         
         // Handle nonce according to its size
@@ -139,10 +135,15 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
         })
     }
     
-    /// Generate keystream for CTR mode
+    /// Generate keystream for CTR mode with secure memory handling
     fn generate_keystream(&mut self) -> Result<()> {
         let block_size = B::block_size();
+        
+        // Create a new zeroizing keystream buffer
         self.keystream = Zeroizing::new(vec![0u8; block_size]);
+        
+        // Use memory barrier to prevent optimization
+        barrier::compiler_fence_seq_cst();
         
         // Copy current counter block to keystream
         self.keystream.copy_from_slice(&self.counter_block);
@@ -154,6 +155,10 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
         self.increment_counter();
         
         self.keystream_pos = 0;
+        
+        // Use memory barrier after operation
+        barrier::compiler_fence_seq_cst();
+        
         Ok(())
     }
     
@@ -166,6 +171,9 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
                 let value = BigEndian::read_u64(&counter);
                 BigEndian::write_u64(&mut counter, value.wrapping_add(1));
                 self.counter_block[self.counter_position..self.counter_position + 8].copy_from_slice(&counter);
+                
+                // Zeroize the temporary counter array
+                counter.zeroize();
             },
             4 => {
                 let mut counter = [0u8; 4];
@@ -173,6 +181,9 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
                 let value = BigEndian::read_u32(&counter);
                 BigEndian::write_u32(&mut counter, value.wrapping_add(1));
                 self.counter_block[self.counter_position..self.counter_position + 4].copy_from_slice(&counter);
+                
+                // Zeroize the temporary counter array
+                counter.zeroize();
             },
             // For other counter sizes, we'll read/write the appropriate number of bytes
             size => {
@@ -199,6 +210,9 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
     pub fn encrypt(&mut self, plaintext: &[u8]) -> Result<Vec<u8>> {
         let mut ciphertext = Vec::with_capacity(plaintext.len());
         
+        // Use memory barrier before sensitive operations
+        barrier::compiler_fence_seq_cst();
+        
         for &byte in plaintext {
             if self.keystream_pos >= self.keystream.len() {
                 self.generate_keystream()?;
@@ -207,6 +221,9 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
             ciphertext.push(byte ^ self.keystream[self.keystream_pos]);
             self.keystream_pos += 1;
         }
+        
+        // Use memory barrier after sensitive operations
+        barrier::compiler_fence_seq_cst();
         
         Ok(ciphertext)
     }
@@ -219,6 +236,9 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
     
     /// Process data in place (encrypt or decrypt)
     pub fn process(&mut self, data: &mut [u8]) -> Result<()> {
+        // Use memory barrier before sensitive operations
+        barrier::compiler_fence_seq_cst();
+        
         for byte in data.iter_mut() {
             // Generate new keystream block if needed
             if self.keystream_pos >= self.keystream.len() {
@@ -229,6 +249,9 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
             *byte ^= self.keystream[self.keystream_pos];
             self.keystream_pos += 1;
         }
+        
+        // Use memory barrier after sensitive operations
+        barrier::compiler_fence_seq_cst();
         
         Ok(())
     }
@@ -265,8 +288,11 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
         // Force regeneration on next use
         self.keystream_pos = self.keystream.len();
 
-        // Clear any old keystream
+        // Clear any old keystream with Zeroizing
         self.keystream = Zeroizing::new(Vec::new());
+        
+        // Zeroize the temporary counter value
+        counter_value.zeroize();
     }
     
     /// Set the counter value directly
@@ -306,6 +332,9 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
     where
         Nonce<N>: AesCtrCompatible
     {
+        // Use memory barrier before sensitive operations
+        barrier::compiler_fence_seq_cst();
+        
         // Update nonce if provided
         if let Some(new_nonce) = nonce {
             let block_size = B::block_size();
@@ -336,6 +365,13 @@ impl<B: BlockCipher + Zeroize> Ctr<B> {
         
         // Set the counter value
         self.set_counter(counter);
+        
+        // Clear keystream
+        self.keystream = Zeroizing::new(Vec::new());
+        self.keystream_pos = 0;
+        
+        // Use memory barrier after sensitive operations
+        barrier::compiler_fence_seq_cst();
         
         Ok(())
     }

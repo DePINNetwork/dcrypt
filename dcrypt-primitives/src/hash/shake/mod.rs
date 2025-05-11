@@ -7,7 +7,7 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::error::{Error, Result, validate};
 use crate::hash::{HashFunction, HashAlgorithm};
@@ -74,7 +74,7 @@ impl HashAlgorithm for Shake256Algorithm {
 }
 
 /// SHAKE-128 hash function with fixed output size (32 bytes)
-#[derive(Clone, Zeroize)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Shake128 {
     state: [u64; KECCAK_STATE_SIZE],
     buffer: [u8; SHAKE128_RATE],
@@ -82,7 +82,7 @@ pub struct Shake128 {
 }
 
 /// SHAKE-256 hash function with fixed output size (64 bytes)
-#[derive(Clone, Zeroize)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Shake256 {
     state: [u64; KECCAK_STATE_SIZE],
     buffer: [u8; SHAKE256_RATE],

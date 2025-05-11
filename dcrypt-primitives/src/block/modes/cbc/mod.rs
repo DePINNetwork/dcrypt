@@ -8,7 +8,7 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use super::super::{BlockCipher, CipherAlgorithm};
 use crate::error::{Error, Result, validate};
@@ -21,13 +21,13 @@ pub trait CbcCompatible: crate::types::sealed::Sealed {}
 impl<const N: usize> CbcCompatible for Nonce<N> {}
 
 /// CBC mode implementation
-#[derive(Clone, Zeroize)]
-pub struct Cbc<B: BlockCipher> {
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+pub struct Cbc<B: BlockCipher + Zeroize + ZeroizeOnDrop> {
     cipher: B,
     iv: Vec<u8>,
 }
 
-impl<B: BlockCipher + CipherAlgorithm> Cbc<B> {
+impl<B: BlockCipher + CipherAlgorithm + Zeroize + ZeroizeOnDrop> Cbc<B> {
     /// Creates a new CBC mode instance with the given cipher and IV
     /// 
     /// The IV (nonce) must be the same size as the block size of the cipher.

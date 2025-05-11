@@ -12,6 +12,10 @@ use crate::kdf::{KeyDerivationFunction, ParamProvider, SecurityLevel, KdfAlgorit
 use crate::types::Salt;
 use crate::types::salt::HkdfCompatible;
 use crate::types::sealed::Sealed;
+
+// Import security types from dcrypt-core
+use dcrypt_core::security::{EphemeralSecret, SecretBuffer, SecureZeroingType};
+
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use rand::{CryptoRng, RngCore};
 
@@ -75,7 +79,7 @@ pub struct HkdfOperation<'a, H: HashFunction, const S: usize = 16> {
     length: usize,
 }
 
-impl<'a, H: HashFunction, const S: usize> KdfOperation<'a, HkdfAlgorithm<H>> for HkdfOperation<'a, H, S>
+impl<'a, H: HashFunction + Clone, const S: usize> KdfOperation<'a, HkdfAlgorithm<H>> for HkdfOperation<'a, H, S>
 where
     Salt<S>: HkdfCompatible
 {
@@ -126,14 +130,18 @@ where
     }
 }
 
-impl<H: HashFunction, const S: usize> Hkdf<H, S>
+impl<H: HashFunction + Clone, const S: usize> Hkdf<H, S>
 where
     Salt<S>: HkdfCompatible
 {
     /// HKDF-Extract
     pub fn extract(salt: Option<&[u8]>, ikm: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
-        let salt_bytes = salt.unwrap_or(&[]);
-        let result = Hmac::<H>::mac(salt_bytes, ikm)?;
+        // Convert salt to owned Vec to wrap in EphemeralSecret
+        let salt_vec = salt.unwrap_or(&[]).to_vec();
+        let secure_salt = EphemeralSecret::new(salt_vec);
+        
+        // Use HMAC with secure salt
+        let result = Hmac::<H>::mac(&secure_salt, ikm)?;
         Ok(Zeroizing::new(result))
     }
 
@@ -156,8 +164,12 @@ where
         let mut t_buf = Zeroizing::new(vec![0u8; hash_len]);
         let info_bytes = info.unwrap_or(&[]);
 
+        // Convert PRK to owned Vec to wrap in EphemeralSecret
+        let prk_vec = prk.to_vec();
+        let secure_prk = EphemeralSecret::new(prk_vec);
+
         for i in 1..=n {
-            let mut hmac = Hmac::<H>::new(prk)?;
+            let mut hmac = Hmac::<H>::new(&secure_prk)?;
             if i > 1 {
                 // feed previous block for iterations > 1
                 hmac.update(&t_buf)?;
@@ -182,7 +194,11 @@ where
         length: usize
     ) -> Result<Zeroizing<Vec<u8>>> {
         let _ = Hmac::<H>::new(&[])?; // warm-up
+        
+        // Extract phase - produces PRK
         let prk = Self::extract(salt, ikm)?;
+        
+        // Expand phase - uses PRK to generate OKM
         Self::expand(&prk, info, length)
     }
 }
@@ -203,7 +219,7 @@ where
     }
 }
 
-impl<H: HashFunction, const S: usize> KeyDerivationFunction for Hkdf<H, S>
+impl<H: HashFunction + Clone, const S: usize> KeyDerivationFunction for Hkdf<H, S>
 where
     Salt<S>: HkdfCompatible
 {
@@ -250,6 +266,22 @@ where
             bits if bits >= 256 => SecurityLevel::L128,
             bits => SecurityLevel::Custom(bits as u32 / 2),
         }
+    }
+}
+
+impl<H: HashFunction + Clone, const S: usize> SecureZeroingType for Hkdf<H, S>
+where
+    Salt<S>: HkdfCompatible
+{
+    fn zeroed() -> Self {
+        Self {
+            _hash_type: PhantomData,
+            params: HkdfParams::default(),
+        }
+    }
+    
+    fn secure_clone(&self) -> Self {
+        self.clone()
     }
 }
 

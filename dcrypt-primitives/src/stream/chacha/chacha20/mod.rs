@@ -7,6 +7,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use crate::error::{Error, Result};
 use crate::types::Nonce;
 use crate::types::nonce::ChaCha20Compatible;
+use dcrypt_core::security::{SecretBuffer, EphemeralSecret};
 
 /// Size of ChaCha20 key in bytes
 pub const CHACHA20_KEY_SIZE: usize = 32;
@@ -34,11 +35,27 @@ impl ChaCha20 {
     where
         Nonce<N>: ChaCha20Compatible
     {
-        Self::with_counter(key, nonce, 0)
+        // Wrap key in SecretBuffer for secure handling
+        let key_buf = SecretBuffer::new(*key);
+        Self::with_counter_secure(&key_buf, nonce, 0)
     }
     
     /// Creates a new ChaCha20 instance with the specified key, nonce, and counter
     pub fn with_counter<const N: usize>(key: &[u8; CHACHA20_KEY_SIZE], nonce: &Nonce<N>, counter: u32) -> Self
+    where
+        Nonce<N>: ChaCha20Compatible
+    {
+        // Wrap key in SecretBuffer for secure handling
+        let key_buf = SecretBuffer::new(*key);
+        Self::with_counter_secure(&key_buf, nonce, counter)
+    }
+    
+    /// Internal method that works with SecretBuffer for secure key handling
+    fn with_counter_secure<const N: usize>(
+        key: &SecretBuffer<CHACHA20_KEY_SIZE>, 
+        nonce: &Nonce<N>, 
+        counter: u32
+    ) -> Self
     where
         Nonce<N>: ChaCha20Compatible
     {
@@ -51,9 +68,10 @@ impl ChaCha20 {
         state[2] = 0x79622d32;
         state[3] = 0x6b206574;
         
-        // Key (8 words)
+        // Key (8 words) - use secure key access
+        let key_bytes = key.as_ref();
         for i in 0..8 {
-            state[4 + i] = LittleEndian::read_u32(&key[i * 4..]);
+            state[4 + i] = LittleEndian::read_u32(&key_bytes[i * 4..]);
         }
         
         // Counter (1 word)
@@ -71,6 +89,17 @@ impl ChaCha20 {
             position: CHACHA20_BLOCK_SIZE, // Force initial keystream generation
             counter,
         }
+    }
+    
+    /// Creates from a SecretBuffer key (internal use)
+    pub(crate) fn from_secret_key<const N: usize>(
+        key: &SecretBuffer<CHACHA20_KEY_SIZE>, 
+        nonce: &Nonce<N>
+    ) -> Self
+    where
+        Nonce<N>: ChaCha20Compatible
+    {
+        Self::with_counter_secure(key, nonce, 0)
     }
     
     /// The ChaCha20 quarter round function
@@ -117,8 +146,8 @@ impl ChaCha20 {
         }
         
         // Create output by adding the working state to the original state
-        // But use the current counter value for position 12
-        let mut output_state = [0u32; 16];
+        // Use EphemeralSecret to ensure intermediate values are zeroized
+        let mut output_state = EphemeralSecret::new([0u32; 16]);
         for i in 0..16 {
             let original_val = if i == 12 { self.counter } else { self.state[i] };
             output_state[i] = working_state[i].wrapping_add(original_val);
@@ -184,13 +213,14 @@ impl ChaCha20 {
         self.position = CHACHA20_BLOCK_SIZE;
 
         // Clear any old keystream
-        self.buffer = [0; CHACHA20_BLOCK_SIZE];
+        self.buffer.zeroize();
     }
     
     /// Reset to initial state with the same key
     pub fn reset(&mut self) {
         self.counter = self.state[12]; // Restore original counter
         self.position = CHACHA20_BLOCK_SIZE; // Force keystream regeneration
+        self.buffer.zeroize(); // Clear keystream buffer
     }
 }
 

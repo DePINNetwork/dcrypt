@@ -16,6 +16,9 @@ use crate::kdf::common::{constant_time_eq, generate_salt};
 use crate::types::{Salt, SecretBytes, ByteSerializable};
 use crate::types::salt::Pbkdf2Compatible;
 
+// Import security types
+use dcrypt_core::security::{SecretBuffer, SecretVec, SecureZeroingType, ZeroizeGuard};
+
 // Conditional imports based on features
 #[cfg(feature = "std")]
 use std::time::{Duration, Instant};
@@ -156,9 +159,8 @@ where Salt<S>: Pbkdf2Compatible {
             None => self.kdf.params.salt.as_ref(),
         };
         
-        // Use PBKDF2
-        Pbkdf2::<H, S>::pbkdf2(ikm, salt, self.iterations, self.length)
-            .map(|result| result.to_vec())
+        // Use PBKDF2 with secure key handling
+        Pbkdf2::<H, S>::pbkdf2_secure(ikm, salt, self.iterations, self.length)
     }
     
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
@@ -175,9 +177,10 @@ where Salt<S>: Pbkdf2Compatible {
 }
 
 impl<H: HashFunction + Clone, const S: usize> Pbkdf2<H, S> {
-    /// Internal PBKDF2 implementation
+    /// Internal PBKDF2 implementation with secure key handling
     /// 
     /// This implements the core PBKDF2 algorithm as defined in RFC 8018 Section 5.2
+    /// with enhanced security for key material handling.
     /// 
     /// # Arguments
     /// * `password` - The password to derive the key from
@@ -189,6 +192,29 @@ impl<H: HashFunction + Clone, const S: usize> Pbkdf2<H, S> {
     /// The derived key of length key_length bytes
     pub fn pbkdf2(
         password: &[u8],
+        salt: &[u8],
+        iterations: u32,
+        key_length: usize,
+    ) -> Result<Zeroizing<Vec<u8>>> {
+        // Wrap password in secure buffer for internal operations
+        let secure_password = SecretVec::from_slice(password);
+        Self::pbkdf2_internal(&secure_password, salt, iterations, key_length)
+    }
+    
+    /// Secure PBKDF2 implementation that returns regular Vec
+    pub fn pbkdf2_secure(
+        password: &[u8],
+        salt: &[u8],
+        iterations: u32,
+        key_length: usize,
+    ) -> Result<Vec<u8>> {
+        let result = Self::pbkdf2(password, salt, iterations, key_length)?;
+        Ok(result.to_vec())
+    }
+    
+    /// Internal PBKDF2 implementation using secure types
+    fn pbkdf2_internal(
+        password: &SecretVec,
         salt: &[u8],
         iterations: u32,
         key_length: usize,
@@ -226,7 +252,7 @@ impl<H: HashFunction + Clone, const S: usize> Pbkdf2<H, S> {
         // Derive each block of the output
         // Each block is calculated independently using the F function
         for block_index in 1..=block_count {
-            let block = Self::pbkdf2_f::<H>(password, salt, iterations, block_index as u32)?;
+            let block = Self::pbkdf2_f::<H>(password.as_ref(), salt, iterations, block_index as u32)?;
             
             // Determine how much of this block to use
             // Most blocks are used completely, but the last one might be partial
@@ -252,7 +278,7 @@ impl<H: HashFunction + Clone, const S: usize> Pbkdf2<H, S> {
     /// Computes F(P, S, c, i) = U_1 XOR U_2 XOR ... XOR U_c
     /// where U_1 = PRF(P, S || INT_32_BE(i))
     ///       U_j = PRF(P, U_{j-1})
-    fn pbkdf2_f<T: HashFunction>(
+    fn pbkdf2_f<T: HashFunction + Clone>(
         password: &[u8],
         salt: &[u8],
         iterations: u32,
@@ -329,8 +355,8 @@ where Salt<S>: Pbkdf2Compatible {
         // Use provided length or fallback to default from params
         let effective_length = if length > 0 { length } else { self.params.key_length };
         
-        let result = Self::pbkdf2(input, effective_salt, self.params.iterations, effective_length)?;
-        Ok(result.to_vec())
+        // Use the secure version
+        Self::pbkdf2_secure(input, effective_salt, self.params.iterations, effective_length)
     }
     
     fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
@@ -359,8 +385,9 @@ where Salt<S>: Pbkdf2Compatible {
     type Password = SecretBytes<32>; // Using a 32-byte buffer for passwords
     
     fn hash_password(&self, password: &Self::Password) -> Result<PasswordHash> {
-        // Derive the key
-        let hash = Self::pbkdf2(password.as_ref(), self.params.salt.as_ref(), self.params.iterations, self.params.key_length)?;
+        // Derive the key using secure implementation
+        let hash = Self::pbkdf2(password.as_ref(), self.params.salt.as_ref(), 
+                               self.params.iterations, self.params.key_length)?;
         
         // Create parameters map
         let mut params = BTreeMap::new();
@@ -395,7 +422,7 @@ where Salt<S>: Pbkdf2Compatible {
             )),
         };
         
-        // Derive key with the same parameters
+        // Derive key with the same parameters, using secure implementation
         let derived = Self::pbkdf2(
             password.as_ref(), 
             &hash.salt, 

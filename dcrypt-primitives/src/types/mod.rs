@@ -25,6 +25,14 @@ pub use key::{SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey};
 // Import and re-export core types
 pub use dcrypt_core::types::{SecretBytes, SecretVec, Key};
 
+// Import and re-export security types from dcrypt-core
+pub use dcrypt_core::security::{
+    SecretBuffer, 
+    EphemeralSecret, 
+    ZeroizeGuard,
+    SecureZeroingType,  // Use the trait from core
+};
+
 /// Marker trait for validating symmetric key sizes for specific algorithms.
 /// 
 /// This trait ensures that a symmetric key type has a valid size for the
@@ -43,7 +51,6 @@ pub trait ValidSecretKeySize<A: key::AsymmetricAlgorithm, const N: usize>: seale
 /// specified algorithm. It's sealed to prevent external implementations.
 pub trait ValidPublicKeySize<A: key::AsymmetricAlgorithm, const N: usize>: sealed::Sealed {}
 
-
 // Common cryptographic traits
 use rand::{CryptoRng, RngCore};
 
@@ -57,12 +64,6 @@ pub trait ConstantTimeEq {
 pub trait RandomGeneration: Sized {
     /// Generate a random instance using the provided RNG
     fn random<R: RngCore + CryptoRng>(rng: &mut R) -> crate::error::Result<Self>;
-}
-
-/// Trait for types that can be securely zeroed
-pub trait SecureZeroingType: Sized + zeroize::Zeroize {
-    /// Create a new zeroed instance
-    fn zeroed() -> Self;
 }
 
 /// Trait for types that have a fixed size

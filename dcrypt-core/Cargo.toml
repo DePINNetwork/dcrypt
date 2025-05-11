@@ -9,7 +9,8 @@ license = "MIT OR Apache-2.0"
 
 [features]
 default = ["std"]
-std = ["thiserror", "zeroize/std"]
+std = ["thiserror", "zeroize/std", "alloc"]
+alloc = []
 no_std = []
 wasm = []
 simd = []

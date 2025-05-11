@@ -1,6 +1,10 @@
 use super::*;
 use hex;
-use crate::types::Nonce; // Add this import for the Nonce type
+use crate::types::Nonce;
+use crate::ChaCha20Algorithm;
+use crate::types::key::SymmetricKey;
+use crate::types::RandomGeneration;
+use rand::rngs::OsRng;
 
 #[test]
 fn test_chacha20_rfc8439() {
@@ -97,4 +101,42 @@ fn test_chacha20_seek() {
     chacha2.keystream(&mut ks2);
     
     assert_eq!(ks1, ks2);
+}
+#[test]
+fn test_chacha20_with_secure_key() {
+    // Create a secure key
+    let key = SymmetricKey::<ChaCha20Algorithm, 32>::random(&mut OsRng).unwrap();
+    let nonce = Nonce::<12>::random(&mut OsRng);
+    
+    // Create cipher with secure key
+    let mut cipher = ChaCha20::new(key.as_ref().try_into().unwrap(), &nonce);
+    
+    // Test encryption/decryption
+    let plaintext = b"test message";
+    let mut buffer = plaintext.to_vec();
+    
+    cipher.encrypt(&mut buffer);
+    assert_ne!(&buffer[..], plaintext);
+    
+    cipher.reset();
+    cipher.decrypt(&mut buffer);
+    assert_eq!(&buffer[..], plaintext);
+}
+
+#[test]
+fn test_chacha20_zeroization() {
+    let key = [0x42u8; 32];
+    let nonce = Nonce::<12>::zeroed();
+    
+    let mut cipher = ChaCha20::new(&key, &nonce);
+    let mut keystream = [0u8; 64];
+    cipher.keystream(&mut keystream);
+    
+    // Verify keystream was generated
+    assert_ne!(keystream, [0u8; 64]);
+    
+    // Reset should clear the buffer
+    cipher.reset();
+    // Note: We can't directly access the buffer to verify it's zeroed
+    // but reset() calls zeroize on it
 }

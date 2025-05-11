@@ -3,6 +3,16 @@
 //! This crate provides implementations of various cryptographic primitives
 //! with a focus on constant-time operations and resistance to side-channel attacks.
 //! The library is designed to be usable in both `std` and `no_std` environments.
+//!
+//! # Security Features
+//!
+//! This library implements comprehensive security patterns to protect sensitive
+//! cryptographic material, including:
+//!
+//! - Secure memory handling with automatic zeroization
+//! - Constant-time comparison operations
+//! - Memory barrier utilities
+//! - Secure operation patterns
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
@@ -63,6 +73,13 @@ pub use types::{
     Nonce, Salt, Tag, Digest, SecretBytes,
     ByteSerializable, FixedSize, ConstantTimeEq,
     RandomGeneration, SecureZeroingType,
+};
+
+// Re-export security types from dcrypt-core
+pub use dcrypt_core::security::{
+    SecretBuffer, SecretVec, EphemeralSecret, ZeroizeGuard,
+    SecureOperation, SecureCompare, SecureOperationExt,
+    SecureOperationBuilder, barrier,
 };
 
 // Algorithm types and compatibility traits

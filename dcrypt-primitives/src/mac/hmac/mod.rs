@@ -7,6 +7,8 @@
 use crate::error::{Error, Result, validate};
 use crate::hash::HashFunction;
 use subtle::ConstantTimeEq;
+use zeroize::{Zeroize, ZeroizeOnDrop};
+use dcrypt_core::security::{SecretBuffer, SecureZeroingType};
 
 const MAX_BLOCK: usize = 128;  // SHA-512 block size
 
@@ -15,18 +17,19 @@ const MAX_BLOCK: usize = 128;  // SHA-512 block size
 /// This implementation is constant-time and allocation-free, using fixed buffers
 /// on the stack for secret-dependent operations. It follows RFC 2104 and FIPS 198-1
 /// specifications.
-#[derive(Clone)]
-pub struct Hmac<H: HashFunction> {
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+pub struct Hmac<H: HashFunction + Clone> {
+    #[zeroize(skip)]  // Hash function itself doesn't need to be zeroized
     hash: H,
-    ipad: [u8; MAX_BLOCK],
-    opad: [u8; MAX_BLOCK],
+    ipad: SecretBuffer<MAX_BLOCK>,
+    opad: SecretBuffer<MAX_BLOCK>,
     block_size: usize,
     is_finalized: bool,
 }
 
 impl<H> Hmac<H> 
 where 
-    H: HashFunction,
+    H: HashFunction + Clone,
     H::Output: AsRef<[u8]> + Clone
 {
     const IPAD_BYTE: u8 = 0x36;
@@ -58,7 +61,7 @@ where
 
         let mut k_prime = [0u8; MAX_BLOCK];
         let long = (key.len() > bs) as u8;           // 1 if long
-        let mask = long.wrapping_neg();              // 0xFF if long else 0
+        let mask = long.wrapping_neg();              // 0xFF if long else 0x00
 
         for i in 0..bs {
             let k  = *key.get(i).unwrap_or(&0);
@@ -67,21 +70,27 @@ where
         }
 
         /* --- paddings --- */
-        let mut ipad = [0u8; MAX_BLOCK];
-        let mut opad = [0u8; MAX_BLOCK];
+        let mut ipad_bytes = [0u8; MAX_BLOCK];
+        let mut opad_bytes = [0u8; MAX_BLOCK];
         for i in 0..bs {
-            ipad[i] = k_prime[i] ^ Self::IPAD_BYTE;
-            opad[i] = k_prime[i] ^ Self::OPAD_BYTE;
+            ipad_bytes[i] = k_prime[i] ^ Self::IPAD_BYTE;
+            opad_bytes[i] = k_prime[i] ^ Self::OPAD_BYTE;
         }
 
         /* --- start inner hash --- */
         let mut hash = H::new();
-        hash.update(&ipad[..bs])?;
+        hash.update(&ipad_bytes[..bs])?;
 
         // wipe K′
         for b in k_prime.iter_mut().take(bs) { *b = 0; }
 
-        Ok(Self { hash, ipad, opad, block_size: bs, is_finalized: false })
+        Ok(Self { 
+            hash, 
+            ipad: SecretBuffer::new(ipad_bytes),
+            opad: SecretBuffer::new(opad_bytes),
+            block_size: bs, 
+            is_finalized: false 
+        })
     }
 
     /* ------------------------------------------------------------------ */
@@ -125,7 +134,7 @@ where
             // Burn the same cycles as a real finalisation
             let mut dummy_inner = [0u8; 64];                // max SHA-512 output
             let mut outer = H::new();
-            outer.update(&self.opad[..self.block_size])?;
+            outer.update(&self.opad.as_ref()[..self.block_size])?;
             outer.update(&dummy_inner[..H::output_size()])?;
             let _ = outer.finalize();
             return Err(Error::param("hmac_state", "HMAC already finalized"));
@@ -135,7 +144,7 @@ where
         let inner = self.hash.finalize()?;
 
         let mut outer = H::new();
-        outer.update(&self.opad[..self.block_size])?;
+        outer.update(&self.opad.as_ref()[..self.block_size])?;
         outer.update(inner.as_ref())?;
         
         // Convert H::Output to Vec<u8>
@@ -190,6 +199,32 @@ where
     
         let is_valid = diff.ct_eq(&0u8).unwrap_u8() == 1;
         Ok(is_valid)
+    }
+}
+
+impl<H> SecureZeroingType for Hmac<H> 
+where 
+    H: HashFunction + Default + Clone
+{
+    fn zeroed() -> Self {
+        Self {
+            hash: H::default(),
+            ipad: SecretBuffer::zeroed(),
+            opad: SecretBuffer::zeroed(),
+            block_size: 0,
+            is_finalized: false,
+        }
+    }
+    
+    fn secure_clone(&self) -> Self {
+        // Clone while preserving security properties
+        Self {
+            hash: self.hash.clone(),
+            ipad: self.ipad.secure_clone(),
+            opad: self.opad.secure_clone(),
+            block_size: self.block_size,
+            is_finalized: self.is_finalized,
+        }
     }
 }
 

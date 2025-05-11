@@ -32,7 +32,7 @@ extern crate alloc;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::error::{Error, Result, validate};
 use crate::types::{Nonce, SecretBytes, Tag};
@@ -177,6 +177,7 @@ impl AesVariant for Aes128Algorithm {
 }
 
 /// Enhanced AES-128 implementation with type-level guarantees
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct TypedAes128 {
     inner: aes::Aes128,
 }
@@ -233,12 +234,12 @@ impl CipherMode for CbcMode {
 }
 
 /// Enhanced CBC mode implementation with type parameters
-pub struct TypedCbc<C: BlockCipher + CipherAlgorithm> {
+pub struct TypedCbc<C: BlockCipher + CipherAlgorithm + Zeroize + ZeroizeOnDrop> {
     inner: modes::cbc::Cbc<C>,
     _phantom: core::marker::PhantomData<C>,
 }
 
-impl<C: BlockCipher + CipherAlgorithm> BlockCipherMode<C> for TypedCbc<C> {
+impl<C: BlockCipher + CipherAlgorithm + Zeroize + ZeroizeOnDrop> BlockCipherMode<C> for TypedCbc<C> {
     type Mode = CbcMode;
     type Nonce = Nonce<16>;
     

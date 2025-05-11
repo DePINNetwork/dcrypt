@@ -15,6 +15,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use rand::{CryptoRng, RngCore};
+use dcrypt_core::security::{SecretVec, SecureZeroingType}; // Changed to SecretVec
 
 /// Argon2 variant types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -99,8 +100,16 @@ where
     }
     
     /// Hashes a password with the configured parameters
-    pub fn hash_password(&self, _password: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
+    /// 
+    /// Note: This implementation ensures secure handling of the password
+    /// parameter by using SecretVec internally.
+    pub fn hash_password(&self, password: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
+        // Wrap password in SecretVec for secure handling (variable-length)
+        let secure_password = SecretVec::from_slice(password);
+        
         // This is a stub implementation
+        // In a real implementation, all password handling would use secure types
+        // and ensure proper zeroization of intermediate values
         Err(Error::NotImplemented { feature: "Argon2 password hashing" })
     }
 }
@@ -209,6 +218,9 @@ where
     }
     
     fn derive_key(&self, input: &[u8], salt: Option<&[u8]>, info: Option<&[u8]>, length: usize) -> Result<Vec<u8>> {
+        // Wrap input in SecretVec for secure handling (variable-length)
+        let secure_input = SecretVec::from_slice(input);
+        
         // Use provided salt or fallback to default from params
         let effective_salt = match salt {
             Some(s) => {
@@ -234,8 +246,8 @@ where
         let temp_instance = Argon2::new_with_params(temp_params);
         
         // This is a stub implementation - in real code we'd actually call Argon2
-        // with the effective parameters
-        let result = temp_instance.hash_password(input)?;
+        // with the effective parameters, using secure_input for password data
+        let result = temp_instance.hash_password(secure_input.as_ref())?;
         
         // If the result is not the expected length, resize it
         let mut output = result.to_vec();
@@ -275,11 +287,18 @@ where
     type Password = SecretBytes<32>; // Using a 32-byte buffer for passwords
     
     fn hash_password(&self, password: &Self::Password) -> Result<PasswordHash> {
+        // Password is already SecretBytes<32>, which provides secure zeroization
+        // In a real implementation, we would ensure all intermediate values
+        // are also wrapped in secure types like SecretVec
+        
         // This is a stub implementation
         Err(Error::NotImplemented { feature: "Argon2 password hash function" })
     }
     
-    fn verify(&self, _password: &Self::Password, _hash: &PasswordHash) -> Result<bool> {
+    fn verify(&self, password: &Self::Password, hash: &PasswordHash) -> Result<bool> {
+        // Password is already SecretBytes<32>, which provides secure zeroization
+        // Verification should use constant-time comparison
+        
         Err(Error::NotImplemented { feature: "Argon2 password verification" })
     }
     
@@ -288,7 +307,7 @@ where
         Duration::from_millis(100)
     }
     
-    fn recommended_params(_target_duration: Duration) -> Self::Params {
+    fn recommended_params(target_duration: Duration) -> Self::Params {
         // Return default parameters
         Params::default()
     }

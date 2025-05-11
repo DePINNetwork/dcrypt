@@ -225,8 +225,8 @@ fn debug_shake_implementation() {
     // Extract raw buffer state for debugging
     if debug_shake.buffer_idx == 0 {
         println!("After finalize:");
-        println!("  First byte (should be 0x1F): {:02x}", debug_shake.buffer[0]);
-        println!("  Last byte (should be 0x80): {:02x}", debug_shake.buffer[SHAKE128_RATE - 1]);
+        println!("  First byte (should be 0x1F): {:02x}", debug_shake.buffer.as_ref()[0]);
+        println!("  Last byte (should be 0x80): {:02x}", debug_shake.buffer.as_ref()[SHAKE128_RATE - 1]);
     }
 }
 

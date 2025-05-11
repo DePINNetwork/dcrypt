@@ -4,7 +4,8 @@
 use super::{ExtendableOutputFunction, KeyedXof, DeriveKeyXof, Blake3Algorithm};
 use crate::error::{Error, Result, validate};
 use crate::xof::XofAlgorithm;
-use zeroize::Zeroize;
+use dcrypt_core::security::{SecretBuffer, EphemeralSecret};
+use zeroize::{Zeroize, Zeroizing};
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
@@ -45,6 +46,15 @@ fn words_from_little_endian_bytes(bytes: &[u8], words: &mut [u32]) {
             bytes[i * 4 + 2],
             bytes[i * 4 + 3],
         ]);
+    }
+}
+
+// Convert words to bytes securely
+fn words_to_little_endian_bytes(words: &[u32], bytes: &mut [u8]) {
+    debug_assert_eq!(bytes.len(), 4 * words.len());
+    for i in 0..words.len() {
+        let word_bytes = words[i].to_le_bytes();
+        bytes[i * 4..i * 4 + 4].copy_from_slice(&word_bytes);
     }
 }
 
@@ -320,15 +330,45 @@ fn parent_cv(
 }
 
 /// BLAKE3 extendable output function
-#[derive(Clone, Zeroize)]
+#[derive(Clone)]
 pub struct Blake3Xof {
     chunk_state: ChunkState,
-    key_words: [u32; 8],
+    key_words: SecretBuffer<32>,  // Secure storage for key words (8 u32s = 32 bytes)
     cv_stack: Vec<[u32; 8]>,
     flags: u32,
 }
 
+// Implement Drop and ZeroizeOnDrop for Blake3Xof
+impl Drop for Blake3Xof {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+impl zeroize::ZeroizeOnDrop for Blake3Xof {}
+
+// Manually implement Zeroize for Blake3Xof
+impl Zeroize for Blake3Xof {
+    fn zeroize(&mut self) {
+        self.chunk_state.zeroize();
+        self.key_words.zeroize();
+        for cv in self.cv_stack.iter_mut() {
+            cv.zeroize();
+        }
+        self.cv_stack.clear();
+        self.flags = 0;
+    }
+}
+
 impl Blake3Xof {
+    // Convert key words from SecretBuffer to [u32; 8]
+    fn get_key_words(&self) -> [u32; 8] {
+        let mut words = [0u32; 8];
+        let key_bytes = self.key_words.as_ref();
+        words_from_little_endian_bytes(key_bytes, &mut words);
+        words
+    }
+    
     fn push_stack(&mut self, cv: [u32; 8]) {
         self.cv_stack.push(cv);
     }
@@ -342,7 +382,7 @@ impl Blake3Xof {
     
     fn add_chunk_chaining_value(&mut self, mut new_cv: [u32; 8], mut total_chunks: u64) -> Result<()> {
         while total_chunks & 1 == 0 {
-            new_cv = parent_cv(self.pop_stack()?, new_cv, self.key_words, self.flags);
+            new_cv = parent_cv(self.pop_stack()?, new_cv, self.get_key_words(), self.flags);
             total_chunks >>= 1;
         }
         self.push_stack(new_cv);
@@ -358,7 +398,7 @@ impl Blake3Xof {
             output = parent_output(
                 self.cv_stack[parent_nodes_remaining],
                 output.chaining_value(),
-                self.key_words,
+                self.get_key_words(),
                 self.flags,
             );
         }
@@ -381,9 +421,13 @@ impl Blake3Xof {
 
 impl ExtendableOutputFunction for Blake3Xof {
     fn new() -> Self {
+        // Convert IV to bytes for SecretBuffer storage
+        let mut key_bytes = [0u8; 32];
+        words_to_little_endian_bytes(&IV, &mut key_bytes);
+        
         Self {
             chunk_state: ChunkState::new(IV, 0, 0),
-            key_words: IV,
+            key_words: SecretBuffer::new(key_bytes),
             cv_stack: Vec::new(),
             flags: 0,
         }
@@ -395,7 +439,7 @@ impl ExtendableOutputFunction for Blake3Xof {
                 let chunk_cv = self.chunk_state.output().chaining_value();
                 let total_chunks = self.chunk_state.chunk_counter + 1;
                 self.add_chunk_chaining_value(chunk_cv, total_chunks)?;
-                self.chunk_state = ChunkState::new(self.key_words, total_chunks, self.flags);
+                self.chunk_state = ChunkState::new(self.get_key_words(), total_chunks, self.flags);
             }
             
             let want = CHUNK_LEN - self.chunk_state.len();
@@ -437,16 +481,28 @@ impl KeyedXof for Blake3Xof {
     fn with_key(key: &[u8]) -> Result<Self> {
         validate::length("BLAKE3 key", key.len(), KEY_LEN)?;
         
-        // Convert key to key words
+        // Create SecretBuffer for the key
+        let key_buf = SecretBuffer::new({
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(key);
+            arr
+        });
+        
+        // Convert key to key words for chunk state initialization
         let mut key_words = [0u32; 8];
         words_from_little_endian_bytes(key, &mut key_words);
         
-        Ok(Self {
+        let mut instance = Self {
             chunk_state: ChunkState::new(key_words, 0, KEYED_HASH),
-            key_words,
+            key_words: key_buf,
             cv_stack: Vec::new(),
             flags: KEYED_HASH,
-        })
+        };
+        
+        // Zeroize the temporary key_words
+        key_words.zeroize();
+        
+        Ok(instance)
     }
 }
 
@@ -456,24 +512,32 @@ impl DeriveKeyXof for Blake3Xof {
         context_hasher.update(context)?;
         
         // Create key from context using DERIVE_KEY_CONTEXT flag
-        let context_key = {
+        let context_key = EphemeralSecret::new({
             let mut tmp = [0u8; KEY_LEN];
             let mut output = context_hasher.chunk_state.output();
             output.flags |= DERIVE_KEY_CONTEXT;
             output.root_output_bytes(&mut tmp);
             tmp
-        };
+        });
         
-        // Convert context key to key words
+        // Create SecretBuffer for the context key
+        let key_buf = SecretBuffer::new(*context_key);
+        
+        // Convert context key to key words for chunk state initialization
         let mut key_words = [0u32; 8];
-        words_from_little_endian_bytes(&context_key, &mut key_words);
+        words_from_little_endian_bytes(context_key.as_ref(), &mut key_words);
         
-        Ok(Self {
+        let mut instance = Self {
             chunk_state: ChunkState::new(key_words, 0, DERIVE_KEY_MATERIAL),
-            key_words,
+            key_words: key_buf,
             cv_stack: Vec::new(),
             flags: DERIVE_KEY_MATERIAL,
-        })
+        };
+        
+        // Zeroize the temporary key_words
+        key_words.zeroize();
+        
+        Ok(instance)
     }
 }
 

@@ -200,13 +200,13 @@ impl<H: HashFunction> KdfAlgorithm for HkdfAlgorithm<H> {
 
 /// Enhanced HKDF implementation with type-level guarantees
 #[cfg(feature = "alloc")]
-pub struct TypedHkdf<H: HashFunction> {
+pub struct TypedHkdf<H: HashFunction + Clone> {
     inner: hkdf::Hkdf<H, 16>, // Use default size of 16
     _phantom: PhantomData<H>,
 }
 
 #[cfg(feature = "alloc")]
-impl<H: HashFunction> KeyDerivationFunction for TypedHkdf<H> {
+impl<H: HashFunction + Clone> KeyDerivationFunction for TypedHkdf<H> {
     type Algorithm = HkdfAlgorithm<H>;
     type Salt = Salt<16>;  // Updated to use generic Salt with size
     
@@ -241,7 +241,7 @@ impl<H: HashFunction> KeyDerivationFunction for TypedHkdf<H> {
 
 /// HKDF builder implementation
 #[cfg(feature = "alloc")]
-pub struct HKdfOperation<'a, H: HashFunction> {
+pub struct HKdfOperation<'a, H: HashFunction + Clone> {
     kdf: &'a TypedHkdf<H>,
     ikm: Option<&'a [u8]>,
     salt: Option<&'a [u8]>,
@@ -250,7 +250,7 @@ pub struct HKdfOperation<'a, H: HashFunction> {
 }
 
 #[cfg(feature = "alloc")]
-impl<'a, H: HashFunction> KdfOperation<'a, HkdfAlgorithm<H>> for HKdfOperation<'a, H> {
+impl<'a, H: HashFunction + Clone> KdfOperation<'a, HkdfAlgorithm<H>> for HKdfOperation<'a, H> {
     fn with_ikm(mut self, ikm: &'a [u8]) -> Self {
         self.ikm = Some(ikm);
         self

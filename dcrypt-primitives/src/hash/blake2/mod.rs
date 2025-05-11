@@ -18,10 +18,14 @@ use crate::error::{Error, Result, validate};
 use crate::hash::{HashFunction, HashAlgorithm, Hash};
 use crate::types::Digest;
 
+// Import security types for Phase 2
+use dcrypt_core::security::{SecretBuffer, SecureZeroingType, EphemeralSecret};
+
 /// BLAKE2b constants
 const BLAKE2B_BLOCK_SIZE: usize = 128;
 const BLAKE2B_MAX_OUTPUT_SIZE: usize = 64;
 const BLAKE2B_ROUNDS: usize = 12;
+const BLAKE2B_KEY_SIZE: usize = 64;  // Maximum key size for keyed mode
 
 const BLAKE2B_IV: [u64; 8] = [
     0x6A09E667F3BCC908, 0xBB67AE8584CAA73B,
@@ -64,6 +68,15 @@ pub struct Blake2b {
     buf: [u8; BLAKE2B_BLOCK_SIZE],
     buf_len: usize,
     out_len: usize,
+    key: Option<SecretBuffer<BLAKE2B_KEY_SIZE>>,  // Optional key for keyed mode
+    is_keyed: bool,
+}
+
+// Manually implement zeroize on drop for additional security
+impl Drop for Blake2b {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
 }
 
 impl Blake2b {
@@ -80,9 +93,54 @@ impl Blake2b {
         let mut h = BLAKE2B_IV;
         let param0 = 0x0101_0000u64 + (out_len as u64);
         h[0] ^= param0;
-        Blake2b { h, t: [0;2], f: [0;2], buf: [0;BLAKE2B_BLOCK_SIZE], buf_len: 0, out_len }
+        Blake2b { 
+            h, 
+            t: [0;2], 
+            f: [0;2], 
+            buf: [0;BLAKE2B_BLOCK_SIZE], 
+            buf_len: 0, 
+            out_len,
+            key: None,
+            is_keyed: false,
+        }
     }
-
+    
+    /// Creates a new Blake2b instance with a key (keyed mode).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key bytes (must be between 1 and 64 bytes)
+    /// * `out_len` - The desired output size in bytes (must be between 1 and 64)
+    pub fn with_key(key: &[u8], out_len: usize) -> Result<Self> {
+        if key.is_empty() || key.len() > BLAKE2B_KEY_SIZE {
+            return Err(Error::param("key", "Key length must be between 1 and 64 bytes"));
+        }
+        
+        // Pad key to full size
+        let mut key_buf = [0u8; BLAKE2B_KEY_SIZE];
+        key_buf[..key.len()].copy_from_slice(key);
+        
+        let mut h = BLAKE2B_IV;
+        // Encode key length and output length in the parameter block
+        let param0 = 0x0101_0000u64 + ((key.len() as u64) << 8) + (out_len as u64);
+        h[0] ^= param0;
+        
+        let mut blake2b = Blake2b { 
+            h, 
+            t: [0;2], 
+            f: [0;2], 
+            buf: [0;BLAKE2B_BLOCK_SIZE], 
+            buf_len: 0, 
+            out_len,
+            key: Some(SecretBuffer::new(key_buf)),
+            is_keyed: true,
+        };
+        
+        // If keyed, process the key block first
+        blake2b.update_internal(&key_buf)?;
+        
+        Ok(blake2b)
+    }
 
     fn g(v: &mut [u64; 16], a: usize, b: usize, c: usize, d: usize, x: u64, y: u64) {
         v[a] = v[a].wrapping_add(v[b]).wrapping_add(x);
@@ -123,16 +181,19 @@ impl Blake2b {
             );
         }
         
+        // Use EphemeralSecret to ensure intermediate values are zeroized
+        let m_ephemeral = EphemeralSecret::new(m);
+        
         for round in 0..BLAKE2B_ROUNDS {
             let s = &BLAKE2B_SIGMA[round];
-            Self::g(&mut v,0,4,8,12,m[s[0]],m[s[1]]);
-            Self::g(&mut v,1,5,9,13,m[s[2]],m[s[3]]);
-            Self::g(&mut v,2,6,10,14,m[s[4]],m[s[5]]);
-            Self::g(&mut v,3,7,11,15,m[s[6]],m[s[7]]);
-            Self::g(&mut v,0,5,10,15,m[s[8]],m[s[9]]);
-            Self::g(&mut v,1,6,11,12,m[s[10]],m[s[11]]);
-            Self::g(&mut v,2,7,8,13,m[s[12]],m[s[13]]);
-            Self::g(&mut v,3,4,9,14,m[s[14]],m[s[15]]);
+            Self::g(&mut v,0,4,8,12,m_ephemeral[s[0]],m_ephemeral[s[1]]);
+            Self::g(&mut v,1,5,9,13,m_ephemeral[s[2]],m_ephemeral[s[3]]);
+            Self::g(&mut v,2,6,10,14,m_ephemeral[s[4]],m_ephemeral[s[5]]);
+            Self::g(&mut v,3,7,11,15,m_ephemeral[s[6]],m_ephemeral[s[7]]);
+            Self::g(&mut v,0,5,10,15,m_ephemeral[s[8]],m_ephemeral[s[9]]);
+            Self::g(&mut v,1,6,11,12,m_ephemeral[s[10]],m_ephemeral[s[11]]);
+            Self::g(&mut v,2,7,8,13,m_ephemeral[s[12]],m_ephemeral[s[13]]);
+            Self::g(&mut v,3,4,9,14,m_ephemeral[s[14]],m_ephemeral[s[15]]);
         }
         
         for i in 0..8 {
@@ -218,6 +279,7 @@ impl HashFunction for Blake2b {
 const BLAKE2S_BLOCK_SIZE: usize = 64;
 const BLAKE2S_MAX_OUTPUT_SIZE: usize = 32;
 const BLAKE2S_ROUNDS: usize = 10;
+const BLAKE2S_KEY_SIZE: usize = 32;  // Maximum key size for keyed mode
 const BLAKE2S_IV: [u32; 8] = [
     0x6A09E667,0xBB67AE85,0x3C6EF372,0xA54FF53A,
     0x510E527F,0x9B05688C,0x1F83D9AB,0x5BE0CD19
@@ -254,6 +316,15 @@ pub struct Blake2s {
     buf: [u8; BLAKE2S_BLOCK_SIZE],
     buf_len: usize,
     out_len: usize,
+    key: Option<SecretBuffer<BLAKE2S_KEY_SIZE>>,  // Optional key for keyed mode
+    is_keyed: bool,
+}
+
+// Manually implement zeroize on drop for additional security
+impl Drop for Blake2s {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
 }
 
 impl Blake2s {
@@ -269,7 +340,52 @@ impl Blake2s {
     pub fn with_output_size(out_len: usize) -> Self {
         let mut h = BLAKE2S_IV;
         h[0] ^= 0x01010000 ^ (out_len as u32);
-        Blake2s { h, t:[0;2], f:[0;2], buf:[0;BLAKE2S_BLOCK_SIZE], buf_len:0, out_len }
+        Blake2s { 
+            h, 
+            t:[0;2], 
+            f:[0;2], 
+            buf:[0;BLAKE2S_BLOCK_SIZE], 
+            buf_len:0, 
+            out_len,
+            key: None,
+            is_keyed: false,
+        }
+    }
+    
+    /// Creates a new Blake2s instance with a key (keyed mode).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key bytes (must be between 1 and 32 bytes)
+    /// * `out_len` - The desired output size in bytes (must be between 1 and 32)
+    pub fn with_key(key: &[u8], out_len: usize) -> Result<Self> {
+        if key.is_empty() || key.len() > BLAKE2S_KEY_SIZE {
+            return Err(Error::param("key", "Key length must be between 1 and 32 bytes"));
+        }
+        
+        // Pad key to full size
+        let mut key_buf = [0u8; BLAKE2S_KEY_SIZE];
+        key_buf[..key.len()].copy_from_slice(key);
+        
+        let mut h = BLAKE2S_IV;
+        // Encode key length and output length in the parameter block
+        h[0] ^= 0x01010000 ^ ((key.len() as u32) << 8) ^ (out_len as u32);
+        
+        let mut blake2s = Blake2s { 
+            h, 
+            t:[0;2], 
+            f:[0;2], 
+            buf:[0;BLAKE2S_BLOCK_SIZE], 
+            buf_len:0, 
+            out_len,
+            key: Some(SecretBuffer::new(key_buf)),
+            is_keyed: true,
+        };
+        
+        // If keyed, process the key block first
+        blake2s.update_internal(&key_buf)?;
+        
+        Ok(blake2s)
     }
 
     fn g(v: &mut [u32;16], a:usize,b:usize,c:usize,d:usize,x:u32,y:u32) {
@@ -311,16 +427,19 @@ impl Blake2s {
             );
         }
         
+        // Use EphemeralSecret to ensure intermediate values are zeroized
+        let m_ephemeral = EphemeralSecret::new(m);
+        
         for i in 0..BLAKE2S_ROUNDS {
             let s = &BLAKE2S_SIGMA[i];
-            Self::g(&mut v,0,4,8,12,m[s[0]],m[s[1]]);
-            Self::g(&mut v,1,5,9,13,m[s[2]],m[s[3]]);
-            Self::g(&mut v,2,6,10,14,m[s[4]],m[s[5]]);
-            Self::g(&mut v,3,7,11,15,m[s[6]],m[s[7]]);
-            Self::g(&mut v,0,5,10,15,m[s[8]],m[s[9]]);
-            Self::g(&mut v,1,6,11,12,m[s[10]],m[s[11]]);
-            Self::g(&mut v,2,7,8,13,m[s[12]],m[s[13]]);
-            Self::g(&mut v,3,4,9,14,m[s[14]],m[s[15]]);
+            Self::g(&mut v,0,4,8,12,m_ephemeral[s[0]],m_ephemeral[s[1]]);
+            Self::g(&mut v,1,5,9,13,m_ephemeral[s[2]],m_ephemeral[s[3]]);
+            Self::g(&mut v,2,6,10,14,m_ephemeral[s[4]],m_ephemeral[s[5]]);
+            Self::g(&mut v,3,7,11,15,m_ephemeral[s[6]],m_ephemeral[s[7]]);
+            Self::g(&mut v,0,5,10,15,m_ephemeral[s[8]],m_ephemeral[s[9]]);
+            Self::g(&mut v,1,6,11,12,m_ephemeral[s[10]],m_ephemeral[s[11]]);
+            Self::g(&mut v,2,7,8,13,m_ephemeral[s[12]],m_ephemeral[s[13]]);
+            Self::g(&mut v,3,4,9,14,m_ephemeral[s[14]],m_ephemeral[s[15]]);
         }
         
         for i in 0..8 {
@@ -399,6 +518,27 @@ impl HashFunction for Blake2s {
 
     fn name() -> String {
         Self::Algorithm::ALGORITHM_ID.to_string()
+    }
+}
+
+// Implement SecureZeroingType for Blake2b and Blake2s
+impl SecureZeroingType for Blake2b {
+    fn zeroed() -> Self {
+        Blake2b::with_output_size(BLAKE2B_MAX_OUTPUT_SIZE)
+    }
+    
+    fn secure_clone(&self) -> Self {
+        self.clone()
+    }
+}
+
+impl SecureZeroingType for Blake2s {
+    fn zeroed() -> Self {
+        Blake2s::with_output_size(BLAKE2S_MAX_OUTPUT_SIZE)
+    }
+    
+    fn secure_clone(&self) -> Self {
+        self.clone()
     }
 }
 

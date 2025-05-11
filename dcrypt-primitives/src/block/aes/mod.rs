@@ -24,6 +24,7 @@ use dcrypt_constants::utils::symmetric::{
 };
 use rand::{CryptoRng, RngCore};
 use crate::types::SecretBytes;
+use dcrypt_core::security::{SecretBuffer, SecureZeroingType};
 
 /// Round constants for AES key expansion
 const RCON: [u32; 11] = [
@@ -177,22 +178,19 @@ impl CipherAlgorithm for Aes256Algorithm {
 /// AES-128 block cipher
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Aes128 {
-    round_keys_u32: [u32; 44],
-    round_key_bytes: [u8; 176], // 11 rounds × 16 bytes
+    round_keys: SecretBuffer<176>, // 11 rounds × 16 bytes
 }
 
 /// AES-192 block cipher
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Aes192 {
-    round_keys_u32: [u32; 52],
-    round_key_bytes: [u8; 208], // 13 rounds × 16 bytes
+    round_keys: SecretBuffer<208>, // 13 rounds × 16 bytes
 }
 
 /// AES-256 block cipher
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Aes256 {
-    round_keys_u32: [u32; 60],
-    round_key_bytes: [u8; 240], // 15 rounds × 16 bytes
+    round_keys: SecretBuffer<240>, // 15 rounds × 16 bytes
 }
 
 // Add CipherAlgorithm implementations for AES structs
@@ -225,32 +223,33 @@ impl CipherAlgorithm for Aes256 {
 
 impl Aes128 {
     /// Performs AES-128 key expansion
-    fn expand_key(key: &[u8]) -> [u32; 44] {
-        let mut round_keys = [0u32; 44];
-        if key.len() != AES128_KEY_SIZE {
-            return round_keys;
-        }
+    fn expand_key(key: &[u8]) -> Result<SecretBuffer<176>> {
+        validate::length("AES-128 key", key.len(), AES128_KEY_SIZE)?;
+
+        let mut round_keys_u32 = [0u32; 44];
+        
+        // Initial key schedule
         for i in 0..4 {
-            round_keys[i] = bytes_to_u32(&key[i*4..(i+1)*4]);
+            round_keys_u32[i] = bytes_to_u32(&key[i*4..(i+1)*4]);
         }
+        
+        // Key expansion
         for i in 4..44 {
-            let mut temp = round_keys[i - 1];
+            let mut temp = round_keys_u32[i - 1];
             if i % 4 == 0 {
                 temp = sub_word(rotate_word(temp)) ^ RCON[i/4];
             }
-            round_keys[i] = round_keys[i - 4] ^ temp;
+            round_keys_u32[i] = round_keys_u32[i - 4] ^ temp;
         }
-        round_keys
-    }
-
-    /// Convert round keys from u32 to bytes for constant-time access
-    fn convert_round_keys_to_bytes(round_keys: &[u32; 44]) -> [u8; 176] {
+        
+        // Convert to bytes
         let mut round_key_bytes = [0u8; 176];
         for i in 0..44 {
-            let bytes = u32_to_bytes(round_keys[i]);
+            let bytes = u32_to_bytes(round_keys_u32[i]);
             round_key_bytes[i*4..(i+1)*4].copy_from_slice(&bytes);
         }
-        round_key_bytes
+        
+        Ok(SecretBuffer::new(round_key_bytes))
     }
 
     /// SubBytes step with bitsliced implementation
@@ -378,22 +377,22 @@ impl BlockCipher for Aes128 {
     type Key = SecretBytes<16>;
 
     fn new(key: &Self::Key) -> Self {
-        let round_keys_u32 = Self::expand_key(key.as_ref());
-        let round_key_bytes = Self::convert_round_keys_to_bytes(&round_keys_u32);
+        let round_keys = Self::expand_key(key.as_ref())
+            .expect("AES-128 key expansion should not fail");
         
-        Aes128 { 
-            round_keys_u32,
-            round_key_bytes
-        }
+        Aes128 { round_keys }
     }
 
     fn encrypt_block(&self, block: &mut [u8]) -> Result<()> {
         // Use validation utility for length check
         validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
+        // Access round keys through SecretBuffer
+        let round_key_bytes = self.round_keys.as_ref();
+        
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
-        for &b in &self.round_key_bytes {
+        for &b in round_key_bytes {
             _warm = _warm.wrapping_add(b);
         }
         compiler_fence(Ordering::SeqCst);
@@ -403,7 +402,7 @@ impl BlockCipher for Aes128 {
         state.copy_from_slice(block);
         
         // Initial round - AddRoundKey
-        Self::add_round_key(&mut state, &self.round_key_bytes[0..16])?;
+        Self::add_round_key(&mut state, &round_key_bytes[0..16])?;
         
         // Main rounds
         for round in 1..10 {
@@ -412,13 +411,13 @@ impl BlockCipher for Aes128 {
             Self::mix_columns(&mut state);
             
             let offset = round * 16;
-            Self::add_round_key(&mut state, &self.round_key_bytes[offset..offset+16])?;
+            Self::add_round_key(&mut state, &round_key_bytes[offset..offset+16])?;
         }
         
         // Final round
         Self::sub_bytes(&mut state);
         Self::shift_rows(&mut state);
-        Self::add_round_key(&mut state, &self.round_key_bytes[160..176])?;
+        Self::add_round_key(&mut state, &round_key_bytes[160..176])?;
         
         // Copy state back to block
         block.copy_from_slice(&state);
@@ -429,9 +428,12 @@ impl BlockCipher for Aes128 {
         // Use validation utility for length check
         validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
+        // Access round keys through SecretBuffer
+        let round_key_bytes = self.round_keys.as_ref();
+        
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
-        for &b in &self.round_key_bytes {
+        for &b in round_key_bytes {
             _warm = _warm.wrapping_add(b);
         }
         compiler_fence(Ordering::SeqCst);
@@ -441,7 +443,7 @@ impl BlockCipher for Aes128 {
         state.copy_from_slice(block);
         
         // Initial round - AddRoundKey (final round key)
-        Self::add_round_key(&mut state, &self.round_key_bytes[160..176])?;
+        Self::add_round_key(&mut state, &round_key_bytes[160..176])?;
         
         // Main rounds in reverse
         for round in (1..10).rev() {
@@ -449,14 +451,14 @@ impl BlockCipher for Aes128 {
             Self::inv_sub_bytes(&mut state);
             
             let offset = round * 16;
-            Self::add_round_key(&mut state, &self.round_key_bytes[offset..offset+16])?;
+            Self::add_round_key(&mut state, &round_key_bytes[offset..offset+16])?;
             Self::inv_mix_columns(&mut state);
         }
         
         // Final round
         Self::inv_shift_rows(&mut state);
         Self::inv_sub_bytes(&mut state);
-        Self::add_round_key(&mut state, &self.round_key_bytes[0..16])?;
+        Self::add_round_key(&mut state, &round_key_bytes[0..16])?;
         
         // Copy state back to block
         block.copy_from_slice(&state);
@@ -474,32 +476,33 @@ impl BlockCipher for Aes128 {
 
 impl Aes192 {
     /// Performs AES-192 key expansion
-    fn expand_key(key: &[u8]) -> [u32; 52] {
-        let mut round_keys = [0u32; 52];
-        if key.len() != AES192_KEY_SIZE {
-            return round_keys;
-        }
+    fn expand_key(key: &[u8]) -> Result<SecretBuffer<208>> {
+        validate::length("AES-192 key", key.len(), AES192_KEY_SIZE)?;
+        
+        let mut round_keys_u32 = [0u32; 52];
+        
+        // Initial key schedule
         for i in 0..6 {
-            round_keys[i] = bytes_to_u32(&key[i*4..(i+1)*4]);
+            round_keys_u32[i] = bytes_to_u32(&key[i*4..(i+1)*4]);
         }
+        
+        // Key expansion
         for i in 6..52 {
-            let mut temp = round_keys[i-1];
+            let mut temp = round_keys_u32[i-1];
             if i % 6 == 0 {
                 temp = sub_word(rotate_word(temp)) ^ RCON[i/6];
             }
-            round_keys[i] = round_keys[i-6] ^ temp;
+            round_keys_u32[i] = round_keys_u32[i-6] ^ temp;
         }
-        round_keys
-    }
-    
-    /// Convert round keys from u32 to bytes for constant-time access
-    fn convert_round_keys_to_bytes(round_keys: &[u32; 52]) -> [u8; 208] {
+        
+        // Convert to bytes
         let mut round_key_bytes = [0u8; 208];
         for i in 0..52 {
-            let bytes = u32_to_bytes(round_keys[i]);
+            let bytes = u32_to_bytes(round_keys_u32[i]);
             round_key_bytes[i*4..(i+1)*4].copy_from_slice(&bytes);
         }
-        round_key_bytes
+        
+        Ok(SecretBuffer::new(round_key_bytes))
     }
 }
 
@@ -508,22 +511,22 @@ impl BlockCipher for Aes192 {
     type Key = SecretBytes<24>;
 
     fn new(key: &Self::Key) -> Self {
-        let round_keys_u32 = Self::expand_key(key.as_ref());
-        let round_key_bytes = Self::convert_round_keys_to_bytes(&round_keys_u32);
+        let round_keys = Self::expand_key(key.as_ref())
+            .expect("AES-192 key expansion should not fail");
         
-        Aes192 { 
-            round_keys_u32,
-            round_key_bytes
-        }
+        Aes192 { round_keys }
     }
 
     fn encrypt_block(&self, block: &mut [u8]) -> Result<()> {
         // Use validation utility for length check
         validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
+        // Access round keys through SecretBuffer
+        let round_key_bytes = self.round_keys.as_ref();
+        
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
-        for &b in &self.round_key_bytes {
+        for &b in round_key_bytes {
             _warm = _warm.wrapping_add(b);
         }
         compiler_fence(Ordering::SeqCst);
@@ -533,7 +536,7 @@ impl BlockCipher for Aes192 {
         state.copy_from_slice(block);
         
         // Initial round - AddRoundKey
-        Aes128::add_round_key(&mut state, &self.round_key_bytes[0..16])?;
+        Aes128::add_round_key(&mut state, &round_key_bytes[0..16])?;
         
         // Main rounds
         for round in 1..12 {
@@ -542,13 +545,13 @@ impl BlockCipher for Aes192 {
             Aes128::mix_columns(&mut state);
             
             let offset = round * 16;
-            Aes128::add_round_key(&mut state, &self.round_key_bytes[offset..offset+16])?;
+            Aes128::add_round_key(&mut state, &round_key_bytes[offset..offset+16])?;
         }
         
         // Final round
         Aes128::sub_bytes(&mut state);
         Aes128::shift_rows(&mut state);
-        Aes128::add_round_key(&mut state, &self.round_key_bytes[192..208])?;
+        Aes128::add_round_key(&mut state, &round_key_bytes[192..208])?;
         
         // Copy state back to block
         block.copy_from_slice(&state);
@@ -559,9 +562,12 @@ impl BlockCipher for Aes192 {
         // Use validation utility for length check
         validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
+        // Access round keys through SecretBuffer
+        let round_key_bytes = self.round_keys.as_ref();
+        
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
-        for &b in &self.round_key_bytes {
+        for &b in round_key_bytes {
             _warm = _warm.wrapping_add(b);
         }
         compiler_fence(Ordering::SeqCst);
@@ -571,7 +577,7 @@ impl BlockCipher for Aes192 {
         state.copy_from_slice(block);
         
         // Initial round - AddRoundKey (final round key)
-        Aes128::add_round_key(&mut state, &self.round_key_bytes[192..208])?;
+        Aes128::add_round_key(&mut state, &round_key_bytes[192..208])?;
         
         // Main rounds in reverse
         for round in (1..12).rev() {
@@ -579,14 +585,14 @@ impl BlockCipher for Aes192 {
             Aes128::inv_sub_bytes(&mut state);
             
             let offset = round * 16;
-            Aes128::add_round_key(&mut state, &self.round_key_bytes[offset..offset+16])?;
+            Aes128::add_round_key(&mut state, &round_key_bytes[offset..offset+16])?;
             Aes128::inv_mix_columns(&mut state);
         }
         
         // Final round
         Aes128::inv_shift_rows(&mut state);
         Aes128::inv_sub_bytes(&mut state);
-        Aes128::add_round_key(&mut state, &self.round_key_bytes[0..16])?;
+        Aes128::add_round_key(&mut state, &round_key_bytes[0..16])?;
         
         // Copy state back to block
         block.copy_from_slice(&state);
@@ -604,34 +610,35 @@ impl BlockCipher for Aes192 {
 
 impl Aes256 {
     /// Performs AES-256 key expansion
-    fn expand_key(key: &[u8]) -> [u32; 60] {
-        let mut round_keys = [0u32; 60];
-        if key.len() != AES256_KEY_SIZE {
-            return round_keys;
-        }
+    fn expand_key(key: &[u8]) -> Result<SecretBuffer<240>> {
+        validate::length("AES-256 key", key.len(), AES256_KEY_SIZE)?;
+        
+        let mut round_keys_u32 = [0u32; 60];
+        
+        // Initial key schedule
         for i in 0..8 {
-            round_keys[i] = bytes_to_u32(&key[i*4..(i+1)*4]);
+            round_keys_u32[i] = bytes_to_u32(&key[i*4..(i+1)*4]);
         }
+        
+        // Key expansion
         for i in 8..60 {
-            let mut temp = round_keys[i-1];
+            let mut temp = round_keys_u32[i-1];
             if i % 8 == 0 {
                 temp = sub_word(rotate_word(temp)) ^ RCON[i/8];
             } else if i % 8 == 4 {
                 temp = sub_word(temp);
             }
-            round_keys[i] = round_keys[i-8] ^ temp;
+            round_keys_u32[i] = round_keys_u32[i-8] ^ temp;
         }
-        round_keys
-    }
-    
-    /// Convert round keys from u32 to bytes for constant-time access
-    fn convert_round_keys_to_bytes(round_keys: &[u32; 60]) -> [u8; 240] {
+        
+        // Convert to bytes
         let mut round_key_bytes = [0u8; 240];
         for i in 0..60 {
-            let bytes = u32_to_bytes(round_keys[i]);
+            let bytes = u32_to_bytes(round_keys_u32[i]);
             round_key_bytes[i*4..(i+1)*4].copy_from_slice(&bytes);
         }
-        round_key_bytes
+        
+        Ok(SecretBuffer::new(round_key_bytes))
     }
 }
 
@@ -640,22 +647,22 @@ impl BlockCipher for Aes256 {
     type Key = SecretBytes<32>;
 
     fn new(key: &Self::Key) -> Self {
-        let round_keys_u32 = Self::expand_key(key.as_ref());
-        let round_key_bytes = Self::convert_round_keys_to_bytes(&round_keys_u32);
+        let round_keys = Self::expand_key(key.as_ref())
+            .expect("AES-256 key expansion should not fail");
         
-        Aes256 { 
-            round_keys_u32,
-            round_key_bytes
-        }
+        Aes256 { round_keys }
     }
 
     fn encrypt_block(&self, block: &mut [u8]) -> Result<()> {
         // Use validation utility for length check
         validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
+        // Access round keys through SecretBuffer
+        let round_key_bytes = self.round_keys.as_ref();
+        
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
-        for &b in &self.round_key_bytes {
+        for &b in round_key_bytes {
             _warm = _warm.wrapping_add(b);
         }
         compiler_fence(Ordering::SeqCst);
@@ -665,7 +672,7 @@ impl BlockCipher for Aes256 {
         state.copy_from_slice(block);
         
         // Initial round - AddRoundKey
-        Aes128::add_round_key(&mut state, &self.round_key_bytes[0..16])?;
+        Aes128::add_round_key(&mut state, &round_key_bytes[0..16])?;
         
         // Main rounds
         for round in 1..14 {
@@ -674,13 +681,13 @@ impl BlockCipher for Aes256 {
             Aes128::mix_columns(&mut state);
             
             let offset = round * 16;
-            Aes128::add_round_key(&mut state, &self.round_key_bytes[offset..offset+16])?;
+            Aes128::add_round_key(&mut state, &round_key_bytes[offset..offset+16])?;
         }
         
         // Final round
         Aes128::sub_bytes(&mut state);
         Aes128::shift_rows(&mut state);
-        Aes128::add_round_key(&mut state, &self.round_key_bytes[224..240])?;
+        Aes128::add_round_key(&mut state, &round_key_bytes[224..240])?;
         
         // Copy state back to block
         block.copy_from_slice(&state);
@@ -691,9 +698,12 @@ impl BlockCipher for Aes256 {
         // Use validation utility for length check
         validate::length("AES block", block.len(), AES_BLOCK_SIZE)?;
         
+        // Access round keys through SecretBuffer
+        let round_key_bytes = self.round_keys.as_ref();
+        
         // Warm the cache by touching all round key bytes
         let mut _warm: u8 = 0;
-        for &b in &self.round_key_bytes {
+        for &b in round_key_bytes {
             _warm = _warm.wrapping_add(b);
         }
         compiler_fence(Ordering::SeqCst);
@@ -703,7 +713,7 @@ impl BlockCipher for Aes256 {
         state.copy_from_slice(block);
         
         // Initial round - AddRoundKey (final round key)
-        Aes128::add_round_key(&mut state, &self.round_key_bytes[224..240])?;
+        Aes128::add_round_key(&mut state, &round_key_bytes[224..240])?;
         
         // Main rounds in reverse
         for round in (1..14).rev() {
@@ -711,14 +721,14 @@ impl BlockCipher for Aes256 {
             Aes128::inv_sub_bytes(&mut state);
             
             let offset = round * 16;
-            Aes128::add_round_key(&mut state, &self.round_key_bytes[offset..offset+16])?;
+            Aes128::add_round_key(&mut state, &round_key_bytes[offset..offset+16])?;
             Aes128::inv_mix_columns(&mut state);
         }
         
         // Final round
         Aes128::inv_shift_rows(&mut state);
         Aes128::inv_sub_bytes(&mut state);
-        Aes128::add_round_key(&mut state, &self.round_key_bytes[0..16])?;
+        Aes128::add_round_key(&mut state, &round_key_bytes[0..16])?;
         
         // Copy state back to block
         block.copy_from_slice(&state);

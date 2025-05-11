@@ -21,8 +21,10 @@ use dcrypt_core::types::Ciphertext;
 use dcrypt_core::traits::{AuthenticatedCipher, SymmetricCipher};
 use dcrypt_core::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
 use dcrypt_core::error::Error as CoreError;
+// Import SecretBuffer for secure key storage
+use dcrypt_core::security::SecretBuffer;
 use subtle::ConstantTimeEq;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Size constants
 pub const CHACHA20POLY1305_KEY_SIZE: usize = CHACHA20_KEY_SIZE;
@@ -32,10 +34,9 @@ pub const CHACHA20POLY1305_NONCE_SIZE: usize = CHACHA20_NONCE_SIZE;
 pub const CHACHA20POLY1305_TAG_SIZE: usize = POLY1305_TAG_SIZE;
 
 /// ChaCha20-Poly1305 AEAD
-#[derive(Clone, Zeroize)]
-#[zeroize(drop)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct ChaCha20Poly1305 {
-    key: [u8; CHACHA20POLY1305_KEY_SIZE],
+    key: SecretBuffer<CHACHA20POLY1305_KEY_SIZE>,
 }
 
 /// Operation for ChaCha20Poly1305 encryption operations
@@ -55,9 +56,9 @@ pub struct ChaCha20Poly1305DecryptOperation<'a> {
 impl ChaCha20Poly1305 {
     /// Create a new instance from a 256-bit key.
     pub fn new(key: &[u8; CHACHA20POLY1305_KEY_SIZE]) -> Self {
-        let mut cipher_key = [0u8; CHACHA20POLY1305_KEY_SIZE];
-        cipher_key.copy_from_slice(key);
-        Self { key: cipher_key }
+        Self { 
+            key: SecretBuffer::new(*key)
+        }
     }
 
     /// Derive the one-time Poly1305 key (RFC 8439 §2.8).
@@ -65,8 +66,12 @@ impl ChaCha20Poly1305 {
         // Create a Nonce object from the raw nonce bytes
         let nonce_obj = Nonce::<CHACHA20_NONCE_SIZE>::from_slice(nonce)
             .expect("Valid nonce"); // This should never fail in internal code
+        
+        // Convert SecretBuffer reference to array reference
+        let key_array: &[u8; CHACHA20_KEY_SIZE] = self.key.as_ref().try_into()
+            .expect("SecretBuffer has correct size");
             
-        let mut chacha = ChaCha20::new(&self.key, &nonce_obj);
+        let mut chacha = ChaCha20::new(key_array, &nonce_obj);
         let mut poly_key = [0u8; POLY1305_KEY_SIZE];
         chacha.keystream(&mut poly_key);
         poly_key
@@ -106,7 +111,11 @@ impl ChaCha20Poly1305 {
         let nonce_obj = Nonce::<CHACHA20_NONCE_SIZE>::from_slice(nonce)
             .map_err(|_| Error::param("nonce", "Failed to create nonce from slice"))?;
         
-        ChaCha20::with_counter(&self.key, &nonce_obj, 1).encrypt(&mut ct_buf);
+        // Convert SecretBuffer reference to array reference
+        let key_array: &[u8; CHACHA20_KEY_SIZE] = self.key.as_ref().try_into()
+            .expect("SecretBuffer has correct size");
+        
+        ChaCha20::with_counter(key_array, &nonce_obj, 1).encrypt(&mut ct_buf);
 
         // --- tag -----------------------------------------------------------
         let tag = self.calculate_tag_ct(&poly_key, aad, &ct_buf)?;
@@ -162,7 +171,11 @@ impl ChaCha20Poly1305 {
         let nonce_obj = Nonce::<CHACHA20_NONCE_SIZE>::from_slice(nonce)
             .map_err(|_| Error::param("nonce", "Failed to create nonce from slice"))?;
         
-        ChaCha20::with_counter(&self.key, &nonce_obj, 1).decrypt(&mut m);
+        // Convert SecretBuffer reference to array reference
+        let key_array: &[u8; CHACHA20_KEY_SIZE] = self.key.as_ref().try_into()
+            .expect("SecretBuffer has correct size");
+        
+        ChaCha20::with_counter(key_array, &nonce_obj, 1).decrypt(&mut m);
 
         // -------- constant-time post-processing ----------------------------
         // mask = 0xFF when tag_ok == 1, else 0x00

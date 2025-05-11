@@ -16,6 +16,9 @@ use crate::types::{RandomGeneration, SecureZeroingType, FixedSize, ByteSerializa
 use crate::types::sealed::Sealed;
 use crate::types::{ValidKeySize, ValidSecretKeySize, ValidPublicKeySize};
 
+// Import security types from dcrypt-core
+use dcrypt_core::security::{SecretBuffer, SecureZeroingType as CoreSecureZeroingType};
+
 // Add these imports to fix the "cannot find type" errors
 use crate::types::algorithms::{
     Aes128, Aes256, ChaCha20, ChaCha20Poly1305,
@@ -59,7 +62,7 @@ pub trait AsymmetricAlgorithm {
 /// A key for a specific symmetric algorithm with fixed size
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct SymmetricKey<A: SymmetricAlgorithm, const N: usize> {
-    data: [u8; N],
+    data: SecretBuffer<N>,
     _algorithm: PhantomData<A>,
 }
 
@@ -79,7 +82,7 @@ where
     /// Create a new key from an existing array
     pub fn new(data: [u8; N]) -> Self {
         Self {
-            data,
+            data: SecretBuffer::new(data),
             _algorithm: PhantomData,
         }
     }
@@ -92,7 +95,7 @@ where
         data.copy_from_slice(bytes);
         
         Ok(Self {
-            data,
+            data: SecretBuffer::new(data),
             _algorithm: PhantomData,
         })
     }
@@ -100,7 +103,7 @@ where
     /// Create a zeroed key (not recommended for cryptographic use)
     pub fn zeroed() -> Self {
         Self {
-            data: [0u8; N],
+            data: SecretBuffer::zeroed(),
             _algorithm: PhantomData,
         }
     }
@@ -109,7 +112,7 @@ where
     #[doc(hidden)]
     pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
         Self {
-            data,
+            data: SecretBuffer::new(data),
             _algorithm: PhantomData,
         }
     }
@@ -127,27 +130,27 @@ where
 
 impl<A: SymmetricAlgorithm, const N: usize> AsRef<[u8]> for SymmetricKey<A, N> {
     fn as_ref(&self) -> &[u8] {
-        &self.data
+        self.data.as_ref()
     }
 }
 
 impl<A: SymmetricAlgorithm, const N: usize> AsMut<[u8]> for SymmetricKey<A, N> {
     fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.data
+        self.data.as_mut()
     }
 }
 
 impl<A: SymmetricAlgorithm, const N: usize> Deref for SymmetricKey<A, N> {
-    type Target = [u8; N];
+    type Target = [u8];
     
     fn deref(&self) -> &Self::Target {
-        &self.data
+        self.data.as_ref()
     }
 }
 
 impl<A: SymmetricAlgorithm, const N: usize> DerefMut for SymmetricKey<A, N> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.data
+        self.data.as_mut()
     }
 }
 
@@ -178,15 +181,22 @@ impl<A: SymmetricAlgorithm, const N: usize> RandomGeneration for SymmetricKey<A,
         let mut data = [0u8; N];
         rng.fill_bytes(&mut data);
         Ok(Self {
-            data,
+            data: SecretBuffer::new(data),
             _algorithm: PhantomData,
         })
     }
 }
 
-impl<A: SymmetricAlgorithm, const N: usize> SecureZeroingType for SymmetricKey<A, N> {
+impl<A: SymmetricAlgorithm + Clone, const N: usize> SecureZeroingType for SymmetricKey<A, N> {
     fn zeroed() -> Self {
         Self::zeroed()
+    }
+    
+    fn secure_clone(&self) -> Self {
+        Self {
+            data: self.data.secure_clone(),
+            _algorithm: PhantomData,
+        }
     }
 }
 
@@ -199,7 +209,7 @@ impl<A: SymmetricAlgorithm, const N: usize> FixedSize for SymmetricKey<A, N> {
 // Implement ByteSerializable only for specific valid combinations
 impl ByteSerializable for SymmetricKey<Aes128, 16> {
     fn to_bytes(&self) -> Vec<u8> {
-        self.data.to_vec()
+        self.data.as_ref().to_vec()
     }
     
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -209,7 +219,7 @@ impl ByteSerializable for SymmetricKey<Aes128, 16> {
 
 impl ByteSerializable for SymmetricKey<Aes256, 32> {
     fn to_bytes(&self) -> Vec<u8> {
-        self.data.to_vec()
+        self.data.as_ref().to_vec()
     }
     
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -219,7 +229,7 @@ impl ByteSerializable for SymmetricKey<Aes256, 32> {
 
 impl ByteSerializable for SymmetricKey<ChaCha20, 32> {
     fn to_bytes(&self) -> Vec<u8> {
-        self.data.to_vec()
+        self.data.as_ref().to_vec()
     }
     
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -229,7 +239,7 @@ impl ByteSerializable for SymmetricKey<ChaCha20, 32> {
 
 impl ByteSerializable for SymmetricKey<ChaCha20Poly1305, 32> {
     fn to_bytes(&self) -> Vec<u8> {
-        self.data.to_vec()
+        self.data.as_ref().to_vec()
     }
     
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -240,7 +250,7 @@ impl ByteSerializable for SymmetricKey<ChaCha20Poly1305, 32> {
 /// A secret key for a specific asymmetric algorithm
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct AsymmetricSecretKey<A: AsymmetricAlgorithm, const N: usize> {
-    data: [u8; N],
+    data: SecretBuffer<N>,
     _algorithm: PhantomData<A>,
 }
 
@@ -258,7 +268,7 @@ where
     /// Create a new key from an existing array
     pub fn new(data: [u8; N]) -> Self {
         Self {
-            data,
+            data: SecretBuffer::new(data),
             _algorithm: PhantomData,
         }
     }
@@ -271,7 +281,7 @@ where
         data.copy_from_slice(bytes);
         
         Ok(Self {
-            data,
+            data: SecretBuffer::new(data),
             _algorithm: PhantomData,
         })
     }
@@ -279,7 +289,7 @@ where
     /// Create a zeroed key (not recommended for cryptographic use)
     pub fn zeroed() -> Self {
         Self {
-            data: [0u8; N],
+            data: SecretBuffer::zeroed(),
             _algorithm: PhantomData,
         }
     }
@@ -288,7 +298,7 @@ where
     #[doc(hidden)]
     pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
         Self {
-            data,
+            data: SecretBuffer::new(data),
             _algorithm: PhantomData,
         }
     }
@@ -306,19 +316,55 @@ where
 
 impl<A: AsymmetricAlgorithm, const N: usize> AsRef<[u8]> for AsymmetricSecretKey<A, N> {
     fn as_ref(&self) -> &[u8] {
-        &self.data
+        self.data.as_ref()
     }
 }
 
 impl<A: AsymmetricAlgorithm, const N: usize> AsMut<[u8]> for AsymmetricSecretKey<A, N> {
     fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.data
+        self.data.as_mut()
     }
 }
+
+impl<A: AsymmetricAlgorithm, const N: usize> Deref for AsymmetricSecretKey<A, N> {
+    type Target = [u8];
+    
+    fn deref(&self) -> &Self::Target {
+        self.data.as_ref()
+    }
+}
+
+impl<A: AsymmetricAlgorithm, const N: usize> DerefMut for AsymmetricSecretKey<A, N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.data.as_mut()
+    }
+}
+
+impl<A: AsymmetricAlgorithm, const N: usize> PartialEq for AsymmetricSecretKey<A, N> {
+    fn eq(&self, other: &Self) -> bool {
+        // Use constant-time comparison for secret keys
+        self.data.as_ref().ct_eq(other.data.as_ref()).into()
+    }
+}
+
+impl<A: AsymmetricAlgorithm, const N: usize> Eq for AsymmetricSecretKey<A, N> {}
 
 impl<A: AsymmetricAlgorithm, const N: usize> fmt::Debug for AsymmetricSecretKey<A, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "AsymmetricSecretKey<{}>[REDACTED]", A::name())
+    }
+}
+
+impl<A: AsymmetricAlgorithm + Clone, const N: usize> SecureZeroingType for AsymmetricSecretKey<A, N> {
+    fn zeroed() -> Self {
+        Self::zeroed()
+    }
+    
+    fn secure_clone(&self) -> Self {
+        Self {
+            data: self.data.secure_clone(),
+            _algorithm: PhantomData,
+        }
     }
 }
 
@@ -331,7 +377,7 @@ impl<A: AsymmetricAlgorithm, const N: usize> FixedSize for AsymmetricSecretKey<A
 // Implement ByteSerializable only for specific valid combinations
 impl ByteSerializable for AsymmetricSecretKey<Ed25519, 32> {
     fn to_bytes(&self) -> Vec<u8> {
-        self.data.to_vec()
+        self.data.as_ref().to_vec()
     }
     
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -341,7 +387,7 @@ impl ByteSerializable for AsymmetricSecretKey<Ed25519, 32> {
 
 impl ByteSerializable for AsymmetricSecretKey<X25519, 32> {
     fn to_bytes(&self) -> Vec<u8> {
-        self.data.to_vec()
+        self.data.as_ref().to_vec()
     }
     
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
@@ -350,6 +396,8 @@ impl ByteSerializable for AsymmetricSecretKey<X25519, 32> {
 }
 
 /// A public key for a specific asymmetric algorithm
+/// 
+/// Note: Public keys don't need SecretBuffer since they're not secret
 #[derive(Clone)]
 pub struct AsymmetricPublicKey<A: AsymmetricAlgorithm, const N: usize> {
     data: [u8; N],

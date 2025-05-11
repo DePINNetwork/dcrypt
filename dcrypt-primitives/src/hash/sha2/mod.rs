@@ -1,7 +1,7 @@
-//! SHA-2 hash function implementations
+//! SHA-2 hash function implementations with enhanced memory safety
 //!
 //! This module implements the SHA-2 family of hash functions as specified in
-//! FIPS PUB 180-4.
+//! FIPS PUB 180-4 with additional security measures for memory handling.
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
@@ -11,6 +11,10 @@ use crate::hash::{Hash, HashFunction, HashAlgorithm};
 use crate::types::Digest;
 use byteorder::{BigEndian, ByteOrder};
 use zeroize::Zeroize;
+
+// Import security types from dcrypt-core
+use dcrypt_core::security::{EphemeralSecret, SecureZeroingType, ZeroizeGuard};
+use core::sync::atomic::{compiler_fence, Ordering};
 
 use dcrypt_constants::utils::hash::{
     SHA224_OUTPUT_SIZE, SHA256_OUTPUT_SIZE, SHA384_OUTPUT_SIZE, SHA512_OUTPUT_SIZE,
@@ -98,10 +102,7 @@ impl HashAlgorithm for Sha512Algorithm {
     const ALGORITHM_ID: &'static str = "SHA-512";
 }
 
-/// SHA-224 hash function state
-///
-/// This implements SHA-224 as specified in FIPS PUB 180-4.
-/// SHA-224 is a truncated version of SHA-256 with different initialization values.
+/// SHA-224 hash function state with enhanced memory safety
 #[derive(Clone, Zeroize)]
 pub struct Sha224 {
     state: [u32; 8],
@@ -110,10 +111,13 @@ pub struct Sha224 {
     total_bytes: u64,
 }
 
-/// SHA-256 hash function state
-///
-/// This implements SHA-256 as specified in FIPS PUB 180-4.
-/// SHA-256 produces a 256-bit (32-byte) digest.
+impl Drop for Sha224 {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+/// SHA-256 hash function state with enhanced memory safety
 #[derive(Clone, Zeroize)]
 pub struct Sha256 {
     state: [u32; 8],
@@ -122,10 +126,13 @@ pub struct Sha256 {
     total_bytes: u64,
 }
 
-/// SHA-384 hash function state
-///
-/// This implements SHA-384 as specified in FIPS PUB 180-4.
-/// SHA-384 is a truncated version of SHA-512 with different initialization values.
+impl Drop for Sha256 {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+/// SHA-384 hash function state with enhanced memory safety
 #[derive(Clone, Zeroize)]
 pub struct Sha384 {
     state: [u64; 8],
@@ -134,10 +141,13 @@ pub struct Sha384 {
     total_bytes: u128,  // bits counter
 }
 
-/// SHA-512 hash function state
-///
-/// This implements SHA-512 as specified in FIPS PUB 180-4.
-/// SHA-512 produces a 512-bit (64-byte) digest.
+impl Drop for Sha384 {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+/// SHA-512 hash function state with enhanced memory safety
 #[derive(Clone, Zeroize)]
 pub struct Sha512 {
     state: [u64; 8],
@@ -146,7 +156,13 @@ pub struct Sha512 {
     total_bytes: u128,
 }
 
-// --- SHA-256 internal methods ---
+impl Drop for Sha512 {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+// --- SHA-256 internal methods with enhanced security ---
 impl Sha256 {
     fn init_state() -> [u32; 8] {
         [
@@ -171,10 +187,14 @@ impl Sha256 {
     }
 
     fn compress(state: &mut [u32; 8], block: &[u8; SHA256_BLOCK_SIZE]) -> Result<()> {
-        let mut w = [0u32; 64];
+        // Use EphemeralSecret for message schedule
+        let mut w = EphemeralSecret::new([0u32; 64]);
+        
+        // Memory barrier before processing
+        compiler_fence(Ordering::SeqCst);
+        
         for i in 0..16 {
             let start = i * 4;
-            // Validate that we don't read out of bounds
             validate::max_length(
                 "SHA-256 block read",
                 start + 4,
@@ -189,14 +209,22 @@ impl Sha256 {
             w[i] = w[i-16].wrapping_add(s0).wrapping_add(w[i-7]).wrapping_add(s1);
         }
         
-        let mut a = state[0];
-        let mut b = state[1];
-        let mut c = state[2];
-        let mut d = state[3];
-        let mut e = state[4];
-        let mut f = state[5];
-        let mut g = state[6];
-        let mut h = state[7];
+        // Use ZeroizeGuard for working variables
+        let mut working_vars = [
+            state[0], state[1], state[2], state[3],
+            state[4], state[5], state[6], state[7]
+        ];
+        let mut guard = ZeroizeGuard::new(&mut working_vars);
+        
+        // Use temporary variables instead of multiple mutable references
+        let mut a = guard[0];
+        let mut b = guard[1];
+        let mut c = guard[2];
+        let mut d = guard[3];
+        let mut e = guard[4];
+        let mut f = guard[5];
+        let mut g = guard[6];
+        let mut h = guard[7];
         
         for i in 0..64 {
             let S1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
@@ -209,6 +237,7 @@ impl Sha256 {
             let S0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let maj = (a & b) ^ (a & c) ^ (b & c);
             let temp2 = S0.wrapping_add(maj);
+            
             h = g;
             g = f;
             f = e;
@@ -219,14 +248,29 @@ impl Sha256 {
             a = temp1.wrapping_add(temp2);
         }
         
-        state[0] = state[0].wrapping_add(a);
-        state[1] = state[1].wrapping_add(b);
-        state[2] = state[2].wrapping_add(c);
-        state[3] = state[3].wrapping_add(d);
-        state[4] = state[4].wrapping_add(e);
-        state[5] = state[5].wrapping_add(f);
-        state[6] = state[6].wrapping_add(g);
-        state[7] = state[7].wrapping_add(h);
+        // Write back the results
+        guard[0] = a;
+        guard[1] = b;
+        guard[2] = c;
+        guard[3] = d;
+        guard[4] = e;
+        guard[5] = f;
+        guard[6] = g;
+        guard[7] = h;
+        
+        // Update state
+        state[0] = state[0].wrapping_add(guard[0]);
+        state[1] = state[1].wrapping_add(guard[1]);
+        state[2] = state[2].wrapping_add(guard[2]);
+        state[3] = state[3].wrapping_add(guard[3]);
+        state[4] = state[4].wrapping_add(guard[4]);
+        state[5] = state[5].wrapping_add(guard[5]);
+        state[6] = state[6].wrapping_add(guard[6]);
+        state[7] = state[7].wrapping_add(guard[7]);
+        
+        // Memory barrier after processing
+        compiler_fence(Ordering::SeqCst);
+        
         Ok(())
     }
 
@@ -252,6 +296,9 @@ impl Sha256 {
         self.total_bytes += self.buffer_idx as u64;
         let bit_len = self.total_bytes * 8;
         
+        // Use ZeroizeGuard for sensitive padding operations
+        let pad_buffer = EphemeralSecret::new([0u8; SHA256_BLOCK_SIZE]);
+        
         // padding
         self.buffer[self.buffer_idx] = 0x80;
         if self.buffer_idx >= 56 {
@@ -259,7 +306,7 @@ impl Sha256 {
             let mut block = [0u8; SHA256_BLOCK_SIZE];
             block.copy_from_slice(&self.buffer);
             Self::compress(&mut self.state, &block)?;
-            self.buffer = [0u8; SHA256_BLOCK_SIZE];
+            self.buffer = *pad_buffer;
         } else {
             for b in &mut self.buffer[self.buffer_idx+1..56] { *b = 0; }
         }
@@ -278,7 +325,7 @@ impl Sha256 {
     }
 }
 
-// SHA-224 implementation
+// SHA-224 implementation with enhanced security
 impl Sha224 {
     fn init_state() -> [u32; 8] {
         [
@@ -297,7 +344,7 @@ impl Sha224 {
     }
 }
 
-// --- SHA-512 internal methods ---
+// --- SHA-512 internal methods with enhanced security ---
 impl Sha512 {
     fn init_state() -> [u64; 8] {
         [
@@ -318,10 +365,14 @@ impl Sha512 {
     }
 
     fn compress(state: &mut [u64; 8], block: &[u8; SHA512_BLOCK_SIZE]) -> Result<()> {
-        let mut w = [0u64; 80];
+        // Use EphemeralSecret for message schedule
+        let mut w = EphemeralSecret::new([0u64; 80]);
+        
+        // Memory barrier before processing
+        compiler_fence(Ordering::SeqCst);
+        
         for i in 0..16 {
             let start = i * 8;
-            // Validate that we don't read out of bounds
             validate::max_length(
                 "SHA-512 block read",
                 start + 8,
@@ -336,14 +387,22 @@ impl Sha512 {
             w[i] = w[i-16].wrapping_add(s0).wrapping_add(w[i-7]).wrapping_add(s1);
         }
         
-        let mut a = state[0];
-        let mut b = state[1];
-        let mut c = state[2];
-        let mut d = state[3];
-        let mut e = state[4];
-        let mut f = state[5];
-        let mut g = state[6];
-        let mut h = state[7];
+        // Use ZeroizeGuard for working variables
+        let mut working_vars = [
+            state[0], state[1], state[2], state[3],
+            state[4], state[5], state[6], state[7]
+        ];
+        let mut guard = ZeroizeGuard::new(&mut working_vars);
+        
+        // Use temporary variables instead of multiple mutable references
+        let mut a = guard[0];
+        let mut b = guard[1];
+        let mut c = guard[2];
+        let mut d = guard[3];
+        let mut e = guard[4];
+        let mut f = guard[5];
+        let mut g = guard[6];
+        let mut h = guard[7];
         
         for i in 0..80 {
             let S1 = e.rotate_right(14) ^ e.rotate_right(18) ^ e.rotate_right(41);
@@ -356,6 +415,7 @@ impl Sha512 {
             let S0 = a.rotate_right(28) ^ a.rotate_right(34) ^ a.rotate_right(39);
             let maj = (a & b) ^ (a & c) ^ (b & c);
             let temp2 = S0.wrapping_add(maj);
+            
             h = g;
             g = f;
             f = e;
@@ -366,14 +426,29 @@ impl Sha512 {
             a = temp1.wrapping_add(temp2);
         }
         
-        state[0] = state[0].wrapping_add(a);
-        state[1] = state[1].wrapping_add(b);
-        state[2] = state[2].wrapping_add(c);
-        state[3] = state[3].wrapping_add(d);
-        state[4] = state[4].wrapping_add(e);
-        state[5] = state[5].wrapping_add(f);
-        state[6] = state[6].wrapping_add(g);
-        state[7] = state[7].wrapping_add(h);
+        // Write back the results
+        guard[0] = a;
+        guard[1] = b;
+        guard[2] = c;
+        guard[3] = d;
+        guard[4] = e;
+        guard[5] = f;
+        guard[6] = g;
+        guard[7] = h;
+        
+        // Update state
+        state[0] = state[0].wrapping_add(guard[0]);
+        state[1] = state[1].wrapping_add(guard[1]);
+        state[2] = state[2].wrapping_add(guard[2]);
+        state[3] = state[3].wrapping_add(guard[3]);
+        state[4] = state[4].wrapping_add(guard[4]);
+        state[5] = state[5].wrapping_add(guard[5]);
+        state[6] = state[6].wrapping_add(guard[6]);
+        state[7] = state[7].wrapping_add(guard[7]);
+        
+        // Memory barrier after processing
+        compiler_fence(Ordering::SeqCst);
+        
         Ok(())
     }
 
@@ -399,13 +474,16 @@ impl Sha512 {
         self.total_bytes = self.total_bytes.wrapping_add(self.buffer_idx as u128);
         let bit_len = self.total_bytes.wrapping_mul(8);
         
+        // Use EphemeralSecret for sensitive padding operations
+        let pad_buffer = EphemeralSecret::new([0u8; SHA512_BLOCK_SIZE]);
+        
         self.buffer[self.buffer_idx] = 0x80;
         if self.buffer_idx >= SHA512_BLOCK_SIZE - 16 {
             for b in &mut self.buffer[self.buffer_idx+1..] { *b = 0; }
             let mut block = [0u8; SHA512_BLOCK_SIZE];
             block.copy_from_slice(&self.buffer);
             Self::compress(&mut self.state, &block)?;
-            self.buffer = [0u8; SHA512_BLOCK_SIZE];
+            self.buffer = *pad_buffer;
         } else {
             for b in &mut self.buffer[self.buffer_idx+1..SHA512_BLOCK_SIZE-16] { *b = 0; }
         }
@@ -425,7 +503,13 @@ impl Sha512 {
     }
 }
 
-// --- HashFunction impls ---
+// --- HashFunction impls with SecureZeroingType ---
+impl SecureZeroingType for Sha256 {
+    fn zeroed() -> Self {
+        Self::new()
+    }
+}
+
 impl HashFunction for Sha256 {
     type Algorithm = Sha256Algorithm;
     type Output = Digest<SHA256_OUTPUT_SIZE>;
@@ -456,6 +540,12 @@ impl HashFunction for Sha256 {
 
     fn name() -> String {
         "SHA-256".to_string()
+    }
+}
+
+impl SecureZeroingType for Sha224 {
+    fn zeroed() -> Self {
+        Self::new()
     }
 }
 
@@ -506,11 +596,8 @@ impl HashFunction for Sha224 {
     }
 }
 
-impl HashFunction for Sha384 {
-    type Algorithm = Sha384Algorithm;
-    type Output = Digest<SHA384_OUTPUT_SIZE>;
-
-    fn new() -> Self {
+impl SecureZeroingType for Sha384 {
+    fn zeroed() -> Self {
         Sha384 {
             state: [
                 0xcbbb9d5dc1059ed8, 0x629a292a367cd507,
@@ -522,6 +609,15 @@ impl HashFunction for Sha384 {
             buffer_idx: 0,
             total_bytes: 0,
         }
+    }
+}
+
+impl HashFunction for Sha384 {
+    type Algorithm = Sha384Algorithm;
+    type Output = Digest<SHA384_OUTPUT_SIZE>;
+
+    fn new() -> Self {
+        SecureZeroingType::zeroed()
     }
 
     fn update(&mut self, data: &[u8]) -> Result<&mut Self> {
@@ -560,6 +656,12 @@ impl HashFunction for Sha384 {
 
     fn name() -> String {
         "SHA-384".to_string()
+    }
+}
+
+impl SecureZeroingType for Sha512 {
+    fn zeroed() -> Self {
+        Self::new()
     }
 }
 

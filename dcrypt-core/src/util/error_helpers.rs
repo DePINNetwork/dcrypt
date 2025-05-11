@@ -5,6 +5,9 @@
 
 use crate::error::{Error, Result};
 
+#[cfg(feature = "std")]
+use std::string::String;
+
 /// Validate the length of a byte slice against minimum and optional maximum bounds
 ///
 /// # Arguments
