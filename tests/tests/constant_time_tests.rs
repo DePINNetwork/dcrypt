@@ -2,28 +2,28 @@
 
 use tests::constant_time::config::TestConfig;
 use tests::constant_time::tester::{TimingTester, generate_test_insights};
-use dcrypt_primitives::block::aes::Aes128;
+use algorithms::block::aes::Aes128;
 // Fix imports to use correct paths
-use dcrypt_primitives::block::BlockCipher;
-use dcrypt_primitives::aead::gcm::Gcm;
-use dcrypt_core::traits::AuthenticatedCipher;
+use algorithms::block::BlockCipher;
+use algorithms::aead::gcm::Gcm;
+use api::traits::AuthenticatedCipher;
 // Fix imports to use correct traits
-use dcrypt_core::traits::symmetric::SymmetricCipher;
+use api::traits::symmetric::SymmetricCipher;
 // Add SecretBytes import
-use dcrypt_core::types::SecretBytes;
-use dcrypt_primitives::aead::chacha20poly1305::ChaCha20Poly1305;
-use dcrypt_primitives::aead::chacha20poly1305::{CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_NONCE_SIZE};
-use dcrypt_primitives::hash::{HashFunction, Sha256, Sha3_256};
+use api::types::SecretBytes;
+use algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
+use algorithms::aead::chacha20poly1305::{CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_NONCE_SIZE};
+use algorithms::hash::{HashFunction, Sha256, Sha3_256};
 
-use dcrypt_primitives::xof::{ExtendableOutputFunction, ShakeXof256, Blake3Xof};
+use algorithms::xof::{ExtendableOutputFunction, ShakeXof256, Blake3Xof};
 
-use dcrypt_primitives::mac::hmac::Hmac;
-use dcrypt_primitives::stream::chacha::chacha20::{ChaCha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE};
-use dcrypt_primitives::kdf::hkdf::Hkdf;
-use dcrypt_primitives::kdf::pbkdf2::Pbkdf2;
-use dcrypt_primitives::kdf::KeyDerivationFunction;
+use algorithms::mac::hmac::Hmac;
+use algorithms::stream::chacha::chacha20::{ChaCha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE};
+use algorithms::kdf::hkdf::Hkdf;
+use algorithms::kdf::pbkdf2::Pbkdf2;
+use algorithms::kdf::KeyDerivationFunction;
 // Add Nonce type import
-use dcrypt_primitives::types::Nonce;
+use algorithms::types::Nonce;
 
 #[test]
 fn test_aes_constant_time() {

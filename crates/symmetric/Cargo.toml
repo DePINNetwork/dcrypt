@@ -1,0 +1,45 @@
+[package]
+name = "symmetric"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Symmetric encryption algorithms for the DCRYPT library"
+repository.workspace = true
+license.workspace = true
+
+[features]
+default = ["std"]
+std = [
+    "api/std", 
+    "common/std", 
+    "internal/std"
+]
+no_std = [
+    "api/no_std", 
+    "common/no_std", 
+    "internal/no_std"
+]
+serde = [
+    "dep:serde", 
+    "api/serde", 
+    "common/serde"
+]
+
+[dependencies]
+api = { path = "../api", version = "0.1.0", default-features = false }
+common = { path = "../common", version = "0.1.0", default-features = false }
+internal = { path = "../internal", version = "0.1.0", default-features = false }
+params = { path = "../params", version = "0.1.0" }
+algorithms = { path = "../algorithms", version = "0.1.0" }
+zeroize = { workspace = true }
+serde = { workspace = true, optional = true }
+base64 = "0.13"
+hmac = "0.12"
+pbkdf2 = "0.11"
+sha2 = "0.10"
+rand = { workspace = true }
+hkdf = "0.12"  # Add this missing dependency
+byteorder = "1.4"  # Make sure this is included 
+subtle = "2.4"   # Make sure constant-time comparison is available
+
+[dev-dependencies]

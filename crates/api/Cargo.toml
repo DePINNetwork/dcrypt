@@ -1,0 +1,26 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+authors = ["DCRYPT Team <info@dcrypt.example.org>"]
+description = "Public API traits and types for the DCRYPT library"
+repository = "https://github.com/example/dcrypt"
+license = "Apache-2.0"
+
+[features]
+default = ["std"]
+std = ["thiserror", "zeroize/std", "alloc"]
+alloc = []
+no_std = []
+serde = ["dep:serde"]
+
+[dependencies]
+zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
+thiserror = { version = "1.0.37", optional = true }
+subtle = { version = "2.4.1" }
+serde = { version = "1.0.147", features = ["derive"], optional = true }
+rand = { version = "0.8.5", optional = false }
+internal = { path = "../internal", version = "0.1.0" }
+
+[dev-dependencies]
+rand = { version = "0.8.5" }

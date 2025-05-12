@@ -1,0 +1,23 @@
+[package]
+name = "internal"
+version = "0.1.0"
+edition = "2021"
+authors = ["DCRYPT Team <info@dcrypt.example.org>"]
+description = "Internal utilities for the DCRYPT library"
+repository = "https://github.com/example/dcrypt"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = ["std"]
+std = ["thiserror", "zeroize/std", "alloc"]
+alloc = []
+no_std = []
+simd = []
+
+[dependencies]
+zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
+thiserror = { version = "1.0.37", optional = true }
+subtle = { version = "2.4.1" }
+
+[dev-dependencies]
+rand = { version = "0.8.5" }
