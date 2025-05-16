@@ -7,6 +7,7 @@ name = "algorithms"
 version = "0.1.0"
 dependencies = [
  "api",
+ "base64 0.22.1",
  "byteorder",
  "common",
  "faster-hex",
@@ -55,6 +56,12 @@ name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
+
+[[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "base64ct"
@@ -555,7 +562,7 @@ version = "0.1.0"
 dependencies = [
  "algorithms",
  "api",
- "base64",
+ "base64 0.13.1",
  "byteorder",
  "common",
  "hkdf",

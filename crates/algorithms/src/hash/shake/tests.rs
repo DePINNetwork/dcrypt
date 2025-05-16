@@ -2,6 +2,17 @@
 
 use super::*;
 use hex;
+use std::path::{Path, PathBuf};
+
+fn vectors_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")   // up to crates/
+        .join("..")   // up to workspace root
+        .join("tests")
+        .join("src")
+        .join("vectors")
+        .join("shake")
+}
 
 #[test]
 fn test_shake128_empty() {
@@ -204,30 +215,46 @@ where
 
 #[test]
 fn test_shake_nist_short_vectors() {
-    // Path to the test vector files
-    let base_path = env!("CARGO_MANIFEST_DIR");
-    let vectors_dir = format!("{}/../dcrypt-test/src/vectors", base_path);
+    // Get path to test vector directory
+    let vectors_dir = vectors_dir();
     
-    // Path to the test vector files - updated with correct names
-    let shake_128_path = format!("{}/shake/SHAKE128ShortMsg.rsp", vectors_dir);
-    let shake_256_path = format!("{}/shake/SHAKE256ShortMsg.rsp", vectors_dir);
+    // Path to the test vector files - using Path::join for platform independence
+    let shake_128_path = vectors_dir.join("SHAKE128ShortMsg.rsp");
+    let shake_256_path = vectors_dir.join("SHAKE256ShortMsg.rsp");
+    
+    // Check if files exist and provide helpful message if they don't
+    for path in [&shake_128_path, &shake_256_path] {
+        assert!(
+            path.exists(),
+            "Test vector file not found: {}",
+            path.display()
+        );
+    }
     
     // Run tests - only matching the fixed output sizes
-    run_shake_tests::<Shake128>(&shake_128_path, "SHAKE-128");
-    run_shake_tests::<Shake256>(&shake_256_path, "SHAKE-256");
+    run_shake_tests::<Shake128>(shake_128_path.to_str().unwrap(), "SHAKE-128");
+    run_shake_tests::<Shake256>(shake_256_path.to_str().unwrap(), "SHAKE-256");
 }
 
 #[test]
 fn test_shake_nist_long_vectors() {
-    // Path to the test vector files
-    let base_path = env!("CARGO_MANIFEST_DIR");
-    let vectors_dir = format!("{}/../dcrypt-test/src/vectors", base_path);
+    // Get path to test vector directory
+    let vectors_dir = vectors_dir();
     
     // Path to the long message test vector files
-    let shake_128_path = format!("{}/shake/SHAKE128LongMsg.rsp", vectors_dir);
-    let shake_256_path = format!("{}/shake/SHAKE256LongMsg.rsp", vectors_dir);
+    let shake_128_path = vectors_dir.join("SHAKE128LongMsg.rsp");
+    let shake_256_path = vectors_dir.join("SHAKE256LongMsg.rsp");
+    
+    // Check if files exist and provide helpful message if they don't
+    for path in [&shake_128_path, &shake_256_path] {
+        assert!(
+            path.exists(),
+            "Test vector file not found: {}",
+            path.display()
+        );
+    }
     
     // Run tests - only matching the fixed output sizes
-    run_shake_tests::<Shake128>(&shake_128_path, "SHAKE-128");
-    run_shake_tests::<Shake256>(&shake_256_path, "SHAKE-256");
+    run_shake_tests::<Shake128>(shake_128_path.to_str().unwrap(), "SHAKE-128");
+    run_shake_tests::<Shake256>(shake_256_path.to_str().unwrap(), "SHAKE-256");
 }

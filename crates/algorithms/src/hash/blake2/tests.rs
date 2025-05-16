@@ -1,5 +1,86 @@
 use super::*;
 use hex;
+use crate::hash::HashFunction;
+
+// Helper function to convert a digest to hex string
+fn to_hex(digest: &[u8]) -> String {
+    digest.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+#[test]
+fn test_blake2b_empty_string() {
+    let mut hasher = Blake2b::new();
+    hasher.update(b"").unwrap();
+    let digest = hasher.finalize().unwrap();
+    let hex = to_hex(digest.as_ref());
+    
+    // RFC 7693 Appendix A test vector for empty string
+    let expected = "786a02f742015903c6c6fd852552d272912f4740e1584761\
+                    8a86e217f71f5419d25e1031afee585313896444934eb04b\
+                    903a685b1448b755d56f701afe9be2ce";
+    
+    assert_eq!(hex, expected);
+    // Also verify first 4 bytes specifically
+    assert_eq!(&hex[0..8], "786a02f7");
+}
+
+#[test]
+fn test_blake2b_abc() {
+    let mut hasher = Blake2b::new();
+    hasher.update(b"abc").unwrap();
+    let digest = hasher.finalize().unwrap();
+    let hex = to_hex(digest.as_ref());
+    
+    // RFC 7693 Appendix A test vector for "abc"
+    let expected = "ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b7\
+                    4b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc95\
+                    18d38aa8dbf1925ab92386edd4009923";
+    
+    assert_eq!(hex, expected);
+    // Also verify first 4 bytes specifically
+    assert_eq!(&hex[0..8], "ba80a53f");
+}
+
+#[test]
+fn test_blake2b_1million_zeros() {
+    // RFC 7693 A.3 – 1_000_000 zero-bytes
+    let data = vec![0u8; 1_000_000];
+
+    let mut hasher = Blake2b::new();
+    hasher.update(&data).unwrap();
+    let digest = hasher.finalize().unwrap();
+    let hex = hex::encode(digest);
+
+    let expected = "\
+        9ef8b51be521c6e33abb22d6a6936390\
+        2b6d7eb67ca1364ebc87a64d5a36ec5e\
+        749e5c9e7029a85b0008e46cff24281e\
+        87500886818dbe79dc8e094f119bbeb8";
+
+    assert_eq!(hex, expected);
+}
+
+#[test]
+fn test_f1_flag_never_set_sequential_tree() {
+    // Create a Blake2b instance
+    let mut hasher = Blake2b::new();
+    
+    // Check that f[1] is initially zero
+    assert_eq!(hasher.f[1], 0);
+    
+    // Small input to trigger compression
+    hasher.update(b"test data that will cause compression").unwrap();
+    
+    // Check f[1] is still zero after an update
+    assert_eq!(hasher.f[1], 0);
+    
+    // Finalize to trigger the last block with the 'last' flag
+    hasher.finalize().unwrap();
+    
+    // Check f[1] is still zero after finalization
+    // This ensures LAST_NODE bit is not set in sequential tree mode
+    assert_eq!(hasher.f[1], 0);
+}
 
 #[test]
 fn test_blake2b_empty() {
@@ -13,17 +94,6 @@ fn test_blake2b_empty() {
     assert_eq!(hex::encode(&res), expected);
 }
 
-#[test]
-fn test_blake2b_abc() {
-    // Common test vector for cryptographic hash functions
-    let expected = "\
-        ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d1\
-        7d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923";
-    let mut h = Blake2b::new();
-    h.update(b"abc").unwrap();
-    let res = h.finalize().unwrap();
-    assert_eq!(hex::encode(&res), expected);
-}
 
 #[test]
 fn test_blake2s_empty() {

@@ -142,7 +142,7 @@ Refer to the Cargo.toml files of individual crates for detailed feature flags.
 
 ## Further Documentation
 
-Comprehensive documentation for each crate and major module can be found in the dcrypt_docs/ directory.
+Comprehensive documentation for each crate and major module can be found in the docs/ directory.
 
 ## License
 

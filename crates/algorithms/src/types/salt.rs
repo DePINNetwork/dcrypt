@@ -157,6 +157,9 @@ impl<const N: usize> ByteSerializable for Salt<N> {
 pub const RECOMMENDED_MIN_SIZE: usize = 16;
 
 // Common salt size type aliases
+/// An 8-byte (64-bit) salt, suitable for most cryptographic applications.
+pub type Salt8 = Salt<8>;
+
 /// A 16-byte (128-bit) salt, suitable for most cryptographic applications.
 pub type Salt16 = Salt<16>;
 
@@ -177,6 +180,7 @@ impl Pbkdf2Compatible for Salt<64> {}
 pub trait Argon2Compatible: Sealed {}
 
 // Explicitly implement for recommended salt sizes
+impl Argon2Compatible for Salt<8> {}
 impl Argon2Compatible for Salt<16> {}
 impl Argon2Compatible for Salt<24> {}
 impl Argon2Compatible for Salt<32> {}
@@ -187,6 +191,7 @@ pub trait HkdfCompatible: Sealed {}
 
 // Changed from blanket implementation to explicit implementations
 // for better compile-time resolution of trait bounds
+
 impl HkdfCompatible for Salt<16> {}
 impl HkdfCompatible for Salt<24> {}
 impl HkdfCompatible for Salt<32> {}
