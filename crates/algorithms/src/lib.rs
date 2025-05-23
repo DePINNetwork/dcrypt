@@ -67,6 +67,17 @@ pub use kdf::{
     KeyDerivationFunction, PasswordHashFunction
 };
 
+// Elliptic Curve primitives
+pub mod ec;
+pub use ec::{
+    // Re-export common EC types
+    P256Point, P256Scalar,
+    P384Point, P384Scalar,
+    
+    // Re-export curve-specific modules
+    p256, p384
+};
+
 // Type system
 pub mod types;
 pub use types::{
