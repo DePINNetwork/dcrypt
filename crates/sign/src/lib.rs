@@ -6,17 +6,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod traditional;
-pub mod dilithium;
-pub mod falcon;
-pub mod sphincs;
-pub mod rainbow;
+pub mod pq;
 
-// Re-exports
-pub use traditional::ed25519::Ed25519;
+// Re-exports from traditional schemes
+pub use traditional::eddsa::Ed25519;
 pub use traditional::ecdsa::{EcdsaP256, EcdsaP384};
 pub use traditional::rsa::{RsaPss, RsaPkcs1};
 pub use traditional::dsa::Dsa;
-pub use dilithium::{Dilithium2, Dilithium3, Dilithium5};
-pub use falcon::{Falcon512, Falcon1024};
-pub use sphincs::{SphincsSha2, SphincsShake};
-pub use rainbow::{RainbowI, RainbowIII, RainbowV};
+
+// Re-exports from post-quantum schemes
+pub use pq::dilithium::{Dilithium2, Dilithium3, Dilithium5};
+pub use pq::falcon::{Falcon512, Falcon1024};
+pub use pq::sphincs::{SphincsSha2, SphincsShake};
+pub use pq::rainbow::{RainbowI, RainbowIII, RainbowV};

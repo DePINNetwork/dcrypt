@@ -37,3 +37,4 @@ serde = { workspace = true, optional = true }
 
 [dev-dependencies]
 rand_chacha = { workspace = true }
+hex = "0.4"

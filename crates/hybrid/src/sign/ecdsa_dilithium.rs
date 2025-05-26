@@ -5,7 +5,7 @@
 
 use api::{Signature as SignatureTrait, Result};
 use sign::traditional::ecdsa::EcdsaP384;
-use sign::dilithium::Dilithium3;
+use sign::pq::dilithium::Dilithium3;
 use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
 

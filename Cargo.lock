@@ -528,6 +528,7 @@ dependencies = [
  "algorithms",
  "api",
  "common",
+ "hex",
  "internal",
  "params",
  "rand",

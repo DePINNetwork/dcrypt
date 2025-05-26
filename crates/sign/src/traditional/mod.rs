@@ -1,9 +1,30 @@
-//! Traditional signature algorithms
+//! Traditional signature schemes
 //!
-//! This module implements various traditional digital signature schemes,
-//! including RSA, DSA, ECDSA, and Ed25519.
+//! This module contains implementations of traditional (pre-quantum) signature
+//! schemes including ECDSA, EdDSA, and RSA.
 
-pub mod ed25519;
-pub mod ecdsa;
-pub mod rsa;
 pub mod dsa;
+pub mod ecdsa;
+pub mod eddsa;
+pub mod rsa;
+
+// Re-export DSA types
+pub use dsa::Dsa;
+
+// Re-export ECDSA types
+pub use ecdsa::{
+    EcdsaP256,
+    EcdsaP256PublicKey,
+    EcdsaP256SecretKey,
+    EcdsaP256Signature,
+    EcdsaP384,
+    EcdsaP384PublicKey,
+    EcdsaP384SecretKey,
+    EcdsaP384Signature,
+};
+
+// Re-export EdDSA types
+pub use eddsa::Ed25519;
+
+// Re-export RSA types
+pub use rsa::{RsaPss, RsaPkcs1};

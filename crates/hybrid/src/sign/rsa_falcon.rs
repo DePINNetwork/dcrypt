@@ -2,7 +2,7 @@
 
 use api::{Signature as SignatureTrait, Result};
 use sign::traditional::rsa::RsaPss;
-use sign::falcon::Falcon512;
+use sign::pq::falcon::Falcon512;
 use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
 
