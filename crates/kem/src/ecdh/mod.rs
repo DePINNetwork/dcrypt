@@ -26,5 +26,5 @@ pub use p384::{
     EcdhP384Ciphertext
 };
 
-// Version tag for KDF context
-pub(crate) const KEM_KDF_VERSION: &str = "v1.0.0";
+// Version tag for KDF context - updated for compressed point format
+pub(crate) const KEM_KDF_VERSION: &str = "v2.0.0";

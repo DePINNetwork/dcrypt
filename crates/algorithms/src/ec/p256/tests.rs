@@ -8,6 +8,97 @@ use rand::rngs::OsRng;
 use params::traditional::ecdsa::NIST_P256;
 
 #[test]
+fn test_compression_roundtrip() {
+    // Test with generator point
+    let g = p256::base_point_g();
+    let compressed = g.serialize_compressed();
+    let decompressed = Point::deserialize_compressed(&compressed).unwrap();
+    assert_eq!(g, decompressed);
+    
+    // Test identity point
+    let identity = Point::identity();
+    let compressed_id = identity.serialize_compressed();
+    let decompressed_id = Point::deserialize_compressed(&compressed_id).unwrap();
+    assert!(decompressed_id.is_identity());
+    
+    // Test multiple scalar multiples to cover even/odd y cases
+    let scalar_2 = p256::Scalar::new([
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 2,
+    ]).unwrap();
+    
+    let point_2g = g.mul(&scalar_2).unwrap();
+    let compressed_2g = point_2g.serialize_compressed();
+    let decompressed_2g = Point::deserialize_compressed(&compressed_2g).unwrap();
+    assert_eq!(point_2g, decompressed_2g);
+}
+
+#[test]
+fn test_compression_invalid_prefix() {
+    let mut compressed = p256::base_point_g().serialize_compressed();
+    compressed[0] = 0x04; // Invalid prefix for compressed format
+    assert!(Point::deserialize_compressed(&compressed).is_err());
+    
+    compressed[0] = 0x00; // Another invalid prefix
+    assert!(Point::deserialize_compressed(&compressed).is_err());
+    
+    compressed[0] = 0xFF; // Yet another invalid prefix
+    assert!(Point::deserialize_compressed(&compressed).is_err());
+}
+
+#[test]
+fn test_compression_non_residue() {
+    // Construct an x-coordinate that's likely not on the curve
+    let mut invalid_x = [0u8; P256_POINT_COMPRESSED_SIZE];
+    invalid_x[0] = 0x02;
+    // Fill with a pattern that's unlikely to be on curve
+    for i in 1..P256_POINT_COMPRESSED_SIZE {
+        invalid_x[i] = 0xFF;
+    }
+    
+    let result = Point::deserialize_compressed(&invalid_x);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("non-residue"));
+}
+
+#[test]
+fn test_point_format_detection() {
+    // Test uncompressed format
+    let g = p256::base_point_g();
+    let uncompressed = g.serialize_uncompressed();
+    assert_eq!(Point::detect_format(&uncompressed).unwrap(), PointFormat::Uncompressed);
+    
+    // Test compressed format
+    let compressed = g.serialize_compressed();
+    assert_eq!(Point::detect_format(&compressed).unwrap(), PointFormat::Compressed);
+    
+    // Test identity format
+    let identity = Point::identity();
+    let id_bytes = identity.serialize_uncompressed();
+    assert_eq!(Point::detect_format(&id_bytes).unwrap(), PointFormat::Identity);
+    
+    // Test invalid formats
+    assert!(Point::detect_format(&[]).is_err());
+    assert!(Point::detect_format(&[0x04]).is_err()); // Too short
+    assert!(Point::detect_format(&[0x05; 65]).is_err()); // Invalid prefix
+}
+
+#[test]
+fn test_compression_preserves_coordinates() {
+    let g = p256::base_point_g();
+    let compressed = g.serialize_compressed();
+    let decompressed = Point::deserialize_compressed(&compressed).unwrap();
+    
+    // X-coordinates must be identical
+    assert_eq!(g.x_coordinate_bytes(), decompressed.x_coordinate_bytes());
+    
+    // Y-coordinates must be identical
+    assert_eq!(g.y_coordinate_bytes(), decompressed.y_coordinate_bytes());
+}
+
+#[test]
 fn sbb8_regression_wrap_borrow() {
     let a = FieldElement::from_bytes(&[0; 32]).unwrap();
     

@@ -20,10 +20,11 @@ pub use constants::{
     P256_SCALAR_SIZE,
     P256_FIELD_ELEMENT_SIZE,
     P256_POINT_UNCOMPRESSED_SIZE,
+    P256_POINT_COMPRESSED_SIZE,
     P256_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE,
 };
 pub use field::FieldElement;
-pub use point::Point;
+pub use point::{Point, PointFormat};
 pub use scalar::Scalar;
 
 use crate::error::{Error, Result};

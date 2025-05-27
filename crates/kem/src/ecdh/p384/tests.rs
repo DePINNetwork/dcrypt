@@ -87,15 +87,15 @@ fn test_p384_kem_invalid_public_key() {
     let mut rng = OsRng;
     
     // Test with all-zero public key (identity point)
-    let invalid_pk = EcdhP384PublicKey([0u8; p384::P384_POINT_UNCOMPRESSED_SIZE]);
+    let invalid_pk = EcdhP384PublicKey([0u8; p384::P384_POINT_COMPRESSED_SIZE]);
     
     // Encapsulation should fail
     let result = EcdhP384::encapsulate(&mut rng, &invalid_pk);
     assert!(result.is_err());
     
     // Test with invalid point format
-    let mut invalid_pk2 = EcdhP384PublicKey([0xFFu8; p384::P384_POINT_UNCOMPRESSED_SIZE]);
-    invalid_pk2.0[0] = 0x05; // Invalid format byte
+    let mut invalid_pk2 = EcdhP384PublicKey([0xFFu8; p384::P384_POINT_COMPRESSED_SIZE]);
+    invalid_pk2.0[0] = 0x05; // Invalid format byte for compressed points
     
     let result2 = EcdhP384::encapsulate(&mut rng, &invalid_pk2);
     assert!(result2.is_err());
@@ -109,7 +109,7 @@ fn test_p384_kem_invalid_ciphertext() {
     let (_, recipient_sk) = EcdhP384::keypair(&mut rng).unwrap();
     
     // Test with all-zero ciphertext (identity point)
-    let invalid_ct = EcdhP384Ciphertext([0u8; p384::P384_POINT_UNCOMPRESSED_SIZE]);
+    let invalid_ct = EcdhP384Ciphertext([0u8; p384::P384_POINT_COMPRESSED_SIZE]);
     
     // Decapsulation should fail
     let result = EcdhP384::decapsulate(&recipient_sk, &invalid_ct);
@@ -227,10 +227,9 @@ mod nist_compliance {
         let (_, sk) = EcdhP384::keypair(&mut rng).unwrap();
         
         // Create invalid ciphertext (point not on curve)
-        let mut invalid_ct_bytes = [0u8; p384::P384_POINT_UNCOMPRESSED_SIZE];
-        invalid_ct_bytes[0] = 0x04; // Uncompressed point format
+        let mut invalid_ct_bytes = [0u8; p384::P384_POINT_COMPRESSED_SIZE];
+        invalid_ct_bytes[0] = 0x02; // Compressed point format (even y)
         invalid_ct_bytes[1..49].fill(0xFF); // Invalid x-coordinate
-        invalid_ct_bytes[49..97].fill(0xFF); // Invalid y-coordinate
         
         let invalid_ct = EcdhP384Ciphertext(invalid_ct_bytes);
         
@@ -300,20 +299,55 @@ fn test_p384_kem_cross_consistency() {
     // Generate keypairs
     let (pk384, sk384) = EcdhP384::keypair(&mut rng).unwrap();
     
-    // Verify key sizes
-    assert_eq!(pk384.as_ref().len(), p384::P384_POINT_UNCOMPRESSED_SIZE);
+    // Verify key sizes (compressed format)
+    assert_eq!(pk384.as_ref().len(), p384::P384_POINT_COMPRESSED_SIZE);
     assert_eq!(sk384.as_ref().len(), p384::P384_SCALAR_SIZE);
     
     // Encapsulation
     let (ct, ss) = EcdhP384::encapsulate(&mut rng, &pk384).unwrap();
     
-    // Verify ciphertext and shared secret sizes
-    assert_eq!(ct.as_ref().len(), p384::P384_POINT_UNCOMPRESSED_SIZE);
+    // Verify ciphertext and shared secret sizes (compressed format)
+    assert_eq!(ct.as_ref().len(), p384::P384_POINT_COMPRESSED_SIZE);
     assert_eq!(ss.as_ref().len(), p384::P384_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE);
     
     // Decapsulation
     let ss_dec = EcdhP384::decapsulate(&sk384, &ct).unwrap();
     assert_eq!(ss.as_ref(), ss_dec.as_ref());
+}
+
+#[test]
+fn test_p384_kem_compressed_format_sizes() {
+    let mut rng = OsRng;
+    
+    // Generate keypair and verify sizes
+    let (pk, sk) = EcdhP384::keypair(&mut rng).unwrap();
+    
+    // Verify key sizes
+    assert_eq!(pk.as_ref().len(), p384::P384_POINT_COMPRESSED_SIZE, "Public key should be compressed");
+    assert_eq!(sk.as_ref().len(), p384::P384_SCALAR_SIZE, "Secret key size unchanged");
+    
+    // Verify ciphertext size
+    let (ct, _) = EcdhP384::encapsulate(&mut rng, &pk).unwrap();
+    assert_eq!(ct.as_ref().len(), p384::P384_POINT_COMPRESSED_SIZE, "Ciphertext should be compressed");
+}
+
+#[test]
+fn test_p384_kem_invalid_compressed_prefix() {
+    let mut rng = OsRng;
+    
+    // Test various invalid prefixes for compressed points
+    let invalid_prefixes = [0x00, 0x01, 0x04, 0x05, 0xFF];
+    
+    for prefix in &invalid_prefixes {
+        let mut invalid_pk_bytes = [0u8; p384::P384_POINT_COMPRESSED_SIZE];
+        invalid_pk_bytes[0] = *prefix;
+        invalid_pk_bytes[1..].fill(0x42); // Some arbitrary data
+        
+        let invalid_pk = EcdhP384PublicKey(invalid_pk_bytes);
+        let result = EcdhP384::encapsulate(&mut rng, &invalid_pk);
+        
+        assert!(result.is_err(), "Prefix {:02x} should be rejected", prefix);
+    }
 }
 
 #[cfg(feature = "benchmark")]

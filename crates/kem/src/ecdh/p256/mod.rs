@@ -5,6 +5,8 @@
 //! Elliptic Curve Diffie-Hellman (ECDH) protocol using the NIST P-256 curve.
 //! The implementation is secure against timing attacks and follows best practices
 //! for key derivation according to RFC 9180 (HPKE).
+//!
+//! This implementation uses compressed point format for optimal bandwidth efficiency.
 
 use api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
 use common::security::SecretBuffer;
@@ -17,9 +19,9 @@ use super::KEM_KDF_VERSION;
 /// ECDH KEM with P-256 curve
 pub struct EcdhP256;
 
-/// Public key for ECDH-P256 KEM (serialized EC point)
+/// Public key for ECDH-P256 KEM (compressed EC point)
 #[derive(Clone, Zeroize)]
-pub struct EcdhP256PublicKey([u8; ec_p256::P256_POINT_UNCOMPRESSED_SIZE]);
+pub struct EcdhP256PublicKey([u8; ec_p256::P256_POINT_COMPRESSED_SIZE]);
 
 /// Secret key for ECDH-P256 KEM (scalar value)
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
@@ -29,9 +31,9 @@ pub struct EcdhP256SecretKey(SecretBuffer<{ ec_p256::P256_SCALAR_SIZE }>);
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct EcdhP256SharedSecret(ApiKey);
 
-/// Ciphertext for ECDH-P256 KEM (ephemeral public key)
+/// Ciphertext for ECDH-P256 KEM (compressed ephemeral public key)
 #[derive(Clone)]
-pub struct EcdhP256Ciphertext([u8; ec_p256::P256_POINT_UNCOMPRESSED_SIZE]);
+pub struct EcdhP256Ciphertext([u8; ec_p256::P256_POINT_COMPRESSED_SIZE]);
 
 // AsRef/AsMut implementations
 impl AsRef<[u8]> for EcdhP256PublicKey { fn as_ref(&self) -> &[u8] { &self.0 } }
@@ -58,8 +60,8 @@ impl Kem for EcdhP256 {
         let (sk_scalar, pk_point) = ec_p256::generate_keypair(rng)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
         
-        // Serialize the public key point
-        let public_key = EcdhP256PublicKey(pk_point.serialize_uncompressed());
+        // Serialize the public key point using compressed format
+        let public_key = EcdhP256PublicKey(pk_point.serialize_compressed());
         
         // Wrap the secret scalar in our type
         let secret_key = EcdhP256SecretKey(sk_scalar.as_secret_buffer().clone());
@@ -79,11 +81,11 @@ impl Kem for EcdhP256 {
         rng: &mut R,
         public_key_recipient: &Self::PublicKey,
     ) -> ApiResult<(Self::Ciphertext, Self::SharedSecret)> {
-        // 1. Deserialize and validate recipient's public key
-        let pk_r_point = ec_p256::Point::deserialize_uncompressed(&public_key_recipient.0)
+        // 1. Deserialize and validate recipient's public key (compressed format)
+        let pk_r_point = ec_p256::Point::deserialize_compressed(&public_key_recipient.0)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
         
-        // Explicitly check for identity point (deserialize_uncompressed already does other validation)
+        // Explicitly check for identity point (deserialize_compressed already does other validation)
         if pk_r_point.is_identity() {
             return Err(ApiError::InvalidKey { 
                 context: "ECDH-P256 encapsulate",
@@ -106,12 +108,8 @@ impl Kem for EcdhP256 {
         let ephemeral_point = ec_p256::scalar_mult_base_g(&ephemeral_scalar)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
         
-        // Generate ephemeral public key: ephemeral_point = ephemeral_scalar * G
-        let ephemeral_point = ec_p256::scalar_mult_base_g(&ephemeral_scalar)
-            .map_err(|e| ApiError::from(KemError::from(e)))?;
-        
-        // 3. Serialize ephemeral public key as the ciphertext
-        let ciphertext = EcdhP256Ciphertext(ephemeral_point.serialize_uncompressed());
+        // 3. Serialize ephemeral public key as the ciphertext (compressed format)
+        let ciphertext = EcdhP256Ciphertext(ephemeral_point.serialize_compressed());
     
         // 4. Compute shared point: [ephemeral_scalar] * recipient_pk
         let shared_point = ec_p256::scalar_mult(&ephemeral_scalar, &pk_r_point)
@@ -133,10 +131,10 @@ impl Kem for EcdhP256 {
         // This binding prevents the standard KDF inputs from being domain-separated
         let mut kdf_ikm = Vec::with_capacity(
             ec_p256::P256_FIELD_ELEMENT_SIZE + 
-            2 * ec_p256::P256_POINT_UNCOMPRESSED_SIZE
+            2 * ec_p256::P256_POINT_COMPRESSED_SIZE  // Using compressed size
         );
         kdf_ikm.extend_from_slice(&x_coord_bytes);
-        kdf_ikm.extend_from_slice(&ephemeral_point.serialize_uncompressed());
+        kdf_ikm.extend_from_slice(&ephemeral_point.serialize_compressed());
         kdf_ikm.extend_from_slice(&public_key_recipient.0);
         
         // 8. Derive the shared secret with domain separation and version
@@ -166,8 +164,8 @@ impl Kem for EcdhP256 {
             Err(e) => return Err(ApiError::from(KemError::from(e))),
         };
         
-        // 2. Deserialize and validate the ephemeral public key from ciphertext
-        let q_e_point = ec_p256::Point::deserialize_uncompressed(&ciphertext_ephemeral_pk.0)
+        // 2. Deserialize and validate the ephemeral public key from ciphertext (compressed format)
+        let q_e_point = ec_p256::Point::deserialize_compressed(&ciphertext_ephemeral_pk.0)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
         
         // Check for identity point
@@ -202,11 +200,11 @@ impl Kem for EcdhP256 {
         // 7. Prepare KDF input with the same order as encapsulation
         let mut kdf_ikm = Vec::with_capacity(
             ec_p256::P256_FIELD_ELEMENT_SIZE + 
-            2 * ec_p256::P256_POINT_UNCOMPRESSED_SIZE
+            2 * ec_p256::P256_POINT_COMPRESSED_SIZE  // Using compressed size
         );
         kdf_ikm.extend_from_slice(&x_coord_bytes);
         kdf_ikm.extend_from_slice(&ciphertext_ephemeral_pk.0);
-        kdf_ikm.extend_from_slice(&q_r_point.serialize_uncompressed());
+        kdf_ikm.extend_from_slice(&q_r_point.serialize_compressed());
 
         // 8. Derive the shared secret with same domain separation
         let info_string = format!("ECDH-P256-KEM {}", KEM_KDF_VERSION);

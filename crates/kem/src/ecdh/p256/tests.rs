@@ -87,15 +87,15 @@ fn test_p256_kem_invalid_public_key() {
     let mut rng = OsRng;
     
     // Test with all-zero public key (identity point)
-    let invalid_pk = EcdhP256PublicKey([0u8; ec_p256::P256_POINT_UNCOMPRESSED_SIZE]);
+    let invalid_pk = EcdhP256PublicKey([0u8; ec_p256::P256_POINT_COMPRESSED_SIZE]);
     
     // Encapsulation should fail
     let result = EcdhP256::encapsulate(&mut rng, &invalid_pk);
     assert!(result.is_err());
     
     // Test with invalid point format
-    let mut invalid_pk2 = EcdhP256PublicKey([0xFFu8; ec_p256::P256_POINT_UNCOMPRESSED_SIZE]);
-    invalid_pk2.0[0] = 0x05; // Invalid format byte
+    let mut invalid_pk2 = EcdhP256PublicKey([0xFFu8; ec_p256::P256_POINT_COMPRESSED_SIZE]);
+    invalid_pk2.0[0] = 0x05; // Invalid format byte for compressed points
     
     let result2 = EcdhP256::encapsulate(&mut rng, &invalid_pk2);
     assert!(result2.is_err());
@@ -109,7 +109,7 @@ fn test_p256_kem_invalid_ciphertext() {
     let (_, recipient_sk) = EcdhP256::keypair(&mut rng).unwrap();
     
     // Test with all-zero ciphertext (identity point)
-    let invalid_ct = EcdhP256Ciphertext([0u8; ec_p256::P256_POINT_UNCOMPRESSED_SIZE]);
+    let invalid_ct = EcdhP256Ciphertext([0u8; ec_p256::P256_POINT_COMPRESSED_SIZE]);
     
     // Decapsulation should fail
     let result = EcdhP256::decapsulate(&recipient_sk, &invalid_ct);
@@ -227,10 +227,9 @@ mod nist_compliance {
         let (_, sk) = EcdhP256::keypair(&mut rng).unwrap();
         
         // Create invalid ciphertext (point not on curve)
-        let mut invalid_ct_bytes = [0u8; ec_p256::P256_POINT_UNCOMPRESSED_SIZE];
-        invalid_ct_bytes[0] = 0x04; // Uncompressed point format
+        let mut invalid_ct_bytes = [0u8; ec_p256::P256_POINT_COMPRESSED_SIZE];
+        invalid_ct_bytes[0] = 0x02; // Compressed point format (even y)
         invalid_ct_bytes[1..33].fill(0xFF); // Invalid x-coordinate
-        invalid_ct_bytes[33..65].fill(0xFF); // Invalid y-coordinate
         
         let invalid_ct = EcdhP256Ciphertext(invalid_ct_bytes);
         
@@ -263,6 +262,41 @@ fn test_p256_kem_consistency_across_implementations() {
             ec_p256::P256_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE,
             "Shared secret must have correct length"
         );
+    }
+}
+
+#[test]
+fn test_p256_kem_compressed_format_sizes() {
+    let mut rng = OsRng;
+    
+    // Generate keypair and verify sizes
+    let (pk, sk) = EcdhP256::keypair(&mut rng).unwrap();
+    
+    // Verify key sizes
+    assert_eq!(pk.as_ref().len(), ec_p256::P256_POINT_COMPRESSED_SIZE, "Public key should be compressed");
+    assert_eq!(sk.as_ref().len(), ec_p256::P256_SCALAR_SIZE, "Secret key size unchanged");
+    
+    // Verify ciphertext size
+    let (ct, _) = EcdhP256::encapsulate(&mut rng, &pk).unwrap();
+    assert_eq!(ct.as_ref().len(), ec_p256::P256_POINT_COMPRESSED_SIZE, "Ciphertext should be compressed");
+}
+
+#[test]
+fn test_p256_kem_invalid_compressed_prefix() {
+    let mut rng = OsRng;
+    
+    // Test various invalid prefixes for compressed points
+    let invalid_prefixes = [0x00, 0x01, 0x04, 0x05, 0xFF];
+    
+    for prefix in &invalid_prefixes {
+        let mut invalid_pk_bytes = [0u8; ec_p256::P256_POINT_COMPRESSED_SIZE];
+        invalid_pk_bytes[0] = *prefix;
+        invalid_pk_bytes[1..].fill(0x42); // Some arbitrary data
+        
+        let invalid_pk = EcdhP256PublicKey(invalid_pk_bytes);
+        let result = EcdhP256::encapsulate(&mut rng, &invalid_pk);
+        
+        assert!(result.is_err(), "Prefix {:02x} should be rejected", prefix);
     }
 }
 

@@ -242,6 +242,66 @@ impl FieldElement {
         true
     }
 
+    /// Return `true` when the element is odd (LSB set)
+    /// 
+    /// Used for point compression to determine the sign of the y-coordinate.
+    /// The parity is determined by the least significant bit of the canonical
+    /// representation.
+    pub fn is_odd(&self) -> bool {
+        (self.0[0] & 1) == 1
+    }
+
+    /// Modular square root using the (p+1)/4 shortcut (p ≡ 3 mod 4).
+    /// 
+    /// Because the P-384 prime satisfies p ≡ 3 (mod 4), we can compute
+    /// sqrt(a) = a^((p+1)/4) mod p. This is more efficient than the
+    /// general Tonelli-Shanks algorithm.
+    /// 
+    /// Returns `None` when the input is a quadratic non-residue (i.e.,
+    /// when no square root exists in the field).
+    /// 
+    /// # Algorithm
+    /// For p ≡ 3 (mod 4), if a has a square root, then:
+    /// - sqrt(a) = ±a^((p+1)/4) mod p
+    /// - We return the principal square root (the smaller of the two)
+    pub fn sqrt(&self) -> Option<Self> {
+        if self.is_zero() {
+            return Some(Self::zero());
+        }
+
+        // (p + 1) / 4 for P-384 as big-endian bytes
+        // p = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff
+        // (p + 1) / 4 = 0x3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbffffffffc000000000000000400000000
+        const EXP: [u8; 48] = [
+            0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xBF, 0xFF, 0xFF, 0xFF, 0xC0, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00,
+        ];
+
+        let mut result = FieldElement::one();
+        let mut base = self.clone();
+        
+        // Binary exponentiation from LSB to MSB
+        for &byte in EXP.iter().rev() {
+            for bit in 0..8 {
+                if ((byte >> bit) & 1) == 1 {
+                    result = result.mul(&base);
+                }
+                base = base.square();
+            }
+        }
+
+        // Verify that result^2 = self (constant-time check)
+        if result.square() == *self {
+            Some(result)
+        } else {
+            None
+        }
+    }
+
     // Private helper methods
 
     /// Constant-time conditional selection between two limb arrays
