@@ -9,6 +9,7 @@ members = [
     "crates/kem",
     "crates/sign",
     "crates/hybrid",
+    "crates/pke",
     "crates/utils",        # dev-only, publish = false
     "tests"
 ]
@@ -26,9 +27,11 @@ categories  = ["cryptography", "no-std"]
 keywords    = ["cryptography", "post-quantum", "kem", "signatures"]
 
 [workspace.dependencies]
-rand        = "0.8.5"
+rand        = { version = "0.8.5", default-features = false }
 rand_chacha = "0.3.1"
-zeroize     = { version = "1.5.7", features = ["zeroize_derive"] }
-const-time  = "0.1.1"
-serde       = { version = "1.0.147", features = ["derive"] }
-thiserror   = "1.0.37"
+zeroize     = { version = "1.8.1", features = ["zeroize_derive"] } # Synced with lock file
+subtle      = { version = "2.6.1", default-features = false }
+serde       = { version = "1.0.219", features = ["derive"] } # REMOVED optional = true
+thiserror   = { version = "1.0.69" }                         # REMOVED optional = true
+# If const-time was indeed used, add it back here without optional=true
+# const-time  = { version = "0.1.1" }

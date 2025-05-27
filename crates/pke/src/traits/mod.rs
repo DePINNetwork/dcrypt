@@ -9,14 +9,14 @@ pub mod kem;
 pub mod signature;
 pub mod symmetric;
 pub mod serialize;
-pub mod pke;
+pub mod pke; // Added new module
 
 // Original trait re-exports
 pub use kem::Kem;
 pub use signature::Signature;
 pub use symmetric::SymmetricCipher;
 pub use serialize::Serialize;
-pub use pke::Pke;
+pub use pke::Pke; // Re-export new trait
 
 /// Marker trait for block cipher algorithms
 pub trait BlockCipher {

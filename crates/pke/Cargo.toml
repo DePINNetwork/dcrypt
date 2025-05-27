@@ -1,0 +1,45 @@
+[package]
+name = "pke"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Public Key Encryption schemes for the DCRYPT library"
+repository.workspace = true
+license.workspace = true
+
+[features]
+default = ["std"]
+std = [
+    "api/std",
+    "common/std",
+    "algorithms/std",
+    "dep:thiserror",
+    "alloc"          # The 'std' feature of 'pke' also implies 'alloc'
+]
+alloc = [
+    "api/alloc",
+    "common/alloc",
+    "algorithms/alloc",
+    # NO 'dep:alloc' here. The features above will trigger alloc usage in those deps.
+]
+no_std = [
+    "api/no_std",
+    "common/no_std",
+    # As before, no "algorithms/no_std"
+]
+
+[dependencies]
+api = { path = "../api", default-features = false }
+common = { path = "../common", default-features = false }
+algorithms = { path = "../algorithms", default-features = false, features = ["ec", "kdf", "aead", "hash"] } # These features in 'algorithms' should correctly use alloc if needed
+rand = { workspace = true, default-features = false }
+zeroize = { workspace = true }
+subtle = { workspace = true, default-features = false }
+
+thiserror = { workspace = true, optional = true }
+# REMOVED: alloc = { package = "alloc", version = "1.0.0", optional = true }
+
+
+[dev-dependencies]
+hex = "0.4"
+rand_chacha = { workspace = true }

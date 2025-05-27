@@ -9,63 +9,62 @@ license = "MIT OR Apache-2.0"
 
 [features]
 # Feature configuration for different environments
-default = ["std", "xof"] 
+default = ["std", "xof", "ec"] # Add 'ec' to default if desired
 
 # Standard library support - enables all features
-std = ["alloc", "byteorder/std", "subtle/std", "hex/std", "rand/std", "getrandom/std", "serde_json"]
+std = [
+    "alloc", 
+    "byteorder/std", 
+    "subtle/std", 
+    "hex/std", 
+    "rand/std", 
+    "getrandom/std", 
+    "serde_json",
+    # If 'std' implies all algorithm features are on, add them here
+    "hash", "xof", "aead", "block", "kdf", "mac", "stream", "ec"
+]
 
 # Allocator support - provides Vec, Box, String, etc.
 alloc = []
 
 # Optional feature groups for modular inclusion
 hash = []
-xof = ["alloc"]  # XOFs need heap for variable-length output
-aead = ["alloc"] # AEAD needs heap for ciphertext+tag
-block = []       # Raw block ciphers work on fixed buffers
-kdf = ["alloc"]  # KDFs usually need heap for derivation
-mac = []         # MACs can work with fixed buffers
-stream = []      # Stream ciphers can work with fixed buffers
+xof = ["alloc"]
+aead = ["alloc"]
+block = []
+kdf = ["alloc"]
+mac = []
+stream = []
+ec = ["alloc"] # <<<< ADDED THIS FEATURE. EC operations might need alloc for points/scalars.
 
 # Enable serde_json for tests
 serde_json = ["dep:serde_json", "dep:serde"]
 
 [dependencies]
-# debug ec primitives
-# big‐integer support
-num-bigint   = "0.4"
-# conversion traits (FromPrimitive, ToPrimitive)
-num-traits   = "0.2"
-
+# ... (rest of dependencies remain the same) ...
 api = { path = "../api", version = "0.1.0", default-features = false }
 common = { path = "../common", version = "0.1.0", default-features = false }
 internal = { path = "../internal", version = "0.1.0", default-features = false }
 params = { path = "../params", version = "0.1.0" }
-zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
+zeroize = { version = "1.5.7", features = ["zeroize_derive"] } # Ensure this matches workspace if it moves
 byteorder = { version = "1.4.3", default-features = false }
 subtle = { version = "2.6.1", default-features = false }
-# Only used when SIMD is enabled
 faster-hex = { version = "0.6.1", optional = true }
-# Add hex dependency
 hex = { version = "0.4.3", default-features = false }
-# Optional dependencies for std environments
 serde = { version = "1.0.189", features = ["derive"], optional = true }
 serde_json = { version = "1.0.107", optional = true }
 portable-atomic = { version = "1.6", default-features = false }
-base64 = { version = "0.22", default-features = false, features = ["alloc"] }
+base64 = { version = "0.22.1", default-features = false, features = ["alloc"] } # Ensure 'alloc' for base64 if no_std
 
-# Configure rand with appropriate features for embedded
 rand = { version = "0.8.5", default-features = false }
 getrandom = { version = "0.2.15", default-features = false, optional = true, features = ["custom"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-# Use custom RNG implementation for embedded targets
 rand_chacha = { version = "0.3.1", default-features = false }
 
 [dev-dependencies]
-# Test dependencies that are always available in test mode
-serde = { version = "1.0.189", features = ["derive"] }
-serde_json = "1.0.107"
-
+serde = { version = "1.0.189", features = ["derive"] } # Matches workspace
+serde_json = "1.0.107" # Matches workspace
 
 [package.metadata.docs.rs]
 all-features = true

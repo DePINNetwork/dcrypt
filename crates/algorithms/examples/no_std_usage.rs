@@ -1,111 +1,118 @@
-// This example demonstrates how the primitives can be used in a no_std environment
-// even though it's being compiled with std available for testing purposes
-#![cfg_attr(not(feature = "std"), no_std)]
+//! Example demonstrating `no_std` usage of DCRYPT primitives
+//!
+//! This example shows how to use core algorithms in a `no_std` environment,
+//! assuming an allocator is available (via the `alloc` feature).
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
-
+// Standard library features (if available)
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use std::{println, vec, vec::Vec, string::String, format};
 
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+// No-std + alloc features
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{println, vec, vec::Vec, string::String, format};
 
-use algorithms::hash::{Blake2b, Blake2s, HashFunction, Sha256};
-use algorithms::block::{Aes128, BlockCipher};
-use algorithms::aead::Gcm;
-use algorithms::mac::Poly1305;
-use algorithms::types::{Nonce, Digest, SecretBytes};
-use api::traits::{SymmetricCipher, AuthenticatedCipher};
-use api::traits::symmetric::{EncryptOperation, DecryptOperation};
-use algorithms::Error;
+// Core DCRYPT API traits and types
+use api::error::{Error as CoreError, Result as CoreResult};
+use api::Key as ApiKey;
+use api::Ciphertext as ApiCiphertext;
+use api::traits::SymmetricCipher as ApiSymmetricCipherTrait; // Import the trait
+use api::traits::symmetric::{EncryptOperation, DecryptOperation}; // Import operation traits
 
-// Function to demonstrate hash usage
-fn hash_example() -> Result<Digest<32>, Error> {
-    let data = b"Hello, no_std world!";
-    let mut hasher = Sha256::new();
-    hasher.update(data)?;
-    hasher.finalize()
-}
 
-// Function to demonstrate blake2 usage  
-fn blake2_example() -> Result<(Digest<64>, Digest<32>), Error> {
-    let data = b"Blake2 in no_std!";
-    
-    let digest_b = Blake2b::digest(data)?;
-    let digest_s = Blake2s::digest(data)?;
-    
-    Ok((digest_b, digest_s))
-}
+// Algorithms crate components
+use algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
+use algorithms::hash::sha2::Sha256;
+use algorithms::hash::HashFunction; // Import the trait for new, update, finalize
+use algorithms::kdf::hkdf::Hkdf;
+use algorithms::mac::hmac::Hmac;
+use algorithms::types::{Nonce, Salt, Digest, Tag, SecretBytes};
+use algorithms::error::{Error as AlgorithmsError, Result as AlgorithmsResult};
 
-// Function to demonstrate Poly1305
-fn poly1305_example() -> Result<(), Error> {
-    // Just demonstrate that Poly1305 can be instantiated
-    let key = [0u8; 32];
-    let _mac = Poly1305::new(&key)?;
+// Randomness (requires a no_std compatible RNG or specific target features)
+#[cfg(feature = "std")]
+use rand::rngs::OsRng;
+#[cfg(feature = "std")]
+use rand::RngCore;
+
+fn main() -> CoreResult<()> {
+    println!("DCRYPT no_std usage example (with alloc):");
+
+    // --- Hashing with SHA-256 ---
+    println!("\n--- SHA-256 Hashing ---");
+    let data_to_hash = b"Hello, DCRYPT no_std!";
+    let mut hasher = Sha256::new(); // Now uses HashFunction::new()
+    hasher.update(data_to_hash) // Now uses HashFunction::update()
+        .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+    let digest_result = hasher.finalize() // Now uses HashFunction::finalize()
+        .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+    let digest_bytes: Digest<32> = digest_result;
+
+    println!("Data: {:?}", core::str::from_utf8(data_to_hash).unwrap_or("Invalid UTF-8"));
+    println!("SHA-256 Digest (hex): {}", digest_bytes.to_hex());
+
+
+    // --- MAC with HMAC-SHA256 ---
+    #[cfg(feature = "std")]
+    {
+        println!("\n--- HMAC-SHA256 MAC ---");
+        let mut key_bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut key_bytes);
+        let mac_key = SecretBytes::<32>::new(key_bytes);
+
+        let message_to_mac = b"Authenticated message";
+        let mut hmac = Hmac::<Sha256>::new(mac_key.as_ref())
+            .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+        hmac.update(message_to_mac)
+            .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+        let tag_result = hmac.finalize()
+            .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+        let tag_bytes: Vec<u8> = tag_result;
+
+        println!("Message: {:?}", core::str::from_utf8(message_to_mac).unwrap_or("Invalid UTF-8"));
+        println!("HMAC-SHA256 Tag (hex): {}", hex::encode(&tag_bytes));
+    }
+
+
+    // --- AEAD with ChaCha20Poly1305 ---
+    #[cfg(feature = "std")]
+    {
+        println!("\n--- ChaCha20Poly1305 AEAD ---");
+        let mut aead_key_bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut aead_key_bytes);
+        
+        let aead_cipher = ChaCha20Poly1305::new(&aead_key_bytes);
+
+        let mut aead_nonce_bytes = [0u8; 12];
+        OsRng.fill_bytes(&mut aead_nonce_bytes);
+        let aead_nonce = Nonce::<12>::new(aead_nonce_bytes);
+
+        let plaintext = b"Secret payload";
+        let aad_data_array = b"Associated Data"; // This is &'static [u8; 15]
+        let aad: Option<&[u8; 15]> = Some(aad_data_array);
+
+
+        // Encryption using the SymmetricCipher trait's builder pattern
+        // Use UFCS to call the trait method
+        let ciphertext_package: ApiCiphertext = 
+            <ChaCha20Poly1305 as ApiSymmetricCipherTrait>::encrypt(&aead_cipher)
+            .with_nonce(&aead_nonce)
+            .with_aad(aad.map_or(&[] as &[u8], |a| a as &[u8])) // Convert Option<&[u8;N]> to &[u8]
+            .encrypt(plaintext)?;
+        
+        println!("Plaintext: {:?}", core::str::from_utf8(plaintext).unwrap_or("Invalid UTF-8"));
+        println!("Ciphertext (hex): {}", hex::encode(ciphertext_package.as_ref()));
+
+        // Decryption
+        let decrypted_payload = 
+            <ChaCha20Poly1305 as ApiSymmetricCipherTrait>::decrypt(&aead_cipher)
+            .with_nonce(&aead_nonce)
+            .with_aad(aad.map_or(&[] as &[u8], |a| a as &[u8])) // Convert Option<&[u8;N]> to &[u8]
+            .decrypt(&ciphertext_package)?;
+
+        assert_eq!(plaintext, decrypted_payload.as_slice());
+        println!("Decryption successful!");
+    }
+
+    println!("\nno_std example finished successfully.");
     Ok(())
 }
-
-// Function to demonstrate AEAD encryption
-fn aead_example() -> Result<Vec<u8>, Error> {
-    let key_bytes = [0u8; 16]; // Would use proper key generation in real code
-    let key = SecretBytes::new(key_bytes); // Create the SecretBytes wrapper
-    let nonce = Nonce::<12>::new([0u8; 12]); // Would use random nonce in real code
-    let data = b"Secret message";
-    let aad_data = b"Additional authenticated data";
-    
-    let aes = Aes128::new(&key);
-    let gcm = Gcm::new(aes, &nonce)?;
-    
-    // Use the internal_encrypt method which returns the correct error type
-    let ciphertext = gcm.internal_encrypt(data, Some(aad_data))?;
-    
-    Ok(ciphertext)
-}
-
-fn main() {
-    println!("DCRYPT Primitives no_std Usage Example");
-    println!("=====================================");
-    
-    // Hash example
-    match hash_example() {
-        Ok(hash) => println!("SHA-256 hash: {}", hex::encode(&hash)),
-        Err(e) => println!("Hash error: {:?}", e),
-    }
-    
-    // Blake2 example
-    match blake2_example() {
-        Ok((blake2b, blake2s)) => {
-            println!("Blake2b hash: {}", hex::encode(&blake2b));
-            println!("Blake2s hash: {}", hex::encode(&blake2s));
-        }
-        Err(e) => println!("Blake2 error: {:?}", e),
-    }
-    
-    // Poly1305 example
-    match poly1305_example() {
-        Ok(_) => println!("Poly1305 initialized successfully"),
-        Err(e) => println!("Poly1305 error: {:?}", e),
-    }
-    
-    // AEAD example
-    match aead_example() {
-        Ok(ciphertext) => println!("AEAD ciphertext: {}", hex::encode(&ciphertext)),
-        Err(e) => println!("AEAD error: {:?}", e),
-    }
-}
-
-// If you need to test actual no_std behavior, create a separate binary crate
-// with the following in Cargo.toml:
-//
-// [package]
-// name = "no_std_example"
-// 
-// [dependencies]
-// dcrypt-primitives = { path = ".", default-features = false, features = ["alloc"] }
-//
-// [[bin]]
-// name = "no_std_example"
-// path = "examples/true_no_std.rs"
-//
-// And then use #![no_std] and #![no_main] attributes in that file.

@@ -14,8 +14,6 @@ dependencies = [
  "getrandom",
  "hex",
  "internal",
- "num-bigint",
- "num-traits",
  "params",
  "portable-atomic",
  "rand",
@@ -304,16 +302,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-bigint"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5e44f723f1133c9deac646763579fdb3ac745e418f2a7af9cd0c431da1f20b9"
-dependencies = [
- "num-integer",
- "num-traits",
-]
-
-[[package]]
 name = "num-complex"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -382,6 +370,21 @@ dependencies = [
  "hmac",
  "password-hash",
  "sha2",
+]
+
+[[package]]
+name = "pke"
+version = "0.1.0"
+dependencies = [
+ "algorithms",
+ "api",
+ "common",
+ "hex",
+ "rand",
+ "rand_chacha",
+ "subtle",
+ "thiserror",
+ "zeroize",
 ]
 
 [[package]]
