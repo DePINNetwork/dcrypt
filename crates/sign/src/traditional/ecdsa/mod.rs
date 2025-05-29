@@ -6,6 +6,7 @@
 pub mod common;
 pub mod p256;
 pub mod p384;
+pub mod p521; // Added P-521 module
 
 // Re-export P-256 types
 pub use p256::{
@@ -21,4 +22,12 @@ pub use p384::{
     EcdsaP384PublicKey,
     EcdsaP384SecretKey,
     EcdsaP384Signature
+};
+
+// Re-export P-521 types
+pub use p521::{
+    EcdsaP521,
+    EcdsaP521PublicKey,
+    EcdsaP521SecretKey,
+    EcdsaP521Signature
 };

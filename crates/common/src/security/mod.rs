@@ -23,8 +23,11 @@ pub use memory::{
     SecureOperation, 
     SecureCompare, 
     SecureOperationExt,
-    SecureOperationBuilder,
 };
+
+// Conditionally re-export SecureOperationBuilder only when std or alloc features are enabled
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use memory::SecureOperationBuilder;
 
 // Re-export memory barrier utilities
 pub use memory::barrier;

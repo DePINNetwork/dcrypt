@@ -1,6 +1,16 @@
 //! Common elliptic curve operations
 
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::vec::Vec;
+
 /// Point on an elliptic curve
+#[cfg(any(feature = "std", feature = "alloc"))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Point {
     pub x: Vec<u8>,
@@ -8,6 +18,7 @@ pub struct Point {
     pub z: Option<Vec<u8>>,  // For projective coordinates (None for affine)
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl Point {
     /// Create a new affine point (x, y)
     pub fn new_affine(x: Vec<u8>, y: Vec<u8>) -> Self {
@@ -37,6 +48,7 @@ impl Point {
 }
 
 /// Elliptic curve parameters in short Weierstrass form: y^2 = x^3 + ax + b
+#[cfg(any(feature = "std", feature = "alloc"))]
 #[derive(Clone, Debug)]
 pub struct CurveParams {
     /// The 'a' coefficient

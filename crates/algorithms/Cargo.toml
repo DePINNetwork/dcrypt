@@ -20,12 +20,20 @@ std = [
     "rand/std", 
     "getrandom/std", 
     "serde_json",
+    # Forward std to dependencies
+    "api/std",
+    "common/std",
+    "internal/std",
     # If 'std' implies all algorithm features are on, add them here
     "hash", "xof", "aead", "block", "kdf", "mac", "stream", "ec"
 ]
 
 # Allocator support - provides Vec, Box, String, etc.
-alloc = []
+alloc = [
+    # Forward alloc to dependencies that need it
+    "api/alloc",
+    "common/alloc",
+]
 
 # Optional feature groups for modular inclusion
 hash = []

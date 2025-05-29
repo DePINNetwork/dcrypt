@@ -5,15 +5,15 @@
 
 use api::Result;
 
-// Handle Vec import based on features
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+// Handle Vec and Box imports based on features
+#[cfg(feature = "std")]
+use std::{vec::Vec, boxed::Box};
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::vec::Vec;
-
-#[cfg(feature = "std")]
-use std::vec::Vec;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{vec::Vec, boxed::Box};
 
 /// Trait for secure cryptographic operations
 ///
@@ -49,11 +49,13 @@ pub trait SecureOperationExt: Sized {
 ///
 /// This pattern allows for composing operations while maintaining
 /// security guarantees at each step.
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub struct SecureOperationBuilder<T> {
     state: T,
     cleanup_fns: Vec<Box<dyn FnOnce(&mut T)>>,
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<T> SecureOperationBuilder<T> {
     /// Create a new secure operation builder
     pub fn new(initial_state: T) -> Self {
@@ -194,11 +196,13 @@ mod tests {
     use super::*;
     use zeroize::Zeroize;
     
+    #[cfg(any(feature = "std", feature = "alloc"))]
     struct TestOperation {
         secret: Vec<u8>,
         result: Option<Vec<u8>>,
     }
     
+    #[cfg(any(feature = "std", feature = "alloc"))]
     impl SecureOperation<Vec<u8>> for TestOperation {
         fn execute_secure(mut self) -> Result<Vec<u8>> {
             // Simulate some operation
@@ -218,6 +222,7 @@ mod tests {
     }
     
     #[test]
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn test_secure_operation() {
         let op = TestOperation {
             secret: vec![1, 2, 3, 4],

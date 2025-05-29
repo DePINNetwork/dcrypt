@@ -23,7 +23,7 @@ pub use tag::Tag;
 pub use key::{SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey};
 
 // Import and re-export core types
-pub use api::types::{SecretBytes, SecretVec, Key, Ciphertext}; // << CORRECTED: Added Ciphertext here
+pub use api::types::{SecretBytes, SecretVec, Key, Ciphertext};
 
 // Import and re-export security types from dcrypt-core
 pub use common::security::{
@@ -114,12 +114,24 @@ pub use tag::{
 // Re-export algorithm marker types
 #[cfg(feature = "ec")] // Guard these EC related algo markers
 pub use algorithms::{
-    Ed25519, X25519,
+    Ed25519, X25519, P256, P384, P521, // Added NIST curves
 };
+
 pub use algorithms::{ // These are generally always available or controlled by other features
     Aes128, Aes256, ChaCha20, ChaCha20Poly1305,
 };
 
-
 // Re-export key algorithm traits
 pub use key::{SymmetricAlgorithm, AsymmetricAlgorithm};
+
+// Re-export key type aliases for convenience
+pub use algorithms::{
+    // Symmetric keys
+    Aes128Key, Aes256Key, ChaCha20Key, ChaCha20Poly1305Key,
+    // Asymmetric keys
+    Ed25519SecretKey, Ed25519PublicKey,
+    X25519SecretKey, X25519PublicKey,
+    P256SecretKey, P256PublicKeyUncompressed, P256PublicKeyCompressed,
+    P384SecretKey, P384PublicKeyUncompressed, P384PublicKeyCompressed,
+    P521SecretKey, P521PublicKeyUncompressed, P521PublicKeyCompressed,
+};

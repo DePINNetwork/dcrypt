@@ -73,9 +73,10 @@ pub use ec::{
     // Re-export common EC types
     P256Point, P256Scalar,
     P384Point, P384Scalar,
+    P521Point, P521Scalar, // Added P-521
     
     // Re-export curve-specific modules
-    p256, p384
+    p256, p384, p521 // Added p521
 };
 
 // Type system
@@ -103,6 +104,7 @@ pub use types::{
         ChaCha20Poly1305 as ChaCha20Poly1305Algorithm,
         Ed25519 as Ed25519Algorithm,
         X25519 as X25519Algorithm,
+        P521 as P521Algorithm, // Added P-521 Algorithm Marker
     },
     
     // Key types

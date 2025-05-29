@@ -7,10 +7,12 @@
 
 pub mod p256;
 pub mod p384;
+pub mod p521; // Added P-521 module
 
 // Re-export common types
 pub use p256::{Point as P256Point, Scalar as P256Scalar};
 pub use p384::{Point as P384Point, Scalar as P384Scalar};
+pub use p521::{Point as P521Point, Scalar as P521Scalar}; // Added P-521 re-exports
 
 /// Common trait for coordinate systems used in elliptic curve operations
 pub trait CoordinateSystem {}

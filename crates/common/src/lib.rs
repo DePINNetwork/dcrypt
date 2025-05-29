@@ -31,8 +31,15 @@ pub use security::memory::{
     SecureOperation, 
     SecureCompare, 
     SecureOperationExt,
-    SecureOperationBuilder,
 };
+
+// Conditionally re-export SecureOperationBuilder only when std or alloc features are enabled
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use security::memory::SecureOperationBuilder;
 
 // Re-export memory barrier utilities
 pub use security::memory::barrier;
+
+// Conditionally re-export EC common types only when Vec is available
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use ec_common::{Point as ECPoint, CurveParams};
