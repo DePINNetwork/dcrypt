@@ -73,10 +73,10 @@ pub use ec::{
     // Re-export common EC types
     P256Point, P256Scalar,
     P384Point, P384Scalar,
-    P521Point, P521Scalar, // Added P-521
+    P521Point, P521Scalar,
     
     // Re-export curve-specific modules
-    p256, p384, p521 // Added p521
+    p256, p384, p521
 };
 
 // Type system
@@ -104,7 +104,7 @@ pub use types::{
         ChaCha20Poly1305 as ChaCha20Poly1305Algorithm,
         Ed25519 as Ed25519Algorithm,
         X25519 as X25519Algorithm,
-        P521 as P521Algorithm, // Added P-521 Algorithm Marker
+        P521 as P521Algorithm,
     },
     
     // Key types
@@ -132,3 +132,15 @@ pub use types::{
 pub mod xof;
 #[cfg(feature = "xof")]
 pub use xof::{ExtendableOutputFunction, ShakeXof128, ShakeXof256, Blake3Xof};
+
+// **NEW** PQC Math Primitive Modules
+#[cfg(feature = "alloc")] // Polynomial arithmetic often benefits from dynamic allocation
+pub mod poly;
+#[cfg(feature = "alloc")]
+pub mod lattice; // Re-exports poly
+
+// Stubs for future PQC math engines
+#[cfg(feature = "alloc")]
+pub mod mq;
+#[cfg(feature = "alloc")]
+pub mod code;
