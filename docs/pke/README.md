@@ -45,6 +45,15 @@ The `pke` crate provides the following ECIES variants:
     *   **Ciphertext Format**: Serialized `EciesCiphertextComponents` containing the ephemeral public key (uncompressed P-384 point), AEAD nonce (12 bytes for AES-GCM), and the AEAD ciphertext+tag.
     *   See `dcrypt_docs/pke/ecies/README.md` and `dcrypt_docs/pke/ecies/p384/README.md` for more details.
 
+3.  **`EciesP521` (`pke::ecies::p521`)**:
+    *   **Elliptic Curve**: NIST P-521 (secp521r1).
+    *   **KDF**: HKDF with SHA-512.
+    *   **AEAD**: AES-256-GCM.
+    *   **Public Key**: `EciesP521PublicKey` (133-byte uncompressed P-521 point).
+    *   **Secret Key**: `EciesP521SecretKey` (66-byte P-521 scalar).
+    *   **Ciphertext Format**: Serialized `EciesCiphertextComponents` containing the ephemeral public key (uncompressed P-521 point), AEAD nonce (12 bytes for AES-GCM), and the AEAD ciphertext+tag.
+    *   See `dcrypt_docs/pke/ecies/README.md` and `dcrypt_docs/pke/ecies/p521/README.md` for more details.
+
 ## Error Handling
 
 The `pke` crate defines its own `Error` enum (`pke::error::Error`) for PKE-specific errors. These errors can be converted to and from the core `api::error::Error` type. Refer to `dcrypt_docs/pke/error.md` for details.
@@ -95,12 +104,3 @@ fn ecies_p256_example() -> ApiResult<()> {
 //         eprintln!("ECIES P-256 example failed: {}", e);
 //     }
 // }
-
-Security Considerations
-Underlying Primitives: The security of ECIES implementations heavily relies on the security of the chosen elliptic curve group (e.g., P-256's resistance to ECDLP), the Key Derivation Function (HKDF's PRF properties), and the AEAD cipher (e.g., ChaCha20Poly1305's confidentiality and integrity). These primitives are sourced from the dcrypt-algorithms crate.
-Ephemeral Key Usage: For each encryption operation, a fresh ephemeral key pair is generated. This is crucial for providing forward secrecy; compromising the recipient's static private key does not compromise past encrypted sessions.
-Point Validation: Implementations must validate received public key points to prevent invalid curve attacks. The underlying algorithms::ec module is responsible for these checks.
-Key Derivation Context: Using distinct "info" strings or context parameters in the KDF step is important for domain separation if the same ECDH shared secret might be used for different purposes (though in ECIES, it's typically bound to the ephemeral public key). The implementations use an info string like "ECIES-P256-HKDF-SHA256-ChaCha20Poly1305-KeyMaterial" to bind the derived key to the specific ECIES construction.
-Ciphertext Integrity: The AEAD cipher ensures the integrity and authenticity of the encrypted payload and any associated data. Tampering with the ciphertext (including the ephemeral public key, nonce, or AEAD part) will lead to a decryption failure.
-This crate aims to provide robust and secure Public Key Encryption capabilities, starting with widely adopted ECIES schemes.
-

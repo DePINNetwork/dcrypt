@@ -4,7 +4,7 @@ The `sign` crate is dedicated to implementing various digital signature schemes.
 
 This crate aims to provide implementations for both traditional (classical) signature algorithms and post-quantum signature algorithms.
 
-**Note on Current Status:** Many of the signature scheme implementations in the provided codebase snapshot are placeholders or skeletons. They define the necessary structs for keys and signatures and implement the `api::Signature` trait with dummy logic. This documentation describes the intended functionality based on the structure and common practices for these signature schemes.
+**Note on Current Status:** While ECDSA implementations for P-256, P-384, and P-521 are detailed, many other signature schemes (both traditional and PQC) listed in the snapshot are currently placeholders. They define the necessary structs for keys and signatures and implement the `api::Signature` trait with dummy logic, indicating the intended structure rather than full cryptographic functionality.
 
 ## Core Trait
 
@@ -23,88 +23,72 @@ All signature schemes in this crate are expected to implement the `api::Signatur
 
 ### Traditional Signature Schemes (`dcrypt_docs/sign/traditional/README.md`)
 
-1.  **Ed25519 (`traditional::ed25519`)**
-    *   **Description**: EdDSA signature scheme using the Edwards-curve Digital Signature Algorithm with Curve25519. Known for its speed and security.
-    *   **Status**: Placeholder implementation (`main.rs`). Constants in `common.rs`.
-    *   **Types**: `Ed25519PublicKey`, `Ed25519SecretKey`, `Ed25519Signature`.
+1.  **EdDSA (`traditional::eddsa`)**
+    *   **`Ed25519`**: EdDSA signature scheme using Curve25519.
+    *   **Status**: Placeholder implementation.
 
 2.  **ECDSA (Elliptic Curve Digital Signature Algorithm) (`traditional::ecdsa`)**
-    *   **Description**: A widely used signature scheme based on elliptic curve cryptography.
+    *   **Description**: Widely used signature scheme based on elliptic curves. DCRYPT implementations use deterministic nonce generation (RFC 6979 + hedging).
     *   **Variants**:
-        *   `EcdsaP256` (using NIST P-256 curve)
-        *   `EcdsaP384` (using NIST P-384 curve)
-    *   **Status**: Placeholder implementations.
-    *   **Types**: `EcdsaP256PublicKey`, etc.
+        *   `EcdsaP256` (NIST P-256 curve with SHA-256)
+        *   `EcdsaP384` (NIST P-384 curve with SHA-384)
+        *   `EcdsaP521` (NIST P-521 curve with SHA-512)
+    *   **Status**: Implemented for P-256, P-384, and P-521.
 
 3.  **RSA Signatures (`traditional::rsa`)**
-    *   **Description**: Signature schemes based on the RSA public-key cryptosystem.
-    *   **Variants**:
-        *   `RsaPss` (Probabilistic Signature Scheme - recommended for new applications)
-        *   `RsaPkcs1` (Based on PKCS#1 v1.5 padding - widely deployed but PSS is generally preferred)
+    *   **Description**: Signature schemes based on the RSA cryptosystem.
+    *   **Variants**: `RsaPss`, `RsaPkcs1`.
     *   **Status**: Placeholder implementations.
-    *   **Types**: `RsaPublicKey`, `RsaSecretKey`, `RsaSignature`.
 
 4.  **DSA (Digital Signature Algorithm) (`traditional::dsa`)**
-    *   **Description**: An older standard for digital signatures based on the discrete logarithm problem in finite fields.
+    *   **Description**: Older standard for digital signatures.
     *   **Status**: Placeholder implementation.
-    *   **Types**: `DsaPublicKey`, `DsaSecretKey`, `DsaSignature`.
 
-### Post-Quantum Signature Schemes
+### Post-Quantum Signature Schemes (`dcrypt_docs/sign/pq/README.md`)
 
-1.  **Dilithium (`dilithium`)**
-    *   **Description**: A lattice-based signature scheme, chosen by NIST for standardization in the PQC project.
-    *   **Variants**: `Dilithium2`, `Dilithium3`, `Dilithium5` (corresponding to NIST security levels 2, 3, and 5).
-    *   **Status**: Placeholder implementations. Parameters are in `dcrypt-params`.
-    *   **Types**: `DilithiumPublicKey`, `DilithiumSecretKey`, `DilithiumSignature`.
-    *   **Files**: `dcrypt_docs/sign/dilithium/README.md`
+1.  **Dilithium (`pq::dilithium`)**
+    *   **Description**: A lattice-based signature scheme, NIST PQC selected.
+    *   **Variants**: `Dilithium2`, `Dilithium3`, `Dilithium5`.
+    *   **Status**: Placeholder implementations. Parameters in `dcrypt-params`.
 
-2.  **Falcon (`falcon`)**
-    *   **Description**: A lattice-based signature scheme based on NTRU lattices, also chosen by NIST for standardization. Known for very small signatures and public keys (relative to other PQC schemes).
-    *   **Variants**: `Falcon512` (NIST Level 1), `Falcon1024` (NIST Level 5).
-    *   **Status**: Placeholder implementations. Parameters are in `dcrypt-params`.
-    *   **Types**: `FalconPublicKey`, `FalconSecretKey`, `FalconSignature`.
-    *   **Files**: `dcrypt_docs/sign/falcon/README.md`
+2.  **Falcon (`pq::falcon`)**
+    *   **Description**: A lattice-based signature scheme (NTRU lattices), NIST PQC selected. Known for compact signatures.
+    *   **Variants**: `Falcon512`, `Falcon1024`.
+    *   **Status**: Placeholder implementations. Parameters in `dcrypt-params`.
 
-3.  **SPHINCS+ (`sphincs`)**
-    *   **Description**: A stateless hash-based signature scheme, chosen by NIST for standardization. Known for its strong security relying only on the underlying hash function's security, but with larger signatures and slower signing/verification.
-    *   **Variants**: `SphincsSha2` (using SHA-256), `SphincsShake` (using SHAKE256). Parameter sets like "-128s", "-128f" would be further specializations.
-    *   **Status**: Placeholder implementations. Parameters are in `dcrypt-params`.
-    *   **Types**: `SphincsPublicKey`, `SphincsSecretKey`, `SphincsSignature`.
-    *   **Files**: `dcrypt_docs/sign/sphincs/README.md`
+3.  **SPHINCS+ (`pq::sphincs`)**
+    *   **Description**: A stateless hash-based signature scheme, NIST PQC selected. Relies on hash function security.
+    *   **Variants**: `SphincsSha2`, `SphincsShake`.
+    *   **Status**: Placeholder implementations. Parameters in `dcrypt-params`.
 
-4.  **Rainbow (`rainbow`)**
-    *   **Description**: A multivariate quadratic signature scheme, also chosen by NIST for standardization (though for specific use cases due to large key sizes).
+4.  **Rainbow (`pq::rainbow`)**
+    *   **Description**: A multivariate quadratic signature scheme, NIST PQC selected.
     *   **Variants**: `RainbowI`, `RainbowIII`, `RainbowV`.
-    *   **Status**: Placeholder implementations. Parameters are in `dcrypt-params`.
-    *   **Types**: `RainbowPublicKey`, `RainbowSecretKey`, `RainbowSignature`.
-    *   **Files**: `dcrypt_docs/sign/rainbow/README.md`
+    *   **Status**: Placeholder implementations. Parameters in `dcrypt-params`.
 
 ## Usage
 
-Once fully implemented, signature schemes would be used as follows (conceptual example using Ed25519):
+Once fully implemented, signature schemes would be used as follows (conceptual example using `EcdsaP256`):
 
 ```rust
-// use dcrypt_sign::Ed25519; // Example
-// use dcrypt_api::Signature;
-// use rand::rngs::OsRng;
-// use dcrypt_api::Result;
+use dcrypt_sign::traditional::ecdsa::EcdsaP256; // Example
+use dcrypt_api::Signature;
+use rand::rngs::OsRng;
+use dcrypt_api::error::Result as ApiResult; // Use API's Result type
 
-// fn signature_usage_example() -> Result<()> {
-//     let mut rng = OsRng;
-//     let message = b"This is a message to be signed.";
+fn signature_usage_example() -> ApiResult<()> {
+    let mut rng = OsRng;
+    let message = b"This is a message to be signed.";
 
-//     // 1. Generate key pair
-//     let (public_key, secret_key) = Ed25519::keypair(&mut rng)?;
+    // 1. Generate key pair
+    let (public_key, secret_key) = EcdsaP256::keypair(&mut rng)?;
 
-//     // 2. Sign the message
-//     let signature = Ed25519::sign(message, &secret_key)?;
+    // 2. Sign the message
+    let signature = EcdsaP256::sign(message, &secret_key)?;
 
-//     // 3. Verify the signature
-//     Ed25519::verify(message, &signature, &public_key)?; // Returns Ok(()) on success
+    // 3. Verify the signature
+    EcdsaP256::verify(message, &signature, &public_key)?; // Returns Ok(()) on success
 
-//     println!("Signature created and verified successfully!");
-//     Ok(())
-// }
-```
-
-This crate aims to offer a robust selection of digital signature algorithms for diverse security requirements, including the transition to post-quantum cryptography.
+    println!("ECDSA P256 Signature created and verified successfully!");
+    Ok(())
+}

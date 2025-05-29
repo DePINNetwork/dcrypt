@@ -4,7 +4,7 @@ The `kem` crate is responsible for implementing various Key Encapsulation Mechan
 
 This crate provides implementations for both traditional (classical) KEMs and post-quantum KEMs.
 
-**Note on Current Status:** Many of the KEM implementations in the provided codebase snapshot are placeholders or skeletons. They define the necessary structs and implement the `api::Kem` trait with dummy logic, indicating the intended structure rather than full cryptographic functionality. The documentation below reflects this by outlining the intended algorithm and its structure.
+**Note on Current Status:** While the ECDH-based KEMs (`EcdhP256`, `EcdhP384`, `EcdhP521`) are described with significant implementation detail (using compressed points and specific KDFs), many other KEMs listed (RSA, DH, and PQC KEMs like Kyber, NTRU, Saber, McEliece) are currently placeholders in the codebase snapshot. They define the necessary structs and implement the `api::Kem` trait with dummy logic, indicating the intended structure rather than full cryptographic functionality.
 
 ## Core Trait
 
@@ -24,60 +24,47 @@ All KEMs in this crate are expected to implement the `api::Kem` trait, which def
 
 1.  **RSA-KEM (`rsa`)**
     *   **Description**: KEM based on the RSA public-key cryptosystem.
-    *   **Variants**:
-        *   `RsaKem2048` (using 2048-bit modulus)
-        *   `RsaKem4096` (using 4096-bit modulus, noted as similar implementation to 2048)
-    *   **Files**: `dcrypt_docs/kem/rsa/README.md` (covers `common.rs`, `rsa2048.rs`, `rsa4096.rs`)
+    *   **Variants**: `RsaKem2048`, `RsaKem4096`.
+    *   **Files**: `dcrypt_docs/kem/rsa/README.md`
     *   **Status**: Placeholder implementations.
 
 2.  **Diffie-Hellman KEM (`dh`)**
     *   **Description**: KEM based on the Diffie-Hellman key exchange protocol over finite fields (MODP groups).
-    *   **Variants**:
-        *   `Dh2048` (using a 2048-bit modulus, likely RFC 3526 Group 14)
+    *   **Variants**: `Dh2048`.
     *   **Files**: `dcrypt_docs/kem/dh/README.md`
     *   **Status**: Placeholder implementation.
 
 3.  **ECDH-KEM (Elliptic Curve Diffie-Hellman KEM) (`ecdh`)**
-    *   **Description**: KEM based on Diffie-Hellman key exchange over elliptic curves.
+    *   **Description**: KEM based on Diffie-Hellman key exchange over elliptic curves. Uses compressed points for ciphertexts and HKDF for key derivation.
     *   **Variants**:
-        *   `EcdhP256` (using NIST P-256 curve)
-        *   `EcdhP384` (using NIST P-384 curve)
-    *   **Files**: `dcrypt_docs/kem/ecdh/README.md`
-    *   **Status**: Placeholder implementations.
+        *   `EcdhP256` (using NIST P-256 curve, HKDF-SHA256)
+        *   `EcdhP384` (using NIST P-384 curve, HKDF-SHA384)
+        *   `EcdhP521` (using NIST P-521 curve, HKDF-SHA512)
+    *   **Files**: `dcrypt_docs/kem/ecdh/README.md` (with links to P256, P384, P521 specifics)
+    *   **Status**: Functionally implemented with details for KDF and point compression.
 
 ### Post-Quantum KEMs
 
 1.  **Kyber (`kyber`)**
     *   **Description**: A lattice-based KEM chosen by NIST for standardization in the PQC project.
-    *   **Variants**:
-        *   `Kyber512` (NIST Security Level 1)
-        *   `Kyber768` (NIST Security Level 3)
-        *   `Kyber1024` (NIST Security Level 5)
-    *   **Files**: `dcrypt_docs/kem/kyber/README.md` (covers `common.rs`, `kyber512.rs`, etc.)
+    *   **Variants**: `Kyber512`, `Kyber768`, `Kyber1024`.
+    *   **Files**: `dcrypt_docs/kem/kyber/README.md`
     *   **Status**: Placeholder implementations. Parameters are defined in `dcrypt-params`.
 
 2.  **NTRU (`ntru`)**
-    *   **Description**: A lattice-based KEM. The snapshot includes NTRU-HPS (likely NTRUEncrypt) and NTRU-EES.
-    *   **Variants**:
-        *   `NtruHps` (e.g., NTRU-HPS-2048-509)
-        *   `NtruEes` (e.g., NTRU-HRSS-701, often referred to as NTRUEncrypt parameters)
+    *   **Description**: A lattice-based KEM. The snapshot includes `NtruHps` and `NtruEes`.
     *   **Files**: `dcrypt_docs/kem/ntru/README.md`
     *   **Status**: Placeholder implementations. Parameters are defined in `dcrypt-params`.
 
 3.  **SABER (`saber`)**
     *   **Description**: A lattice-based KEM, another finalist in the NIST PQC standardization process.
-    *   **Variants**:
-        *   `LightSaber`
-        *   `Saber`
-        *   `FireSaber`
+    *   **Variants**: `LightSaber`, `Saber`, `FireSaber`.
     *   **Files**: `dcrypt_docs/kem/saber/README.md`
     *   **Status**: Placeholder implementations. Parameters are defined in `dcrypt-params`.
 
 4.  **McEliece (`mceliece`)**
-    *   **Description**: A code-based KEM, one of the oldest PQC schemes, also selected by NIST for standardization. Known for large public keys.
-    *   **Variants**:
-        *   `McEliece348864` (NIST Security Level 1, for variant `mceliece348864`)
-        *   `McEliece6960119` (NIST Security Level 5, for variant `mceliece6960119`)
+    *   **Description**: A code-based KEM, one of the oldest PQC schemes, also selected by NIST for standardization.
+    *   **Variants**: `McEliece348864`, `McEliece6960119`.
     *   **Files**: `dcrypt_docs/kem/mceliece/README.md`
     *   **Status**: Placeholder implementations. Parameters are defined in `dcrypt-params`.
 
@@ -87,32 +74,29 @@ The `kem` crate defines its own `Error` enum (`dcrypt_docs/kem/error/README.md`)
 
 ## Usage
 
-Once fully implemented, KEMs would be used as follows (conceptual example):
+Once fully implemented, KEMs would be used as follows (conceptual example using `EcdhP256`):
 
 ```rust
-// use dcrypt_kem::kyber::Kyber768; // Example
-// use dcrypt_api::Kem;
-// use rand::rngs::OsRng;
-// use dcrypt_api::Result;
+use dcrypt_kem::ecdh::EcdhP256; // Example
+use dcrypt_api::Kem;
+use rand::rngs::OsRng;
+use dcrypt_api::error::Result as ApiResult; // Use API's Result type
 
-// fn kem_usage_example() -> Result<()> {
-//     let mut rng = OsRng;
+fn kem_usage_example() -> ApiResult<()> {
+    let mut rng = OsRng;
 
-//     // 1. Generate recipient's key pair
-//     let (public_key, secret_key) = Kyber768::keypair(&mut rng)?;
+    // 1. Generate recipient's key pair
+    let (public_key, secret_key) = EcdhP256::keypair(&mut rng)?;
 
-//     // 2. Sender encapsulates a shared secret using recipient's public key
-//     let (ciphertext, shared_secret_sender) = Kyber768::encapsulate(&mut rng, &public_key)?;
+    // 2. Sender encapsulates a shared secret using recipient's public key
+    let (ciphertext, shared_secret_sender) = EcdhP256::encapsulate(&mut rng, &public_key)?;
 
-//     // 3. Recipient decapsulates the ciphertext using their secret key
-//     let shared_secret_receiver = Kyber768::decapsulate(&secret_key, &ciphertext)?;
+    // 3. Recipient decapsulates the ciphertext using their secret key
+    let shared_secret_receiver = EcdhP256::decapsulate(&secret_key, &ciphertext)?;
 
-//     // Both parties now have the same shared secret
-//     assert_eq!(shared_secret_sender.as_ref(), shared_secret_receiver.as_ref());
+    // Both parties now have the same shared secret
+    assert_eq!(shared_secret_sender.as_ref(), shared_secret_receiver.as_ref());
 
-//     println!("KEM operation successful. Shared secret established.");
-//     Ok(())
-// }
-```
-
-This crate aims to provide a comprehensive suite of KEMs for various security needs, paving the way for hybrid cryptographic solutions by combining these with traditional schemes.
+    println!("ECDH-P256 KEM operation successful. Shared secret established.");
+    Ok(())
+}

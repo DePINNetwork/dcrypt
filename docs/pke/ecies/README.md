@@ -40,10 +40,14 @@ This module provides specific ECIES instantiations:
     *   Uses NIST P-384 curve, HKDF-SHA384, and AES-256-GCM.
     *   Refer to `dcrypt_docs/pke/ecies/p384/README.md`.
 
+3.  **ECIES with P-521 (`pke::ecies::p521`)**:
+    *   Uses NIST P-521 curve, HKDF-SHA512, and AES-256-GCM.
+    *   Refer to `dcrypt_docs/pke/ecies/p521/README.md`.
+
 ## Shared Components
 
--   **`derive_symmetric_key_hkdf_sha256 / _sha384`**: Internal helper functions using `algorithms::kdf::hkdf::Hkdf` for deriving the symmetric AEAD key. The shared secret `z_bytes` (x-coordinate of the ECDH shared point) is used as the Input Keying Material (IKM), and the `ephemeral_pk_bytes` (serialized ephemeral public key) is used as the salt for HKDF. A context-specific `info` string further refines the key derivation.
--   **`EciesCiphertextComponents`**: A private struct used by both P-256 and P-384 implementations to structure and serialize/deserialize the components of an ECIES ciphertext.
+-   **`derive_symmetric_key_hkdf_sha256 / _sha384 / _sha512`**: Internal helper functions using `algorithms::kdf::hkdf::Hkdf` for deriving the symmetric AEAD key. The shared secret `z_bytes` (x-coordinate of the ECDH shared point) is used as the Input Keying Material (IKM), and the `ephemeral_pk_bytes` (serialized ephemeral public key) is used as the salt for HKDF. A context-specific `info` string further refines the key derivation.
+-   **`EciesCiphertextComponents`**: A private struct used by ECIES implementations to structure and serialize/deserialize the components of an ECIES ciphertext.
     *   **Serialization Format**: The components (ephemeral public key `R`, AEAD nonce `N`, and AEAD ciphertext+tag `C||T`) are serialized with length prefixes to allow unambiguous parsing:
         `R_len (1 byte) || R_bytes || N_len (1 byte) || N_bytes || CT_len (4 bytes, big-endian) || (Ciphertext_AEAD || Tag_AEAD)`
 -   **Constants**: Define key and nonce lengths for the chosen AEAD ciphers (e.g., `CHACHA20POLY1305_KEY_LEN`, `AES256GCM_NONCE_LEN`).

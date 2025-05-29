@@ -25,7 +25,7 @@ The `EciesP256` struct implements the `api::traits::Pke` trait.
 ### Ciphertext
 
 -   The `Ciphertext` type is `Vec<u8>`.
--   It represents the serialized form of `EciesCiphertextComponents`, which includes:
+-   It represents the serialized form of `EciesCiphertextComponents` (defined in the parent `pke::ecies` module), which includes:
     1.  **Ephemeral Public Key (`R`)**: The sender's temporary P-256 public key, serialized in uncompressed format (65 bytes).
     2.  **AEAD Nonce (`N`)**: A 12-byte nonce for ChaCha20Poly1305.
     3.  **AEAD Ciphertext+Tag (`C||T`)**: The output of ChaCha20Poly1305 encryption, which includes the encrypted message and the 16-byte Poly1305 authentication tag.
