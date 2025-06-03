@@ -11,6 +11,7 @@ fn vectors_dir() -> PathBuf {
         .join("tests")
         .join("src")
         .join("vectors")
+        .join("legacy_rsp")
         .join("shake")
 }
 

@@ -1,7 +1,8 @@
 // tests/constant_time/stream_tests.rs
 // Constant-time tests for stream ciphers
 
-use crate::constant_time::{TestConfig, TimingTester, generate_test_insights};
+use tests::suites::constant_time::config::TestConfig;
+use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
 use algorithms::stream::chacha::chacha20::{ChaCha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE};
 use algorithms::types::Nonce;
 

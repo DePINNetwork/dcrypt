@@ -1,0 +1,198 @@
+{
+  "vsId": 0,
+  "algorithm": "KAS-ECC",
+  "revision": "Sp800-56Ar3",
+  "isSample": true,
+  "testGroups": [
+    {
+      "tgId": 1,
+      "tests": [
+        {
+          "staticPublicIutX": "DE9A96DAD8FFB4AF9C620BA3AA1F73F4037B8550D3DB8217953A0F2B",
+          "staticPublicIutY": "6621CFE24CD9D90F1A1A0973142EE55076AAAA5D0B5C3A4F558995A8",
+          "tcId": 1,
+          "ephemeralNonceIut": "86909F69AE978EE0CC7E22F430C505F25E51D1F8C54CBE96D66C995B",
+          "dkm": "C0A79ABA0F5A653928012328F73E117E1A5DE38EF5DE1F01B130DC9C86780D423C0A908746DB4F70D6916263D8B1FF106EDB671E368CE269D04BCF5D91CC10C6",
+          "tag": "0770A91486D42BE69C1292A867285E6B"
+        },
+        {
+          "staticPublicIutX": "382C65F6DC70FA6F38F27D75961E9180D9F49C35604A5D7166F55696",
+          "staticPublicIutY": "6AA391C2CF452366BD243BBB8AE488E529377808C6014283EC7DAC15",
+          "tcId": 2,
+          "ephemeralNonceIut": "EAB0C7B1F7D50C5ADBD592B37642C9927C2F9EE338C037374F1607FE",
+          "dkm": "9833522B02CCBBF75FFD1C723245754DBC5484EF9D856D7674C4D5BD729CF7E01AEC02462D8D4D344D4DD21157A1AB271B2B2593A4A81A430C8CFFE46076EA10",
+          "tag": "D6D838078B95DA64E43691BA83639586"
+        },
+        {
+          "staticPublicIutX": "528488071ABFBACA20092FF06C473FDCD68F5C5F3BF4E5A892D7DCBF",
+          "staticPublicIutY": "0851492FE7655EAC0F09376132B3C3EA969AD1573EB60602C3CAD76D",
+          "tcId": 3,
+          "ephemeralNonceIut": "895755DBE48A5C217BD09BAEA7321585E4B6B85C3F18057A0E35145D",
+          "dkm": "1ADC2B4A2AFB4F271B8E058DA9DFDD6905983A8F7F803B4449E0883728579A11C7940EE5180282D99181D94579F78BE91E82EF1B29CCD485B3D8819CD7D957BF",
+          "tag": "311C1D18E3E5B76043FB31F873B18672"
+        },
+        {
+          "staticPublicIutX": "5E627F01E7D34459B867AD4B8C3EFF3C96C461000F4386FEA6D42EDA",
+          "staticPublicIutY": "213D7A7CBEE83052D23934179824800B5FE6C382DCEE5A143661F58D",
+          "tcId": 4,
+          "ephemeralNonceIut": "737D6C79855DAEE6CD53304545B2D33608137D214352540F3FE117C6",
+          "dkm": "BE8CD158FF8D45A2610A61E97DD429F95E3A10FF790200134BB28C12B453825CA993DFAB8D02D310F6CB99A84EA6A6A57666FE78F363247C58788C244007C583",
+          "tag": "3B18B0A833997BFBC2E5278DB4455410"
+        },
+        {
+          "staticPublicIutX": "E200D226E54C05588D19EF4F68AB4727D5490D60A03F2AB80669F3F2",
+          "staticPublicIutY": "EAD08DFB7D6525E0D78548C93553EDD87528AF8F5A85E65133B23A7C",
+          "tcId": 5,
+          "ephemeralNonceIut": "AE6BA7E66FCC93AAAF73A334AF48333F469154A066AA43B93A223463",
+          "dkm": "84284F3BFD325656100D948F04DD52DB941A7591994DDF04005152FC82E3BE8F14D33E4D455304B11396CFD5A5F996BC6A799ABD68B057B6296BCF2E3E49F5AC",
+          "tag": "65FBCB93209C578BA9B2BBAA25A0B4A0"
+        },
+        {
+          "staticPublicIutX": "320275C0FC9F2C968FACE772D52B85A7BD0AA8CB8468BA423D4512C0",
+          "staticPublicIutY": "659F8A738C88613C5D5E8E43678E8D0E7D789ECC7655F51322147CFB",
+          "tcId": 6,
+          "ephemeralNonceIut": "179A3F5D5D2671D14C515F38A3C3C0B57BF8A8627B27D625BE1DD48C",
+          "dkm": "9F478F6494E81BEE1A7DACAF26B0E307EB762C9836F334DDE2608264A5862DD02A8BB657B9E468291F9E07B3C3B428911D59BBD72CB9CB45EA33C62146B04BCB",
+          "tag": "66FFBC236CBB703F7C53E275CA33B3D0"
+        },
+        {
+          "staticPublicIutX": "1184942F985C86E9318BF1B9DC1BEF75C7BBB0DBCF06A15072C481F6",
+          "staticPublicIutY": "1A22CCC8EC459593DE5F4BE438C6325BEB20F86F32F77679050DAA7B",
+          "tcId": 7,
+          "ephemeralNonceIut": "B88FEDE504C5B137AD380078EC59785C791403DFB6E1901E9682409C",
+          "dkm": "21D5B12B312DDE7EA524502D6FDDA1B5FA1FF451C950EF90A6DC62B0A314D70AB712AC697F334E2C34BB7CD35CE614C294C7CDE72974F20A7A230A0BD2BFF94E",
+          "tag": "A7FC42E4671BBF4CCDDEAA8A1BC8219F"
+        },
+        {
+          "staticPublicIutX": "9933F75F2929D5DC6569635AB5841AC0CC397AFBF02DA743A40720CE",
+          "staticPublicIutY": "D0965DDCB271BE9CC23DFF7C86574747D4D7C52162634BF677174A00",
+          "tcId": 8,
+          "ephemeralNonceIut": "F15EB31753514E6F6E1BBBD1DA0821B82441C5ECD8B8280131B17D7B",
+          "dkm": "6B042241B8FE1CC6716AFDA600D75F037B024224ABE382E8194D0998CF55275E2DB8BCE6C0C6B4F2E308858F861A90372A72E51B6CA93CB5E55A7E23324B5CE4",
+          "tag": "33A05445041F4A1B658AB183EF74DE16"
+        },
+        {
+          "staticPublicIutX": "FD0EA955B7EBBFC81E31A2E9B9520B0D423C2D9BFEDA5D1E0594318B",
+          "staticPublicIutY": "BC1C78A5257D026882BE4427E21F73227FA2CA55FB0E4E19763858EA",
+          "tcId": 9,
+          "ephemeralNonceIut": "76ED916DCFCE72C15024B5B7DE1393A0A4CEDEC736E1FCD81154B368",
+          "dkm": "F5E215916300C83C97E696AC202A4350157BD4F111F893ED58E662E4BE0D97B0FADF79086AF8D4B19A22948C3C41BD3E98FC74F1E1E1C37E6C5E17E07CD5B313",
+          "tag": "F0BB5220DFE7C4F59DA076C8BB11D9A5"
+        },
+        {
+          "staticPublicIutX": "97067F3020E1B4D1A006CE21C54C349DFBE28846DA144E7E6C6B354C",
+          "staticPublicIutY": "4B86EE51ED45A1EE2B1EA1E60DBF53DA141662A2C8A3276B173A6F6B",
+          "tcId": 10,
+          "ephemeralNonceIut": "354162DC6FBEEED720A98C5A57C8CF4E17D51B2509EED8A9B52779A3",
+          "dkm": "5C6ADF4AAE79D383A3E335F38C2E42D84EBF785E530E1AB75DAAAAD0BAF930C61B30C84ADB0A27140617C558C1D8D6899B40DD095313501A744FBCED3225C156",
+          "tag": "DB0A6B4B1E40F599CCB57054331E5087"
+        }
+      ]
+    },
+    {
+      "tgId": 2,
+      "tests": [
+        {
+          "tcId": 11,
+          "testPassed": false
+        },
+        {
+          "tcId": 12,
+          "testPassed": true
+        },
+        {
+          "tcId": 13,
+          "testPassed": true
+        },
+        {
+          "tcId": 14,
+          "testPassed": true
+        },
+        {
+          "tcId": 15,
+          "testPassed": true
+        },
+        {
+          "tcId": 16,
+          "testPassed": true
+        },
+        {
+          "tcId": 17,
+          "testPassed": true
+        },
+        {
+          "tcId": 18,
+          "testPassed": true
+        },
+        {
+          "tcId": 19,
+          "testPassed": true
+        },
+        {
+          "tcId": 20,
+          "testPassed": false
+        },
+        {
+          "tcId": 21,
+          "testPassed": false
+        },
+        {
+          "tcId": 22,
+          "testPassed": true
+        },
+        {
+          "tcId": 23,
+          "testPassed": false
+        },
+        {
+          "tcId": 24,
+          "testPassed": true
+        },
+        {
+          "tcId": 25,
+          "testPassed": false
+        },
+        {
+          "tcId": 26,
+          "testPassed": true
+        },
+        {
+          "tcId": 27,
+          "testPassed": true
+        },
+        {
+          "tcId": 28,
+          "testPassed": true
+        },
+        {
+          "tcId": 29,
+          "testPassed": true
+        },
+        {
+          "tcId": 30,
+          "testPassed": false
+        },
+        {
+          "tcId": 31,
+          "testPassed": false
+        },
+        {
+          "tcId": 32,
+          "testPassed": false
+        },
+        {
+          "tcId": 33,
+          "testPassed": true
+        },
+        {
+          "tcId": 34,
+          "testPassed": true
+        },
+        {
+          "tcId": 35,
+          "testPassed": true
+        }
+      ]
+    }
+  ]
+}

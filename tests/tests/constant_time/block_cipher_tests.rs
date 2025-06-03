@@ -1,7 +1,8 @@
 // tests/constant_time/block_cipher_tests.rs
 // Constant-time tests for block ciphers
 
-use crate::constant_time::{TestConfig, TimingTester, generate_test_insights};
+use tests::suites::constant_time::config::TestConfig;
+use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
 use algorithms::block::aes::Aes128;
 use algorithms::block::BlockCipher;
 use api::types::SecretBytes;

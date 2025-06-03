@@ -264,6 +264,7 @@ fn vectors_dir() -> PathBuf {
     path.push("tests");
     path.push("src");
     path.push("vectors");
+    path.push("legacy_rsp");
     path.push("ecdsa");
     path
 }

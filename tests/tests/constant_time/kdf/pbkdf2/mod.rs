@@ -1,7 +1,8 @@
 // tests/constant_time/kdf/pbkdf2/mod.rs
 // Constant-time tests for PBKDF2 (Password-Based Key Derivation Function 2)
 
-use crate::constant_time::{TestConfig, TimingTester, generate_test_insights};
+use tests::suites::constant_time::config::TestConfig;
+use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
 use algorithms::hash::Sha256;
 use algorithms::kdf::pbkdf2::Pbkdf2;
 use algorithms::kdf::KeyDerivationFunction;

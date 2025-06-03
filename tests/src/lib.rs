@@ -1,5 +1,5 @@
 //! Testing utilities and benchmarks for the DCRYPT library
-pub mod constant_time;
+pub mod suites;
 pub mod vectors;
 
 /// Run benchmarks for all supported algorithms

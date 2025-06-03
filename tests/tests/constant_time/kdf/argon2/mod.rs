@@ -1,7 +1,8 @@
 // tests/constant_time/kdf/argon2/mod.rs
 // Constant-time tests for Argon2 password hashing
 
-use crate::constant_time::{TestConfig, TimingTester, generate_test_insights};
+use tests::suites::constant_time::config::TestConfig;
+use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
 use algorithms::kdf::argon2::{Argon2, Algorithm, Params};
 use algorithms::kdf::PasswordHashFunction; // Added missing trait import
 use algorithms::types::Salt;

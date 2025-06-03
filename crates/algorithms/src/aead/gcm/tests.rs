@@ -4,7 +4,7 @@ use crate::types::SecretBytes;
 use crate::types::Nonce;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 #[test]
@@ -210,6 +210,7 @@ struct GcmTestVector {
     fail_expected: bool,
 }
 
+#[derive(Debug)]
 struct GcmTestGroup {
     key_len: usize,
     iv_len: usize,
@@ -262,7 +263,18 @@ fn parse_gcm_test_file(filepath: &str) -> Vec<GcmTestGroup> {
             }
             continue;
         }
-        let parts: Vec<&str> = line.split('=').collect();
+        
+        // Handle bare FAIL lines (without '=')
+        if !line.contains('=') {
+            if line == "FAIL" {
+                if let Some(ref mut v) = vector {
+                    v.fail_expected = true;
+                }
+            }
+            continue;
+        }
+        
+        let parts: Vec<&str> = line.splitn(2, '=').collect();
         if parts.len() == 2 {
             let name = parts[0].trim();
             let val = parts[1].trim();
@@ -281,13 +293,65 @@ fn parse_gcm_test_file(filepath: &str) -> Vec<GcmTestGroup> {
                         fail_expected: false,
                     });
                 }
-                "Key" => vector.as_mut().unwrap().key = hex::decode(val).unwrap(),
-                "IV" => vector.as_mut().unwrap().iv = hex::decode(val).unwrap(),
-                "PT" => vector.as_mut().unwrap().pt = Some(hex::decode(val).unwrap()),
-                "CT" => vector.as_mut().unwrap().ct = Some(hex::decode(val).unwrap()),
-                "AAD" => vector.as_mut().unwrap().aad = hex::decode(val).unwrap(),
-                "Tag" => vector.as_mut().unwrap().tag = hex::decode(val).unwrap(),
-                "FAIL" => vector.as_mut().unwrap().fail_expected = true,
+                "Key" => {
+                    if let Some(ref mut v) = vector {
+                        v.key = if val.is_empty() { 
+                            Vec::new() 
+                        } else { 
+                            hex::decode(val).unwrap_or_else(|_| panic!("Invalid hex in Key: {}", val))
+                        };
+                    }
+                }
+                "IV" => {
+                    if let Some(ref mut v) = vector {
+                        v.iv = if val.is_empty() { 
+                            Vec::new() 
+                        } else { 
+                            hex::decode(val).unwrap_or_else(|_| panic!("Invalid hex in IV: {}", val))
+                        };
+                    }
+                }
+                "PT" => {
+                    if let Some(ref mut v) = vector {
+                        v.pt = if val.is_empty() { 
+                            Some(Vec::new()) 
+                        } else { 
+                            Some(hex::decode(val).unwrap_or_else(|_| panic!("Invalid hex in PT: {}", val)))
+                        };
+                    }
+                }
+                "CT" => {
+                    if let Some(ref mut v) = vector {
+                        v.ct = if val.is_empty() { 
+                            Some(Vec::new()) 
+                        } else { 
+                            Some(hex::decode(val).unwrap_or_else(|_| panic!("Invalid hex in CT: {}", val)))
+                        };
+                    }
+                }
+                "AAD" => {
+                    if let Some(ref mut v) = vector {
+                        v.aad = if val.is_empty() { 
+                            Vec::new() 
+                        } else { 
+                            hex::decode(val).unwrap_or_else(|_| panic!("Invalid hex in AAD: {}", val))
+                        };
+                    }
+                }
+                "Tag" => {
+                    if let Some(ref mut v) = vector {
+                        v.tag = if val.is_empty() { 
+                            Vec::new() 
+                        } else { 
+                            hex::decode(val).unwrap_or_else(|_| panic!("Invalid hex in Tag: {}", val))
+                        };
+                    }
+                }
+                "FAIL" => {
+                    if let Some(ref mut v) = vector {
+                        v.fail_expected = true;
+                    }
+                }
                 _ => {}
             }
         }
@@ -301,44 +365,60 @@ fn parse_gcm_test_file(filepath: &str) -> Vec<GcmTestGroup> {
     groups
 }
 
+fn vectors_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")   // up to crates/
+        .join("..")   // up to workspace root
+        .join("tests")
+        .join("src")
+        .join("vectors")
+        .join("legacy_rsp")        
+        .join("gcm")
+}
+
 #[test]
 fn test_aes_gcm_nist_decrypt_vectors() {
-    let base = env!("CARGO_MANIFEST_DIR");
-    let dir = format!("{}../../../tests/src/vectors/gcm", base);
+    let dir = vectors_dir();
+    
     let files = [
-        format!("{}/gcmDecrypt128.rsp", dir),
-        format!("{}/gcmDecrypt192.rsp", dir),
-        format!("{}/gcmDecrypt256.rsp", dir),
+        dir.join("gcmDecrypt128.rsp"),
+        dir.join("gcmDecrypt192.rsp"),
+        dir.join("gcmDecrypt256.rsp"),
     ];
+    
     for f in &files {
-        if !Path::new(f).exists() {
-            eprintln!("Missing file: {}", f);
-            return;
-        }
+        assert!(
+            f.exists(),
+            "Test vector file not found: {}",
+            f.display()
+        );
     }
-    run_gcm_decrypt_tests_128(&files[0]);
-    run_gcm_decrypt_tests_192(&files[1]);
-    run_gcm_decrypt_tests_256(&files[2]);
+    
+    run_gcm_decrypt_tests_128(files[0].to_str().unwrap());
+    run_gcm_decrypt_tests_192(files[1].to_str().unwrap());
+    run_gcm_decrypt_tests_256(files[2].to_str().unwrap());
 }
 
 #[test]
 fn test_aes_gcm_nist_encrypt_vectors() {
-    let base = env!("CARGO_MANIFEST_DIR");
-    let dir = format!("{}../../../tests/src/vectors/gcm", base);
+    let dir = vectors_dir();
+    
     let files = [
-        format!("{}/gcmEncryptExtIV128.rsp", dir),
-        format!("{}/gcmEncryptExtIV192.rsp", dir),
-        format!("{}/gcmEncryptExtIV256.rsp", dir),
+        dir.join("gcmEncryptExtIV128.rsp"),
+        dir.join("gcmEncryptExtIV192.rsp"),
+        dir.join("gcmEncryptExtIV256.rsp"),
     ];
+    
     for f in &files {
-        if !Path::new(f).exists() {
-            eprintln!("Missing file: {}", f);
+        if !f.exists() {
+            eprintln!("Missing file: {}", f.display());
             return;
         }
     }
-    run_gcm_encrypt_tests_128(&files[0]);
-    run_gcm_encrypt_tests_192(&files[1]);
-    run_gcm_encrypt_tests_256(&files[2]);
+    
+    run_gcm_encrypt_tests_128(files[0].to_str().unwrap());
+    run_gcm_encrypt_tests_192(files[1].to_str().unwrap());
+    run_gcm_encrypt_tests_256(files[2].to_str().unwrap());
 }
 
 // Helper function to process test vectors with specific nonce sizes
@@ -417,7 +497,7 @@ fn run_gcm_decrypt_tests_128(filepath: &str) {
             };
             
             let cipher = Aes128::new(&key);
-            let tag_bytes = group.tag_len / 8;
+            let tag_bytes = test.tag.len();  // Use actual tag length from vector
             
             // Process each nonce size separately
             match test.iv.len() {
@@ -450,7 +530,7 @@ fn run_gcm_decrypt_tests_192(filepath: &str) {
             };
             
             let cipher = Aes192::new(&key);
-            let tag_bytes = group.tag_len / 8;
+            let tag_bytes = test.tag.len();  // Use actual tag length from vector
             
             // Process each nonce size separately
             match test.iv.len() {
@@ -483,7 +563,7 @@ fn run_gcm_decrypt_tests_256(filepath: &str) {
             };
             
             let cipher = Aes256::new(&key);
-            let tag_bytes = group.tag_len / 8;
+            let tag_bytes = test.tag.len();  // Use actual tag length from vector
             
             // Process each nonce size separately
             match test.iv.len() {
@@ -500,7 +580,8 @@ fn run_gcm_decrypt_tests_256(filepath: &str) {
 fn process_gcm_encrypt_test_with_nonce<const N: usize, B: BlockCipher + Zeroize + ZeroizeOnDrop>(
     test_index: usize,
     test: &GcmTestVector,
-    cipher: B
+    cipher: B,
+    tag_bytes: usize
 ) where Nonce<N>: AesGcmCompatible {
     // Create nonce of the right size
     let nonce = match Nonce::<N>::from_slice(&test.iv) {
@@ -511,8 +592,8 @@ fn process_gcm_encrypt_test_with_nonce<const N: usize, B: BlockCipher + Zeroize 
         }
     };
     
-    // Create GCM instance
-    let gcm = match Gcm::new(cipher, &nonce) {
+    // Create GCM instance with the correct tag length
+    let gcm = match Gcm::new_with_tag_len(cipher, &nonce, tag_bytes) {
         Ok(g) => g,
         Err(e) => {
             println!("Skipping test {} - GCM creation failed: {}", test_index, e);
@@ -578,11 +659,12 @@ fn run_gcm_encrypt_tests_128(filepath: &str) {
             };
             
             let cipher = Aes128::new(&key);
+            let tag_bytes = test.tag.len();  // Use actual tag length from vector
             
             // Process each nonce size separately
             match test.iv.len() {
-                12 => process_gcm_encrypt_test_with_nonce::<12, _>(i, test, cipher),
-                16 => process_gcm_encrypt_test_with_nonce::<16, _>(i, test, cipher), 
+                12 => process_gcm_encrypt_test_with_nonce::<12, _>(i, test, cipher, tag_bytes),
+                16 => process_gcm_encrypt_test_with_nonce::<16, _>(i, test, cipher, tag_bytes), 
                 _ => println!("Skipping test {} - unsupported IV length {}", i, test.iv.len()),
             }
         }
@@ -611,11 +693,12 @@ fn run_gcm_encrypt_tests_192(filepath: &str) {
             };
             
             let cipher = Aes192::new(&key);
+            let tag_bytes = test.tag.len();  // Use actual tag length from vector
             
             // Process each nonce size separately
             match test.iv.len() {
-                12 => process_gcm_encrypt_test_with_nonce::<12, _>(i, test, cipher),
-                16 => process_gcm_encrypt_test_with_nonce::<16, _>(i, test, cipher), 
+                12 => process_gcm_encrypt_test_with_nonce::<12, _>(i, test, cipher, tag_bytes),
+                16 => process_gcm_encrypt_test_with_nonce::<16, _>(i, test, cipher, tag_bytes), 
                 _ => println!("Skipping test {} - unsupported IV length {}", i, test.iv.len()),
             }
         }
@@ -644,11 +727,12 @@ fn run_gcm_encrypt_tests_256(filepath: &str) {
             };
             
             let cipher = Aes256::new(&key);
+            let tag_bytes = test.tag.len();  // Use actual tag length from vector
             
             // Process each nonce size separately
             match test.iv.len() {
-                12 => process_gcm_encrypt_test_with_nonce::<12, _>(i, test, cipher),
-                16 => process_gcm_encrypt_test_with_nonce::<16, _>(i, test, cipher), 
+                12 => process_gcm_encrypt_test_with_nonce::<12, _>(i, test, cipher, tag_bytes),
+                16 => process_gcm_encrypt_test_with_nonce::<16, _>(i, test, cipher, tag_bytes), 
                 _ => println!("Skipping test {} - unsupported IV length {}", i, test.iv.len()),
             }
         }

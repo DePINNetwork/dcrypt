@@ -1,7 +1,8 @@
 // tests/constant_time/mac_tests.rs
 // Constant-time tests for MAC (Message Authentication Code) algorithms
 
-use crate::constant_time::{TestConfig, TimingTester, generate_test_insights};
+use tests::suites::constant_time::config::TestConfig;
+use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
 use algorithms::hash::Sha256;
 use algorithms::mac::hmac::Hmac;
 

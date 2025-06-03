@@ -1,0 +1,130 @@
+{
+  "vsId": 0,
+  "algorithm": "RSA",
+  "mode": "sigGen",
+  "revision": "FIPS186-5",
+  "isSample": true,
+  "conformances": [
+    "SP800-106"
+  ],
+  "capabilities": [
+    {
+      "sigType": "pkcs1v1.5",
+      "properties": [
+        {
+          "modulo": 2048,
+          "maskFunction": [
+            "none"
+          ],
+          "hashPair": [
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 0
+            },
+            {
+              "hashAlg": "SHA3-512",
+              "saltLen": 0
+            }
+          ]
+        },
+        {
+          "modulo": 3072,
+          "maskFunction": [
+            "none"
+          ],
+          "hashPair": [
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 0
+            },
+            {
+              "hashAlg": "SHA3-512",
+              "saltLen": 0
+            }
+          ]
+        },
+        {
+          "modulo": 4096,
+          "maskFunction": [
+            "none"
+          ],
+          "hashPair": [
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 0
+            },
+            {
+              "hashAlg": "SHA3-512",
+              "saltLen": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sigType": "pss",
+      "properties": [
+        {
+          "modulo": 2048,
+          "maskFunction": [
+            "mgf1"
+          ],
+          "hashPair": [
+            {
+              "hashAlg": "SHAKE-128",
+              "saltLen": 32
+            },
+            {
+              "hashAlg": "SHAKE-256",
+              "saltLen": 64
+            },
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 8
+            }
+          ]
+        },
+        {
+          "modulo": 3072,
+          "maskFunction": [
+            "shake-128"
+          ],
+          "hashPair": [
+            {
+              "hashAlg": "SHAKE-128",
+              "saltLen": 32
+            },
+            {
+              "hashAlg": "SHAKE-256",
+              "saltLen": 64
+            },
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 8
+            }
+          ]
+        },
+        {
+          "modulo": 4096,
+          "maskFunction": [
+            "shake-256"
+          ],
+          "hashPair": [
+            {
+              "hashAlg": "SHAKE-128",
+              "saltLen": 32
+            },
+            {
+              "hashAlg": "SHAKE-256",
+              "saltLen": 64
+            },
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 8
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

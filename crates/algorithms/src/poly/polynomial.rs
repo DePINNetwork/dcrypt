@@ -12,9 +12,10 @@ use core::ops::{Add, Sub, Neg, Mul};
 use super::params::Modulus;
 use super::ntt::montgomery_reduce;
 use crate::error::{Result, Error};
+use zeroize::Zeroize;
 
 /// A polynomial in a ring R_Q = Z_Q[X]/(X^N + 1)
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Zeroize)]
 pub struct Polynomial<M: Modulus> {
     /// Coefficients of the polynomial, stored in standard representation
     #[cfg(feature = "alloc")]

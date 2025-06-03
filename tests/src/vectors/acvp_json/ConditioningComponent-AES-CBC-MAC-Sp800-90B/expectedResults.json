@@ -1,0 +1,84 @@
+{
+  "vsId": 42,
+  "algorithm": "ConditioningComponent",
+  "mode": "AES-CBC-MAC",
+  "revision": "SP800-90B",
+  "isSample": true,
+  "testGroups": [
+    {
+      "tgId": 1,
+      "tests": [
+        {
+          "tcId": 1,
+          "ct": "43B70C0224DE499EFCFCD7B6227CD823"
+        },
+        {
+          "tcId": 2,
+          "ct": "E1CE9B9E507F92F627F45AC672EA3D57"
+        },
+        {
+          "tcId": 3,
+          "ct": "3A65C3A1BA0C390825309F36456EDAAA"
+        },
+        {
+          "tcId": 4,
+          "ct": "ED2598CBE7376321D518F34B3DD6386B"
+        },
+        {
+          "tcId": 5,
+          "ct": "272FE3A08E8A9167222FA0B242C37103"
+        }
+      ]
+    },
+    {
+      "tgId": 2,
+      "tests": [
+        {
+          "tcId": 6,
+          "ct": "13A2D0B5959FA02403351C7797B961F4"
+        },
+        {
+          "tcId": 7,
+          "ct": "2F19E42EBF8717D99E5CD521F858FD5F"
+        },
+        {
+          "tcId": 8,
+          "ct": "B9CE2839635B179521112EBD24DC1075"
+        },
+        {
+          "tcId": 9,
+          "ct": "030492DFB073C4F9900A75EE705D6BEA"
+        },
+        {
+          "tcId": 10,
+          "ct": "C3B9B008BD1E164CE3486F725B813AAA"
+        }
+      ]
+    },
+    {
+      "tgId": 3,
+      "tests": [
+        {
+          "tcId": 11,
+          "ct": "6CD599F4742C95459487344EC66F47C5"
+        },
+        {
+          "tcId": 12,
+          "ct": "57B1A1A03D368C05053BA5E571478308"
+        },
+        {
+          "tcId": 13,
+          "ct": "4C85F267803693BA74D816B498D712ED"
+        },
+        {
+          "tcId": 14,
+          "ct": "42EB8E0CA49947C5056138581A99ADA4"
+        },
+        {
+          "tcId": 15,
+          "ct": "4B4348CA826A34170DBFC52EEA8BD7A2"
+        }
+      ]
+    }
+  ]
+}

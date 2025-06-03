@@ -34,6 +34,7 @@ algorithms = { path = "../algorithms", version = "0.1.0" }
 zeroize = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true, optional = true }
+subtle = { version = "2.6.1", default-features = false }
 
 [dev-dependencies]
 rand_chacha = { workspace = true }

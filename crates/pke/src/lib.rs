@@ -11,4 +11,4 @@ pub mod ecies;
 
 // Re-export key items
 pub use error::{Error, Result};
-pub use ecies::{EciesP256, EciesP384, EciesP521};
+pub use ecies::{EciesP192, EciesP224, EciesP256, EciesP384, EciesP521};

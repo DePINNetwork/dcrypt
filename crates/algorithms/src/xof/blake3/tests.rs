@@ -12,6 +12,8 @@ fn vectors_file() -> PathBuf {
         .join("tests")
         .join("src")
         .join("vectors")
+        .join("legacy_rsp")
+        .join("blake3")
         .join("blake3_vectors.json")
 }
 

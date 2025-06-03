@@ -1,0 +1,120 @@
+{
+  "vsId": 0,
+  "algorithm": "RSA",
+  "mode": "sigVer",
+  "revision": "FIPS186-5",
+  "isSample": true,
+  "conformances": [],
+  "capabilities": [
+    {
+      "sigType": "pkcs1v1.5",
+      "properties": [
+        {
+          "modulo": 2048,
+          "hashPair": [
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 0
+            },
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 0
+            }
+          ]
+        },
+        {
+          "modulo": 3072,
+          "hashPair": [
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 0
+            },
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 0
+            }
+          ]
+        },
+        {
+          "modulo": 4096,
+          "hashPair": [
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 0
+            },
+            {
+              "hashAlg": "SHA2-256",
+              "saltLen": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sigType": "pss",
+      "properties": [
+        {
+          "modulo": 2048,
+          "maskFunction": [
+            "mgf1"
+          ],
+          "hashPair": [
+            {
+              "hashAlg": "SHAKE-128",
+              "saltLen": 1
+            },
+            {
+              "hashAlg": "SHAKE-256",
+              "saltLen": 64
+            },
+            {
+              "hashAlg": "SHA3-256",
+              "saltLen": 32
+            }
+          ]
+        },
+        {
+          "modulo": 3072,
+          "maskFunction": [
+            "shake-128"
+          ],
+          "hashPair": [
+            {
+              "hashAlg": "SHAKE-128",
+              "saltLen": 1
+            },
+            {
+              "hashAlg": "SHAKE-256",
+              "saltLen": 64
+            },
+            {
+              "hashAlg": "SHA3-256",
+              "saltLen": 32
+            }
+          ]
+        },
+        {
+          "modulo": 4096,
+          "maskFunction": [
+            "shake-256"
+          ],
+          "hashPair": [
+            {
+              "hashAlg": "SHAKE-128",
+              "saltLen": 1
+            },
+            {
+              "hashAlg": "SHAKE-256",
+              "saltLen": 64
+            },
+            {
+              "hashAlg": "SHA3-256",
+              "saltLen": 32
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pubExpMode": "random"
+}

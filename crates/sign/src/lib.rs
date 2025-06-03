@@ -10,7 +10,7 @@ pub mod pq;
 
 // Re-exports from traditional schemes
 pub use traditional::eddsa::Ed25519;
-pub use traditional::ecdsa::{EcdsaP256, EcdsaP384};
+pub use traditional::ecdsa::{EcdsaP192, EcdsaP256, EcdsaP384, EcdsaP521};
 pub use traditional::rsa::{RsaPss, RsaPkcs1};
 pub use traditional::dsa::Dsa;
 

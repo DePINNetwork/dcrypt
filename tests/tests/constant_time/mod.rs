@@ -11,5 +11,5 @@ pub mod stream_tests;
 pub mod kdf;
 
 // Re-export common modules used by tests
-pub use tests::constant_time::config::TestConfig;
-pub use tests::constant_time::tester::{TimingTester, generate_test_insights};
+pub use tests::suites::constant_time::config::TestConfig;
+pub use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};

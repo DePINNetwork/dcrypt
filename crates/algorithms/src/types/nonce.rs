@@ -149,6 +149,7 @@ impl XChaCha20Compatible for Nonce<24> {}
 /// AES-GCM compatible nonce sizes
 pub trait AesGcmCompatible: Sealed {}
 impl AesGcmCompatible for Nonce<12> {}
+impl AesGcmCompatible for Nonce<15> {} // Added support for 120-bit nonces (ACVP test vectors)
 impl AesGcmCompatible for Nonce<16> {}
 
 /// AES-CTR compatible nonce sizes

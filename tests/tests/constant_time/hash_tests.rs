@@ -1,7 +1,8 @@
 // tests/constant_time/hash_tests.rs
 // Constant-time tests for hash functions
 
-use crate::constant_time::{TestConfig, TimingTester, generate_test_insights};
+use tests::suites::constant_time::config::TestConfig;
+use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
 use algorithms::hash::{HashFunction, Sha256, Sha3_256};
 
 #[test]

@@ -1,7 +1,8 @@
 // tests/constant_time/xof_tests.rs
 // Constant-time tests for XOF (Extendable Output Function) algorithms
 
-use crate::constant_time::{TestConfig, TimingTester, generate_test_insights};
+use tests::suites::constant_time::config::TestConfig;
+use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
 use algorithms::xof::{ExtendableOutputFunction, ShakeXof256, Blake3Xof};
 
 #[test]

@@ -13,16 +13,19 @@ use alloc::string::String;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::format;
 
-
-// Declare p256 and p384 as submodules
+// Declare submodules
+pub mod p192; // Added P-192 module
+pub mod p224;
 pub mod p256;
 pub mod p384;
-pub mod p521; // Added P-521 module
+pub mod p521; 
 
-// Re-export the main structs so they are available as ecies::EciesP256 etc.
+// Re-export the main structs
+pub use p192::EciesP192; // Added P-192 export
+pub use p224::EciesP224; 
 pub use p256::EciesP256;
 pub use p384::EciesP384;
-pub use p521::EciesP521; // Added P-521 re-export
+pub use p521::EciesP521; 
 
 // --- Constants and Helper Structs/Functions (moved from individual files if generic enough, or keep here) ---
 
@@ -33,7 +36,6 @@ pub(crate) const AES256GCM_KEY_LEN: usize = 32;
 // Nonce lengths for AEADs
 pub(crate) const CHACHA20POLY1305_NONCE_LEN: usize = 12;
 pub(crate) const AES256GCM_NONCE_LEN: usize = 12;
-
 
 /// Derives symmetric key from an ECDH shared secret using HKDF-SHA256.
 pub(crate) fn derive_symmetric_key_hkdf_sha256(
@@ -71,7 +73,6 @@ pub(crate) fn derive_symmetric_key_hkdf_sha512(
        .map_err(PkeError::from)
 }
 
-
 /// Internal structure for ECIES ciphertext components.
 /// Format on wire: R_len (1 byte) || R || N_len (1 byte) || N || CT_len (4 bytes) || (C||T)
 #[derive(Clone, Debug)]
@@ -87,7 +88,6 @@ impl EciesCiphertextComponents {
         let n_len = self.aead_nonce.len();
         let ct_t_len = self.aead_ciphertext_tag.len();
 
-        // For P-521, R_len can be 133, which fits in u8. N_len is 12.
         assert!(r_len <= u8::MAX as usize, "Ephemeral PK too long for 1-byte length prefix");
         assert!(n_len <= u8::MAX as usize, "AEAD Nonce too long for 1-byte length prefix");
 
@@ -111,7 +111,6 @@ impl EciesCiphertextComponents {
         }
         let mut current_pos = 0;
 
-        // Deserialize R
         if bytes.len() < current_pos + 1 {
             return Err(PkeError::InvalidCiphertextFormat("R length truncated"));
         }
@@ -123,7 +122,6 @@ impl EciesCiphertextComponents {
         let ephemeral_public_key = bytes[current_pos..current_pos + r_len].to_vec();
         current_pos += r_len;
 
-        // Deserialize Nonce
         if bytes.len() < current_pos + 1 {
              return Err(PkeError::InvalidCiphertextFormat("Nonce length truncated"));
         }
@@ -135,7 +133,6 @@ impl EciesCiphertextComponents {
         let aead_nonce = bytes[current_pos..current_pos + n_len].to_vec();
         current_pos += n_len;
 
-        // Deserialize Ciphertext || Tag
         if bytes.len() < current_pos + 4 {
             return Err(PkeError::InvalidCiphertextFormat("AEAD payload length truncated"));
         }

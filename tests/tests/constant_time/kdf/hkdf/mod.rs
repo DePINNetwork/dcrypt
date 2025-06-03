@@ -1,7 +1,8 @@
 // tests/constant_time/kdf/hkdf/mod.rs
 // Constant-time tests for HKDF (HMAC-based Key Derivation Function)
 
-use crate::constant_time::{TestConfig, TimingTester, generate_test_insights};
+use tests::suites::constant_time::config::TestConfig;
+use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
 use algorithms::hash::Sha256;
 use algorithms::kdf::hkdf::Hkdf;
 use algorithms::kdf::KeyDerivationFunction;

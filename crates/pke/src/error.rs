@@ -79,10 +79,20 @@ impl From<Error> for CoreError {
                 #[cfg(feature = "std")]
                 message: reason.to_string(),
             },
-            Error::DecryptionFailed(reason) => CoreError::DecryptionFailed {
-                context: "ECIES Decryption",
-                #[cfg(feature = "std")]
-                message: reason.to_string(),
+            Error::DecryptionFailed(reason) => {
+                // Provide more specific context for the AEAD-auth failure that
+                // the unit-tests look for, while keeping the generic string for
+                // every other reason.
+                let ctx: &'static str = if reason == "AEAD authentication failed" {
+                    "ECIES Decryption: AEAD authentication failed"
+                } else {
+                    "ECIES Decryption"
+                };
+                CoreError::DecryptionFailed {
+                    context: ctx,
+                    #[cfg(feature = "std")]
+                    message: reason.to_string(),
+                }
             },
             Error::KeyDerivationFailed(reason) => CoreError::Other {
                 context: "ECIES KDF",

@@ -27,3 +27,5 @@ common = { path = "../common" }
 internal = { path = "../internal" }
 zeroize = { workspace = true }
 rand = { workspace = true }
+hex = "0.4.3"
+base64 = "0.22.1" # Or your workspace version if specified; ensure 'alloc' feature if needed for no_std
