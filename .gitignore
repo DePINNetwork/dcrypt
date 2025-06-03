@@ -2,3 +2,5 @@ codebase_snapshot.md
 target
 tools/
 tree.md
+Cargo.lock
+.gitignore
