@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 
 use core::marker::PhantomData;
 use core::ops::{Add, Sub, Neg, Mul};
-use super::params::Modulus;
+use super::params::{Modulus, NttModulus}; // FIXED: Import NttModulus from params
 use super::ntt::montgomery_reduce;
 use crate::error::{Result, Error};
 use zeroize::Zeroize;
@@ -178,12 +178,12 @@ impl<M: Modulus> Polynomial<M> {
 }
 
 /// Extension trait for polynomials with NTT-enabled modulus
-pub trait PolynomialNttExt<M: super::ntt::NttModulus> {
+pub trait PolynomialNttExt<M: NttModulus> {  // FIXED: Now uses params::NttModulus
     /// Fast scalar multiplication using Montgomery reduction
     fn scalar_mul_montgomery(&self, scalar: u32) -> Polynomial<M>;
 }
 
-impl<M: super::ntt::NttModulus> PolynomialNttExt<M> for Polynomial<M> {
+impl<M: NttModulus> PolynomialNttExt<M> for Polynomial<M> {  // FIXED: Now uses params::NttModulus
     fn scalar_mul_montgomery(&self, scalar: u32) -> Polynomial<M> {
         let mut result = Polynomial::<M>::zero();
         for i in 0..M::N {

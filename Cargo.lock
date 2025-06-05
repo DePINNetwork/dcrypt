@@ -1016,6 +1016,7 @@ dependencies = [
  "rand",
  "rand_chacha",
  "serde",
+ "subtle",
  "zeroize",
 ]
 

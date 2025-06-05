@@ -1,49 +1,74 @@
-// File: crates/sign/src/pq/dilithium/polyvec.rs
 //! Polynomial vector types and operations specific to Dilithium.
-//! This module defines `PolyVecL` and `PolyVecK` which are vectors of polynomials
-//! of dimension L and K respectively, as specified by the Dilithium parameters.
-//! It also includes functions for expanding the matrix A from a seed.
 
 use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::ntt::{NttOperator, InverseNttOperator};
-// Assumes DilithiumPolyModParams is now correctly defined in algorithms::poly::params
-// and implements NttModulus with correct constants for Dilithium's Q and N.
-use algorithms::poly::params::DilithiumPolyModParams;
+use algorithms::poly::params::{DilithiumParams, Modulus, NttModulus};
 use algorithms::xof::shake::ShakeXof128;
 use algorithms::xof::ExtendableOutputFunction;
 use algorithms::error::Result as AlgoResult;
-use crate::error::{Error as SignError, Result as SignResult};
-use params::pqc::dilithium::{DilithiumParams, DILITHIUM_N, DILITHIUM_Q};
+use crate::error::{Error as SignError};
+use params::pqc::dilithium::DilithiumParams as DilithiumSignParams;
 use core::marker::PhantomData;
 use zeroize::Zeroize;
 
-/// A vector of `DIM` polynomials, parameterized by `P: DilithiumParams`.
-/// Each polynomial is an element of `R_q = Z_q[X]/(X^N+1)`.
-/// Used to represent `s1`, `y`, `z` (PolyVecL) and `s2`, `t0`, `t1`, `w0`, `w1`, `h` (PolyVecK).
-#[derive(Clone, Debug, Zeroize)]
-pub struct PolyVec<P: DilithiumParams, const DIM: usize> {
-    /// Array of polynomials.
-    pub(crate) polys: [Polynomial<DilithiumPolyModParams>; DIM],
+/// A vector of polynomials for dimension L (columns in matrix A)
+#[derive(Debug)]
+pub struct PolyVecL<P: DilithiumSignParams> {
+    pub(crate) polys: Vec<Polynomial<DilithiumParams>>,
     _params: PhantomData<P>,
 }
 
-// Type aliases for PolyVecL (dimension L) and PolyVecK (dimension K).
-// These rely on `L_DIM` and `K_DIM` being consts in the `DilithiumParams` trait.
-pub type PolyVecL<P> = PolyVec<P, {<P as DilithiumParams>::L_DIM}>;
-pub type PolyVecK<P> = PolyVec<P, {<P as DilithiumParams>::K_DIM}>;
+/// A vector of polynomials for dimension K (rows in matrix A)
+#[derive(Debug)]
+pub struct PolyVecK<P: DilithiumSignParams> {
+    pub(crate) polys: Vec<Polynomial<DilithiumParams>>,
+    _params: PhantomData<P>,
+}
 
+// Implement Clone manually to avoid trait bound issues
+impl<P: DilithiumSignParams> Clone for PolyVecL<P> {
+    fn clone(&self) -> Self {
+        Self {
+            polys: self.polys.clone(),
+            _params: PhantomData,
+        }
+    }
+}
 
-impl<P: DilithiumParams, const DIM: usize> PolyVec<P, DIM> {
-    /// Creates a new PolyVec with all polynomial coefficients set to zero.
+impl<P: DilithiumSignParams> Clone for PolyVecK<P> {
+    fn clone(&self) -> Self {
+        Self {
+            polys: self.polys.clone(),
+            _params: PhantomData,
+        }
+    }
+}
+
+impl<P: DilithiumSignParams> Zeroize for PolyVecL<P> {
+    fn zeroize(&mut self) {
+        for poly in self.polys.iter_mut() {
+            poly.coeffs.zeroize();
+        }
+    }
+}
+
+impl<P: DilithiumSignParams> Zeroize for PolyVecK<P> {
+    fn zeroize(&mut self) {
+        for poly in self.polys.iter_mut() {
+            poly.coeffs.zeroize();
+        }
+    }
+}
+
+impl<P: DilithiumSignParams> PolyVecL<P> {
+    /// Creates a new PolyVecL with all polynomial coefficients set to zero.
     pub fn zero() -> Self {
         Self {
-            polys: [(); DIM].map(|_| Polynomial::<DilithiumPolyModParams>::zero()),
+            polys: vec![Polynomial::<DilithiumParams>::zero(); P::L_DIM],
             _params: PhantomData,
         }
     }
 
     /// Applies Number Theoretic Transform (NTT) to each polynomial in the vector in-place.
-    /// Coefficients are transformed from standard to NTT representation (Montgomery form).
     pub fn ntt_inplace(&mut self) -> AlgoResult<()> {
         for p in self.polys.iter_mut() {
             p.ntt_inplace()?;
@@ -52,7 +77,6 @@ impl<P: DilithiumParams, const DIM: usize> PolyVec<P, DIM> {
     }
 
     /// Applies Inverse NTT to each polynomial in the vector in-place.
-    /// Coefficients are transformed from NTT representation (Montgomery form) to standard.
     pub fn inv_ntt_inplace(&mut self) -> AlgoResult<()> {
         for p in self.polys.iter_mut() {
             p.from_ntt_inplace()?;
@@ -61,104 +85,157 @@ impl<P: DilithiumParams, const DIM: usize> PolyVec<P, DIM> {
     }
 
     /// Adds two PolyVecs element-wise: `self + other`.
-    /// Assumes polynomials are in the same domain (either both standard or both NTT).
     pub fn add(&self, other: &Self) -> Self {
         let mut res = Self::zero();
-        for i in 0..DIM {
+        for i in 0..P::L_DIM {
             res.polys[i] = self.polys[i].add(&other.polys[i]);
         }
         res
     }
     
     /// Subtracts another PolyVec from this one element-wise: `self - other`.
-    /// Assumes polynomials are in the same domain.
     pub fn sub(&self, other: &Self) -> Self {
         let mut res = Self::zero();
-        for i in 0..DIM {
+        for i in 0..P::L_DIM {
             res.polys[i] = self.polys[i].sub(&other.polys[i]);
         }
         res
     }
 
-    /// Computes the pointwise product of two PolyVecs (typically in NTT domain)
-    /// and accumulates the results into a single polynomial (dot product).
-    /// Result = sum_{i=0}^{DIM-1} (self.polys[i] * other.polys[i]),
-    /// where `*` is coefficient-wise polynomial multiplication in the NTT domain.
-    /// The resulting polynomial is also in NTT domain.
-    pub fn pointwise_dot_product(&self, other: &PolyVec<P, DIM>) -> Polynomial<DilithiumPolyModParams> {
-        let mut acc = Polynomial::<DilithiumPolyModParams>::zero();
-        for i in 0..DIM {
+    /// Computes the pointwise product of two PolyVecs and accumulates into a single polynomial.
+    /// Result = sum_{i=0}^{L_DIM-1} (self.polys[i] * other.polys[i]).
+    /// Both inputs must be in NTT domain; result is also in NTT domain.
+    pub fn pointwise_dot_product(&self, other: &PolyVecL<P>) -> Polynomial<DilithiumParams> {
+        let mut acc = Polynomial::<DilithiumParams>::zero();
+        for i in 0..P::L_DIM {
             let prod = self.polys[i].ntt_mul(&other.polys[i]);
-            acc = acc.add(&prod); // Polynomial addition in NTT domain
+            acc = acc.add(&prod);
         }
         acc
     }
     
-    /// Multiplies each polynomial in this PolyVec by a single polynomial `poly_scalar_ntt`.
-    /// Assumes `self.polys[i]` and `poly_scalar_ntt` are in NTT domain.
-    /// Used for operations like `c_hat * s1_hat` or `c_hat * t1_hat`.
-    pub fn poly_mul_elementwise(&self, poly_scalar_ntt: &Polynomial<DilithiumPolyModParams>) -> Self {
+    /// Multiplies each polynomial in this PolyVec by a single polynomial.
+    /// Assumes both are in NTT domain.
+    pub fn poly_mul_elementwise(&self, poly_scalar_ntt: &Polynomial<DilithiumParams>) -> Self {
         let mut res = Self::zero();
-        for i in 0..DIM {
+        for i in 0..P::L_DIM {
             res.polys[i] = self.polys[i].ntt_mul(poly_scalar_ntt);
         }
         res
     }
 }
 
-/// Expands a seed `rho_seed` into matrix A (K_DIM rows, L_DIM columns of polynomials).
-/// Each polynomial A_ij is returned in its standard coefficient representation.
-/// The caller is responsible for transforming them to NTT domain if needed.
-///
-/// # Arguments
-/// * `rho_seed`: A 32-byte seed used to generate the matrix pseudo-randomly.
-///
-/// # Returns
-/// A `Result` containing the matrix `A` represented as `[PolyVecL<P>; P::K_DIM]`,
-/// or a `SignError` on failure.
-///
-/// # Implementation Notes (FIPS 203, Algorithm 12: ExpandA)
-/// - Uses SHAKE128 as the XOF: `SHAKE128(rho || j || i)` for `A_ij` (note `j` then `i` for domain separation).
-/// - Coefficients are sampled uniformly modulo Q. Dilithium uses rejection sampling:
-///   sample 3 bytes from SHAKE, interpret as two 12-bit integers `d1, d2`.
-///   If `d1 < Q`, it's a coefficient. If `d2 < Q`, it's a coefficient. Repeat until N coefficients are generated.
-pub fn expand_matrix_a<P: DilithiumParams>(
-    rho_seed: &[u8; P::SEED_RHO_BYTES]
-) -> Result<[PolyVecL<P>; P::K_DIM], SignError> {
-    let mut matrix_a = [(); P::K_DIM].map(|_| PolyVecL::<P>::zero());
+impl<P: DilithiumSignParams> PolyVecK<P> {
+    /// Creates a new PolyVecK with all polynomial coefficients set to zero.
+    pub fn zero() -> Self {
+        Self {
+            polys: vec![Polynomial::<DilithiumParams>::zero(); P::K_DIM],
+            _params: PhantomData,
+        }
+    }
 
-    for i in 0..P::K_DIM { // Row index (0 to k-1)
+    /// Applies Number Theoretic Transform (NTT) to each polynomial in the vector in-place.
+    pub fn ntt_inplace(&mut self) -> AlgoResult<()> {
+        for p in self.polys.iter_mut() {
+            p.ntt_inplace()?;
+        }
+        Ok(())
+    }
+
+    /// Applies Inverse NTT to each polynomial in the vector in-place.
+    pub fn inv_ntt_inplace(&mut self) -> AlgoResult<()> {
+        for p in self.polys.iter_mut() {
+            p.from_ntt_inplace()?;
+        }
+        Ok(())
+    }
+
+    /// Adds two PolyVecs element-wise: `self + other`.
+    pub fn add(&self, other: &Self) -> Self {
+        let mut res = Self::zero();
+        for i in 0..P::K_DIM {
+            res.polys[i] = self.polys[i].add(&other.polys[i]);
+        }
+        res
+    }
+    
+    /// Subtracts another PolyVec from this one element-wise: `self - other`.
+    pub fn sub(&self, other: &Self) -> Self {
+        let mut res = Self::zero();
+        for i in 0..P::K_DIM {
+            res.polys[i] = self.polys[i].sub(&other.polys[i]);
+        }
+        res
+    }
+}
+
+/// Matrix-vector multiplication: A_hat * vec_l
+/// where A_hat is a K×L matrix of polynomials in NTT domain
+/// and vec_l is an L-vector of polynomials in NTT domain.
+/// Result is a K-vector of polynomials in NTT domain.
+pub fn matrix_polyvecl_mul<P: DilithiumSignParams>(
+    matrix_a_hat: &[PolyVecL<P>], // K rows, each row has L polynomials
+    vector_l_hat: &PolyVecL<P>     // L polynomials
+) -> PolyVecK<P> {
+    let mut result_veck = PolyVecK::<P>::zero();
+    
+    // For each row i of the matrix (output element i)
+    for (i, row) in matrix_a_hat.iter().enumerate() {
+        // Compute dot product of row i with the vector
+        result_veck.polys[i] = row.pointwise_dot_product(vector_l_hat);
+    }
+    
+    result_veck
+}
+
+/// Expands a seed `rho_seed` into matrix A (K_DIM rows, L_DIM columns of polynomials).
+/// Each polynomial A[i][j] is generated using SHAKE128(rho || j || i).
+/// Returns polynomials in standard domain.
+pub fn expand_matrix_a<P: DilithiumSignParams>(
+    rho_seed: &[u8; 32] // SEED_RHO_BYTES is always 32
+) -> Result<Vec<PolyVecL<P>>, SignError> {
+    let mut matrix_a = Vec::with_capacity(P::K_DIM);
+
+    for i in 0..P::K_DIM {    // Row index (0 to k-1)
+        let mut row = PolyVecL::<P>::zero();
+        
         for j in 0..P::L_DIM { // Column index (0 to l-1)
             let mut xof = ShakeXof128::new();
-            // Domain separation for A_ij is SHAKE128(rho || byte(j) || byte(i))
-            // Note the order: j then i for standard A_ij indexing.
+            // Domain separation: SHAKE128(rho || j || i)
             xof.update(rho_seed).map_err(SignError::from_algo)?;
-            xof.update(&[j as u8, i as u8]).map_err(SignError::from_algo)?;
+            xof.update(&[j as u8]).map_err(SignError::from_algo)?;
+            xof.update(&[i as u8]).map_err(SignError::from_algo)?;
             
-            let mut poly = Polynomial::<DilithiumPolyModParams>::zero();
-            let mut ctr = 0; // Coefficient counter for current polynomial
-            let mut temp_buf = [0u8; 3]; // Buffer for 3 bytes from SHAKE output
+            let mut poly = Polynomial::<DilithiumParams>::zero();
+            let mut ctr = 0;
+            let mut temp_buf = [0u8; 3];
 
-            while ctr < DILITHIUM_N {
+            // Sample coefficients using rejection sampling
+            while ctr < DilithiumParams::N {
                 xof.squeeze(&mut temp_buf).map_err(SignError::from_algo)?;
                 
-                // Extract two 12-bit values d1, d2 from 3 bytes
+                // Extract two 12-bit values from 3 bytes
                 // d1 = buf[0] + 2^8 * (buf[1] mod 16)
-                let val1 = (temp_buf[0] as u32) | ((temp_buf[1] as u32 & 0x0F) << 8);
+                let d1 = (temp_buf[0] as u32) | ((temp_buf[1] as u32 & 0x0F) << 8);
                 // d2 = floor(buf[1] / 16) + 2^4 * buf[2]
-                let val2 = ((temp_buf[1] >> 4) as u32) | ((temp_buf[2] as u32) << 4);
+                let d2 = ((temp_buf[1] >> 4) as u32) | ((temp_buf[2] as u32) << 4);
 
-                if val1 < (DILITHIUM_Q as u32) {
-                    poly.coeffs[ctr] = val1;
+                // Accept if less than Q
+                if d1 < DilithiumParams::Q {
+                    poly.coeffs[ctr] = d1;
                     ctr += 1;
                 }
-                if ctr < DILITHIUM_N && val2 < (DILITHIUM_Q as u32) {
-                    poly.coeffs[ctr] = val2;
+                if ctr < DilithiumParams::N && d2 < DilithiumParams::Q {
+                    poly.coeffs[ctr] = d2;
                     ctr += 1;
                 }
             }
-            matrix_a[i].polys[j] = poly;
+            
+            row.polys[j] = poly;
         }
+        
+        matrix_a.push(row);
     }
+    
     Ok(matrix_a)
 }

@@ -16,9 +16,9 @@ pub mod serialize;
 
 /// Prelude for easy importing of common polynomial types and traits.
 pub mod prelude {
-    pub use super::params::{Modulus, NttModulus};
+    pub use super::params::{Modulus, NttModulus}; // FIXED: Export NttModulus only from params
     pub use super::polynomial::{Polynomial, PolynomialNttExt};
-    pub use super::ntt::{NttOperator, InverseNttOperator, montgomery_reduce};
+    pub use super::ntt::{NttOperator, InverseNttOperator, montgomery_reduce}; // FIXED: No NttModulus from ntt
     pub use super::sampling::{UniformSampler, CbdSampler, GaussianSampler};
     pub use super::serialize::{CoefficientPacker, CoefficientUnpacker};
 }

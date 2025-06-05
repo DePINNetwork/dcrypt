@@ -30,11 +30,11 @@ use rand::{CryptoRng, RngCore};
 use core::marker::PhantomData;
 
 // Internal modules for Dilithium logic
-mod polyvec;       pub(crate) use polyvec::*;
-mod arithmetic;    pub(crate) use arithmetic::*;
-mod sampling;      pub(crate) use sampling::*;
-mod encoding;      pub(crate) use encoding::*;
-mod sign;          pub(crate) use sign::*;
+mod polyvec;       
+mod arithmetic;    
+mod sampling;      
+mod encoding;      
+mod sign;          
 
 // Re-export from params crate for easy access to DilithiumNParams structs.
 // These structs from `dcrypt-params` hold the specific numerical parameters (K, L, eta, gamma1, etc.)
@@ -107,7 +107,8 @@ impl<P: DilithiumParams + Send + Sync + 'static> SignatureTrait for Dilithium<P>
     fn name() -> &'static str { P::NAME }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> ApiResult<Self::KeyPair> {
-        let (pk_bytes, sk_bytes) = sign::keypair_internal::<P, R>(rng)?;
+        let (pk_bytes, sk_bytes) = sign::keypair_internal::<P, R>(rng)
+            .map_err(|e| api::Error::from(e))?;
         Ok((DilithiumPublicKey(pk_bytes), DilithiumSecretKey(sk_bytes)))
     }
 
@@ -124,12 +125,14 @@ impl<P: DilithiumParams + Send + Sync + 'static> SignatureTrait for Dilithium<P>
         // For this API, we'll use a thread_rng for any potential non-spec randomization points
         // or if a future variant required it, but standard Dilithium does not.
         let mut rng = rand::rngs::OsRng;
-        let sig_bytes = sign::sign_internal::<P, _>(message, &secret_key.0, &mut rng)?;
+        let sig_bytes = sign::sign_internal::<P, _>(message, &secret_key.0, &mut rng)
+            .map_err(|e| api::Error::from(e))?;
         Ok(DilithiumSignatureData(sig_bytes))
     }
 
     fn verify(message: &[u8], signature: &Self::SignatureData, public_key: &Self::PublicKey) -> ApiResult<()> {
         sign::verify_internal::<P>(message, &signature.0, &public_key.0)
+            .map_err(|e| api::Error::from(e))
     }
 }
 
@@ -139,15 +142,5 @@ pub type Dilithium2 = Dilithium<Dilithium2Params>;
 pub type Dilithium3 = Dilithium<Dilithium3Params>;
 pub type Dilithium5 = Dilithium<Dilithium5Params>;
 
-// Temporary compatibility re-exports (deprecated)
-#[deprecated(note = "use dilithium::arithmetic")]
-pub use arithmetic as arith_helpers;
-
-#[deprecated(note = "use dilithium::polyvec")]
-pub use polyvec as poly_ops;
-
-#[deprecated(note = "use dilithium::encoding")]
-pub use encoding as packing;
-
-#[deprecated(note = "use dilithium::sign")]
-pub use sign as sign_impl;
+#[cfg(test)]
+mod tests;

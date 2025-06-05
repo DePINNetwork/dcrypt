@@ -14,7 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use super::polynomial::Polynomial;
-use super::params::Modulus;
+use super::params::{Modulus, NttModulus}; // FIXED: Import NttModulus from params instead of defining duplicate
 use crate::error::{Result, Error};
 
 /// Modular exponentiation. Works in the *standard* domain because the result is
@@ -32,26 +32,7 @@ fn pow_mod<M: Modulus>(mut base: u32, mut exp: u32) -> u32 {
     acc
 }
 
-/// Extended Modulus trait with NTT parameters
-pub trait NttModulus: Modulus {
-    /// Primitive root of unity (generator)
-    const ZETA: u32;
-    
-    /// Precomputed twiddle factors for forward NTT
-    const ZETAS: &'static [u32];
-    
-    /// Precomputed twiddle factors for inverse NTT
-    const INV_ZETAS: &'static [u32];
-    
-    /// N^-1 mod Q for final scaling in inverse NTT
-    const N_INV: u32;
-    
-    /// Montgomery parameter R = 2^32 mod Q
-    const MONT_R: u32;
-    
-    /// -Q^-1 mod 2^32 for Montgomery reduction
-    const Q_INV_NEG: u32;
-}
+// REMOVED: Duplicate NttModulus trait definition that was here
 
 /// Trait for forward Number Theoretic Transform
 pub trait NttOperator<M: NttModulus> {

@@ -7,6 +7,7 @@
 
 pub mod traditional;
 pub mod pq;
+pub mod error;
 
 // Re-exports from traditional schemes
 pub use traditional::eddsa::Ed25519;

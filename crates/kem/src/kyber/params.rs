@@ -4,7 +4,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use algorithms::poly::params::Modulus;
-use algorithms::poly::ntt::NttModulus;
+use algorithms::poly::params::NttModulus;
 use params::pqc::kyber as global_params; // Using an alias for clarity
 
 /// Common Kyber polynomial degree.
