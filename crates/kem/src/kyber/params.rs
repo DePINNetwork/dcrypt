@@ -3,8 +3,7 @@
 //! Kyber parameter definitions.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use algorithms::poly::params::Modulus;
-use algorithms::poly::params::NttModulus;
+use algorithms::poly::params::{Modulus, NttModulus, PostInvNtt};
 use params::pqc::kyber as global_params; // Using an alias for clarity
 
 /// Common Kyber polynomial degree.
@@ -51,10 +50,16 @@ impl Modulus for KyberPolyModParams {
 impl NttModulus for KyberPolyModParams {
     const ZETA: u32 = 17;  // primitive 512-th root of unity mod 3329
     const ZETAS: &'static [u32] = &[];  // Not used with on-the-fly generation
-    const INV_ZETAS: &'static [u32] = &[];  // Not used with on-the-fly generation
     const N_INV: u32 = 2385;  // 256^-1 · R mod 3329
     const MONT_R: u32 = 1353;  // 2^32 mod 3329
-    const Q_INV_NEG: u32 = 0x94570CFF;  // -Q^-1 mod 2^32
+    const NEG_QINV: u32 = 0x94570CFF;  // -Q^-1 mod 2^32
+    
+    // Kyber doesn't use twisting, so these are empty
+    const PSIS: &'static [u32] = &[];
+    const INV_PSIS: &'static [u32] = &[];
+
+    // Kyber wants standard-domain coefficients after InvNTT
+    const POST_INVNTT_MODE: PostInvNtt = PostInvNtt::Standard;
 }
 
 // Concrete parameter implementations for Kyber variants.

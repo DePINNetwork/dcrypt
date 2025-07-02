@@ -39,7 +39,7 @@ mod sign;
 // Re-export from params crate for easy access to DilithiumNParams structs.
 // These structs from `dcrypt-params` hold the specific numerical parameters (K, L, eta, gamma1, etc.)
 // that define each Dilithium security level.
-use params::pqc::dilithium::{Dilithium2Params, Dilithium3Params, Dilithium5Params, DilithiumParams};
+use params::pqc::dilithium::{Dilithium2Params, Dilithium3Params, Dilithium5Params, DilithiumSchemeParams};
 
 // --- Public Key, Secret Key, Signature Data Wrapper Structs ---
 // These structs wrap byte vectors (`Vec<u8>`) that store the serialized representations
@@ -89,16 +89,16 @@ impl AsRef<[u8]> for DilithiumSignatureData { fn as_ref(&self) -> &[u8] { &self.
 impl AsMut<[u8]> for DilithiumSignatureData { fn as_mut(&mut self) -> &mut [u8] { &mut self.0 } }
 
 
-/// Generic Dilithium signature structure parameterized by `P: DilithiumParams`.
+/// Generic Dilithium signature structure parameterized by `P: DilithiumSchemeParams`.
 /// This allows a single core implementation (`sign.rs`) to be instantiated for
 /// different Dilithium security levels (Dilithium2, Dilithium3, Dilithium5)
 /// by simply changing the type parameter `P`.
-pub struct Dilithium<P: DilithiumParams + 'static> {
+pub struct Dilithium<P: DilithiumSchemeParams + 'static> {
     _params: PhantomData<P>,
 }
 
 // --- Implement api::Signature for Dilithium<P> ---
-impl<P: DilithiumParams + Send + Sync + 'static> SignatureTrait for Dilithium<P> {
+impl<P: DilithiumSchemeParams + Send + Sync + 'static> SignatureTrait for Dilithium<P> {
     type PublicKey = DilithiumPublicKey;
     type SecretKey = DilithiumSecretKey;
     type SignatureData = DilithiumSignatureData;

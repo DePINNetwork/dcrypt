@@ -1,0 +1,1565 @@
+warning: unused import: `Tag`
+  --> crates/algorithms/src/block/mod.rs:38:40
+   |
+38 | use crate::types::{Nonce, SecretBytes, Tag};
+   |                                        ^^^
+   |
+   = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `Error`
+  --> crates/algorithms/src/block/aes/mod.rs:24:20
+   |
+24 | use crate::error::{Error, Result, validate};
+   |                    ^^^^^
+
+warning: unused import: `SecureZeroingType`
+  --> crates/algorithms/src/block/aes/mod.rs:30:38
+   |
+30 | use common::security::{SecretBuffer, SecureZeroingType};
+   |                                      ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Error`
+  --> crates/algorithms/src/block/modes/ctr/mod.rs:15:20
+   |
+15 | use crate::error::{Error, Result, validate};
+   |                    ^^^^^
+
+warning: unused import: `validate`
+ --> crates/algorithms/src/hash/mod.rs:9:28
+  |
+9 | use crate::error::{Result, validate};
+  |                            ^^^^^^^^
+
+warning: unused import: `validate`
+ --> crates/algorithms/src/hash/sha1/mod.rs:7:35
+  |
+7 | use crate::error::{Error, Result, validate};
+  |                                   ^^^^^^^^
+
+warning: unused import: `Error`
+ --> crates/algorithms/src/hash/sha2/mod.rs:9:20
+  |
+9 | use crate::error::{Error, Result, validate};
+  |                    ^^^^^
+
+warning: unused imports: `Error` and `validate`
+  --> crates/algorithms/src/hash/shake/mod.rs:12:20
+   |
+12 | use crate::error::{Error, Result, validate};
+   |                    ^^^^^          ^^^^^^^^
+
+warning: unused imports: `SHA3_224_OUTPUT_SIZE`, `SHA3_256_BLOCK_SIZE`, `SHA3_256_OUTPUT_SIZE`, `SHA3_384_OUTPUT_SIZE`, `SHA3_512_BLOCK_SIZE`, and `SHA3_512_OUTPUT_SIZE`
+  --> crates/algorithms/src/hash/shake/mod.rs:17:5
+   |
+17 |     SHA3_224_OUTPUT_SIZE, SHA3_256_OUTPUT_SIZE, SHA3_384_OUTPUT_SIZE, SHA3_512_OUTPUT_SIZE,
+   |     ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^
+18 |     SHA3_256_BLOCK_SIZE, SHA3_512_BLOCK_SIZE
+   |     ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Hash`
+  --> crates/algorithms/src/hash/blake2/mod.rs:22:19
+   |
+22 | use crate::hash::{Hash, HashAlgorithm, HashFunction};
+   |                   ^^^^
+
+warning: unused import: `Error`
+  --> crates/algorithms/src/aead/gcm/ghash/mod.rs:36:20
+   |
+36 | use crate::error::{Error, Result, validate};
+   |                    ^^^^^
+
+warning: unused import: `Error`
+ --> crates/algorithms/src/aead/xchacha20poly1305/mod.rs:9:20
+  |
+9 | use crate::error::{Error, Result, validate};
+  |                    ^^^^^
+
+warning: unused import: `validate`
+  --> crates/algorithms/src/aead/mod.rs:59:35
+   |
+59 | use crate::error::{Error, Result, validate};
+   |                                   ^^^^^^^^
+
+warning: unused import: `Tag`
+  --> crates/algorithms/src/aead/mod.rs:64:33
+   |
+64 | use crate::types::{SecretBytes, Tag, Nonce};
+   |                                 ^^^
+
+warning: unused imports: `Error` and `validate`
+ --> crates/algorithms/src/mac/mod.rs:6:20
+  |
+6 | use crate::error::{Error, Result, validate};
+  |                    ^^^^^          ^^^^^^^^
+
+warning: unused import: `Error`
+ --> crates/algorithms/src/mac/poly1305/mod.rs:9:30
+  |
+9 | use crate::error::{validate, Error, Result};
+  |                              ^^^^^
+
+warning: unused imports: `Error` and `Result`
+ --> crates/algorithms/src/stream/chacha/chacha20/mod.rs:7:20
+  |
+7 | use crate::error::{Error, Result};
+  |                    ^^^^^  ^^^^^^
+
+warning: unused import: `validate`
+  --> crates/algorithms/src/kdf/mod.rs:69:35
+   |
+69 | use crate::error::{Error, Result, validate};
+   |                                   ^^^^^^^^
+
+warning: unused import: `SecretBytes`
+  --> crates/algorithms/src/kdf/mod.rs:70:26
+   |
+70 | use crate::types::{Salt, SecretBytes};
+   |                          ^^^^^^^^^^^
+
+warning: unused import: `validate`
+  --> crates/algorithms/src/kdf/params.rs:24:35
+   |
+24 | use crate::error::{Error, Result, validate};
+   |                                   ^^^^^^^^
+
+warning: unused import: `crate::types::sealed::Sealed`
+  --> crates/algorithms/src/kdf/hkdf/mod.rs:14:5
+   |
+14 | use crate::types::sealed::Sealed;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `SecretBuffer`
+  --> crates/algorithms/src/kdf/hkdf/mod.rs:17:41
+   |
+17 | use common::security::{EphemeralSecret, SecretBuffer, SecureZeroingType};
+   |                                         ^^^^^^^^^^^^
+
+warning: unused import: `generate_salt`
+  --> crates/algorithms/src/kdf/pbkdf2/mod.rs:15:44
+   |
+15 | use crate::kdf::common::{constant_time_eq, generate_salt};
+   |                                            ^^^^^^^^^^^^^
+
+warning: unused imports: `SecretBuffer` and `ZeroizeGuard`
+  --> crates/algorithms/src/kdf/pbkdf2/mod.rs:20:24
+   |
+20 | use common::security::{SecretBuffer, SecretVec, SecureZeroingType, ZeroizeGuard};
+   |                        ^^^^^^^^^^^^                                ^^^^^^^^^^^^
+
+warning: unused import: `std::boxed::Box`
+  --> crates/algorithms/src/kdf/argon2/mod.rs:12:5
+   |
+12 | use std::boxed::Box;
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::hash::HashAlgorithm`
+  --> crates/algorithms/src/kdf/argon2/mod.rs:19:5
+   |
+19 | use crate::hash::HashAlgorithm; // For Blake2bAlgorithm::OUTPUT_SIZE
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ZeroizeOnDrop`
+  --> crates/algorithms/src/kdf/argon2/mod.rs:26:24
+   |
+26 | use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
+   |                        ^^^^^^^^^^^^^
+
+warning: unused import: `SecretVec`
+  --> crates/algorithms/src/kdf/argon2/mod.rs:28:24
+   |
+28 | use common::security::{SecretVec};
+   |                        ^^^^^^^^^
+
+warning: unused import: `core::cmp::min`
+  --> crates/algorithms/src/kdf/argon2/mod.rs:29:5
+   |
+29 | use core::cmp::min;
+   |     ^^^^^^^^^^^^^^
+
+warning: unused import: `core::ops::Deref`
+  --> crates/algorithms/src/kdf/argon2/mod.rs:31:5
+   |
+31 | use core::ops::Deref; // Applied Edit 7
+   |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `params::traditional::ecdsa::NIST_P192`
+ --> crates/algorithms/src/ec/p192/point.rs:9:5
+  |
+9 | use params::traditional::ecdsa::NIST_P192;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `bytes_to_limbs_le` and `limbs_to_bytes_be`
+ --> crates/algorithms/src/ec/p192/scalar.rs:3:52
+  |
+3 | use crate::ec::p192::constants::{P192_SCALAR_SIZE, bytes_to_limbs_le, limbs_to_bytes_be};
+  |                                                    ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `SecureCompare` and `SecureOperation`
+ --> crates/algorithms/src/ec/p192/scalar.rs:5:38
+  |
+5 | use common::security::{SecretBuffer, SecureOperation, SecureCompare};
+  |                                      ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused imports: `bytes_to_limbs_le` and `limbs_to_bytes_be`
+ --> crates/algorithms/src/ec/p224/scalar.rs:3:52
+  |
+3 | use crate::ec::p224::constants::{P224_SCALAR_SIZE, bytes_to_limbs_le, limbs_to_bytes_be};
+  |                                                    ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `SecureCompare` and `SecureOperation`
+ --> crates/algorithms/src/ec/p224/scalar.rs:5:38
+  |
+5 | use common::security::{SecretBuffer, SecureOperation, SecureCompare};
+  |                                      ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused imports: `bytes_to_limbs_le` and `limbs_to_bytes_be`
+ --> crates/algorithms/src/ec/p256/scalar.rs:3:52
+  |
+3 | use crate::ec::p256::constants::{P256_SCALAR_SIZE, bytes_to_limbs_le, limbs_to_bytes_be};
+  |                                                    ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `SecureCompare` and `SecureOperation`
+ --> crates/algorithms/src/ec/p256/scalar.rs:5:38
+  |
+5 | use common::security::{SecretBuffer, SecureOperation, SecureCompare};
+  |                                      ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused imports: `SecureCompare` and `SecureOperation`
+ --> crates/algorithms/src/ec/p384/scalar.rs:5:38
+  |
+5 | use common::security::{SecretBuffer, SecureOperation, SecureCompare};
+  |                                      ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused import: `ConstantTimeEq`
+  --> crates/algorithms/src/ec/p521/field.rs:16:47
+   |
+16 | use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+   |                                               ^^^^^^^^^^^^^^
+
+warning: unused import: `P521_LIMBS`
+ --> crates/algorithms/src/ec/p521/scalar.rs:3:52
+  |
+3 | use crate::ec::p521::constants::{P521_SCALAR_SIZE, P521_LIMBS, p521_bytes_to_limbs, p521_limbs_to_bytes};
+  |                                                    ^^^^^^^^^^
+
+warning: unused import: `SecureOperation`
+ --> crates/algorithms/src/ec/p521/scalar.rs:6:38
+  |
+6 | use common::security::{SecretBuffer, SecureOperation};
+  |                                      ^^^^^^^^^^^^^^^
+
+warning: unused import: `validate`
+  --> crates/algorithms/src/types/digest.rs:11:35
+   |
+11 | use crate::error::{Error, Result, validate};
+   |                                   ^^^^^^^^
+
+warning: unused import: `internal::constant_time::ConstantTimeEquals as InternalConstantTimeEquals`
+  --> crates/algorithms/src/types/key.rs:12:5
+   |
+12 | use internal::constant_time::ConstantTimeEquals as InternalConstantTimeEquals; 
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Error`
+  --> crates/algorithms/src/types/key.rs:15:20
+   |
+15 | use crate::error::{Error, Result, validate};
+   |                    ^^^^^
+
+warning: unused import: `Error`
+  --> crates/algorithms/src/types/nonce.rs:12:20
+   |
+12 | use crate::error::{Error, Result, validate};
+   |                    ^^^^^
+
+warning: unused import: `Error`
+  --> crates/algorithms/src/types/salt.rs:11:20
+   |
+11 | use crate::error::{Error, Result, validate};
+   |                    ^^^^^
+
+warning: unused import: `Error`
+  --> crates/algorithms/src/types/tag.rs:11:20
+   |
+11 | use crate::error::{Error, Result, validate};
+   |                    ^^^^^
+
+warning: unused import: `SecureOperation`
+  --> crates/algorithms/src/xof/shake/mod.rs:19:55
+   |
+19 |     SecretBuffer, EphemeralSecret, SecureZeroingType, SecureOperation, barrier
+   |                                                       ^^^^^^^^^^^^^^^
+
+warning: unused import: `Zeroizing`
+ --> crates/algorithms/src/xof/blake3/mod.rs:8:24
+  |
+8 | use zeroize::{Zeroize, Zeroizing};
+  |                        ^^^^^^^^^
+
+warning: unused import: `Mul`
+  --> crates/algorithms/src/poly/polynomial.rs:11:32
+   |
+11 | use core::ops::{Add, Sub, Neg, Mul};
+   |                                ^^^
+
+warning: unused import: `alloc::vec::Vec`
+  --> crates/algorithms/src/mq/quadratic.rs:11:5
+   |
+11 | use alloc::vec::Vec;
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `alloc::vec::Vec`
+  --> crates/algorithms/src/code/sparse_matrix.rs:11:5
+   |
+11 | use alloc::vec::Vec;
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `SecureZeroingType`
+  --> crates/algorithms/src/kdf/pbkdf2/mod.rs:20:49
+   |
+20 | use common::security::{SecretBuffer, SecretVec, SecureZeroingType, ZeroizeGuard};
+   |                                                 ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `SecureZeroingType`
+  --> crates/algorithms/src/types/key.rs:21:38
+   |
+21 | use common::security::{SecretBuffer, SecureZeroingType as CoreSecureZeroingType};
+   |                                      ^^^^^^^^^^^^^^^^^
+
+warning: variable `blocks_processed` is assigned to, but never used
+  --> crates/algorithms/src/aead/gcm/ghash/mod.rs:90:17
+   |
+90 |         let mut blocks_processed = 0;
+   |                 ^^^^^^^^^^^^^^^^
+   |
+   = note: consider using `_blocks_processed` instead
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: value assigned to `blocks_processed` is never read
+   --> crates/algorithms/src/aead/gcm/ghash/mod.rs:103:13
+    |
+103 |             blocks_processed += 1;
+    |             ^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` on by default
+
+warning: unused variable: `dummy_data`
+   --> crates/algorithms/src/aead/gcm/ghash/mod.rs:113:17
+    |
+113 |             let dummy_data = [0u8; GCM_BLOCK_SIZE];
+    |                 ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_dummy_data`
+
+warning: unused variable: `nonce`
+   --> crates/algorithms/src/aead/gcm/mod.rs:359:13
+    |
+359 |         let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
+    |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_nonce`
+
+warning: unused variable: `nonce`
+   --> crates/algorithms/src/aead/gcm/mod.rs:388:13
+    |
+388 |         let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
+    |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_nonce`
+
+warning: unused variable: `nonce`
+   --> crates/algorithms/src/aead/gcm/mod.rs:427:13
+    |
+427 |         let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
+    |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_nonce`
+
+warning: variable does not need to be mutable
+   --> crates/algorithms/src/mac/poly1305/mod.rs:136:21
+    |
+136 |     pub fn finalize(mut self) -> Tag<POLY1305_TAG_SIZE> {
+    |                     ----^^^^
+    |                     |
+    |                     help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: variable does not need to be mutable
+   --> crates/algorithms/src/mac/hmac/mod.rs:113:17
+    |
+113 |             let mut inner_dummy = [0u8; 64]; // max SHA-512 output
+    |                 ----^^^^^^^^^^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/algorithms/src/mac/mod.rs:98:21
+   |
+98 |     fn update_multi(mut self, data: &[&'a [u8]]) -> Result<Self> {
+   |                     ----^^^^
+   |                     |
+   |                     help: remove this `mut`
+
+warning: unused variable: `salt`
+  --> crates/algorithms/src/kdf/hkdf/mod.rs:91:28
+   |
+91 |     fn with_salt(mut self, salt: &'a [u8]) -> Self {
+   |                            ^^^^ help: if this is intentional, prefix it with an underscore: `_salt`
+
+warning: unused variable: `salt`
+   --> crates/algorithms/src/kdf/pbkdf2/mod.rs:133:28
+    |
+133 |     fn with_salt(mut self, salt: &'a [u8]) -> Self {
+    |                            ^^^^ help: if this is intentional, prefix it with an underscore: `_salt`
+
+warning: value assigned to `carry` is never read
+   --> crates/algorithms/src/ec/p192/field.rs:361:13
+    |
+361 |             carry = 0;
+    |             ^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `ge`
+   --> crates/algorithms/src/ec/p224/scalar.rs:317:13
+    |
+317 |         let ge = gt | (!lt); // ge = gt || eq (if not less, then greater or equal)
+    |             ^^ help: if this is intentional, prefix it with an underscore: `_ge`
+
+warning: unused variable: `ge`
+   --> crates/algorithms/src/ec/p256/scalar.rs:298:13
+    |
+298 |         let ge = gt | (!lt); // ge = gt || eq (if not less, then greater or equal)
+    |             ^^ help: if this is intentional, prefix it with an underscore: `_ge`
+
+warning: variable does not need to be mutable
+   --> crates/algorithms/src/ec/p384/point.rs:560:13
+    |
+560 |         let mut gamma_sq = gamma.square();              // Γ²
+    |             ----^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `ge`
+   --> crates/algorithms/src/ec/p384/scalar.rs:294:13
+    |
+294 |         let ge = gt | (!lt); // ge = gt || eq (if not less, then greater or equal)
+    |             ^^ help: if this is intentional, prefix it with an underscore: `_ge`
+
+warning: variable does not need to be mutable
+   --> crates/algorithms/src/ec/p521/field.rs:342:13
+    |
+342 |         let mut base   = self.clone();
+    |             ----^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: function cannot return without recursing
+   --> crates/algorithms/src/types/key.rs:192:5
+    |
+192 |     fn zeroed() -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+193 |         Self::zeroed() // Calls the struct's zeroed method
+    |         -------------- recursive call site
+    |
+    = help: a `loop` may express intention better if this is on purpose
+    = note: `#[warn(unconditional_recursion)]` on by default
+
+warning: function cannot return without recursing
+   --> crates/algorithms/src/types/key.rs:363:5
+    |
+363 |     fn zeroed() -> Self {
+    |     ^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+364 |         Self::zeroed() // Calls the struct's zeroed method
+    |         -------------- recursive call site
+    |
+    = help: a `loop` may express intention better if this is on purpose
+
+warning: variable does not need to be mutable
+   --> crates/algorithms/src/xof/blake3/mod.rs:495:13
+    |
+495 |         let mut instance = Self {
+    |             ----^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/algorithms/src/xof/blake3/mod.rs:530:13
+    |
+530 |         let mut instance = Self {
+    |             ----^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: associated function `new_unchecked` is never used
+  --> crates/algorithms/src/block/modes/cbc/mod.rs:57:19
+   |
+30 | impl<B: BlockCipher + CipherAlgorithm + Zeroize + ZeroizeOnDrop> Cbc<B> {
+   | ----------------------------------------------------------------------- associated function in this implementation
+...
+57 |     pub(crate) fn new_unchecked<const N: usize>(cipher: B, iv: &Nonce<N>) -> Self
+   |                   ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: associated function `blamka_g` is never used
+   --> crates/algorithms/src/hash/blake2/mod.rs:186:8
+    |
+89  | impl Blake2b {
+    | ------------ associated function in this implementation
+...
+186 |     fn blamka_g(v: &mut [u64; 16], a: usize, b: usize, c: usize, d: usize, x: u64, y: u64) {
+    |        ^^^^^^^^
+
+warning: field `key` is never read
+   --> crates/algorithms/src/aead/mod.rs:166:5
+    |
+164 | pub struct ChaCha20Poly1305Cipher {
+    |            ---------------------- field in this struct
+165 |     inner: chacha20poly1305::ChaCha20Poly1305,
+166 |     key: SecretBytes<32>,
+    |     ^^^
+
+warning: method `reset` is never used
+  --> crates/algorithms/src/aead/gcm/ghash/mod.rs:74:12
+   |
+58 | impl GHash {
+   | ---------- method in this implementation
+...
+74 |     pub fn reset(&mut self) {
+   |            ^^^^^
+
+warning: associated function `from_secret_key` is never used
+  --> crates/algorithms/src/stream/chacha/chacha20/mod.rs:95:19
+   |
+32 | impl ChaCha20 {
+   | ------------- associated function in this implementation
+...
+95 |     pub(crate) fn from_secret_key<const N: usize>(
+   |                   ^^^^^^^^^^^^^^^
+
+warning: field `kdf` is never read
+  --> crates/algorithms/src/kdf/hkdf/mod.rs:75:5
+   |
+74 | pub struct HkdfOperation<'a, H: HashFunction, const S: usize = 16> {
+   |            ------------- field in this struct
+75 |     kdf: &'a Hkdf<H, S>,
+   |     ^^^
+
+warning: constant `ARGON2_PREHASH_DIGEST_LENGTH` is never used
+  --> crates/algorithms/src/kdf/argon2/mod.rs:40:7
+   |
+40 | const ARGON2_PREHASH_DIGEST_LENGTH: usize = 64; // H0 output size
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `ARGON2_VERSION_NUMBER` is never used
+   --> crates/algorithms/src/kdf/argon2/mod.rs:108:7
+    |
+108 | const ARGON2_VERSION_NUMBER: u32 = 0x13;
+    |       ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `bytes_to_limbs_le` is never used
+  --> crates/algorithms/src/ec/p192/constants.rs:22:8
+   |
+22 | pub fn bytes_to_limbs_le<const L: usize>(be_bytes: &[u8]) -> [u32; L] {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: function `limbs_to_bytes_be` is never used
+  --> crates/algorithms/src/ec/p192/constants.rs:38:8
+   |
+38 | pub fn limbs_to_bytes_be<const L: usize>(limbs: &[u32; L]) -> Vec<u8> {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: function `bytes_to_limbs_le` is never used
+  --> crates/algorithms/src/ec/p224/constants.rs:28:8
+   |
+28 | pub fn bytes_to_limbs_le<const L: usize>(be_bytes: &[u8]) -> [u32; L] {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: function `limbs_to_bytes_be` is never used
+  --> crates/algorithms/src/ec/p224/constants.rs:47:8
+   |
+47 | pub fn limbs_to_bytes_be<const L: usize>(limbs: &[u32; L]) -> Vec<u8> {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: associated items `fold` and `reduce` are never used
+   --> crates/algorithms/src/ec/p224/field.rs:451:8
+    |
+20  | impl FieldElement {
+    | ----------------- associated items in this implementation
+...
+451 |     fn fold(limbs: &mut [u32; 7], idx: usize, k: u32) {
+    |        ^^^^
+...
+571 |     fn reduce(&self) -> Self {
+    |        ^^^^^^
+
+warning: function `bytes_to_limbs_le` is never used
+  --> crates/algorithms/src/ec/p256/constants.rs:20:8
+   |
+20 | pub fn bytes_to_limbs_le<const L: usize>(be_bytes: &[u8]) -> [u32; L] {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: function `limbs_to_bytes_be` is never used
+  --> crates/algorithms/src/ec/p256/constants.rs:36:8
+   |
+36 | pub fn limbs_to_bytes_be<const L: usize>(limbs: &[u32; L]) -> Vec<u8> {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: method `reduce` is never used
+   --> crates/algorithms/src/ec/p256/field.rs:456:8
+    |
+14  | impl FieldElement {
+    | ----------------- method in this implementation
+...
+456 |     fn reduce(&self) -> Self {
+    |        ^^^^^^
+
+warning: function `bytes_to_limbs_le` is never used
+  --> crates/algorithms/src/ec/p384/constants.rs:20:8
+   |
+20 | pub fn bytes_to_limbs_le<const L: usize>(be_bytes: &[u8]) -> [u32; L] {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: function `limbs_to_bytes_be` is never used
+  --> crates/algorithms/src/ec/p384/constants.rs:36:8
+   |
+36 | pub fn limbs_to_bytes_be<const L: usize>(limbs: &[u32; L]) -> Vec<u8> {
+   |        ^^^^^^^^^^^^^^^^^
+
+warning: method `reduce` is never used
+   --> crates/algorithms/src/ec/p384/field.rs:475:8
+    |
+14  | impl FieldElement {
+    | ----------------- method in this implementation
+...
+475 |     fn reduce(&self) -> Self {
+    |        ^^^^^^
+
+warning: function `bytes_to_limbs_le_u32` is never used
+  --> crates/algorithms/src/ec/p521/constants.rs:27:8
+   |
+27 | pub fn bytes_to_limbs_le_u32<const L: usize>(be_bytes: &[u8]) -> Result<[u32; L]> {
+   |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `limbs_to_bytes_be_u32` is never used
+  --> crates/algorithms/src/ec/p521/constants.rs:51:8
+   |
+51 | pub fn limbs_to_bytes_be_u32<const L: usize>(limbs: &[u32; L]) -> Vec<u8> {
+   |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated function `new_unchecked` is never used
+   --> crates/algorithms/src/types/key.rs:114:19
+    |
+79  | / impl<A: SymmetricAlgorithm, const N: usize> SymmetricKey<A, N>
+80  | | where
+81  | |     Self: ValidKeySize<A, N>,
+    | |_____________________________- associated function in this implementation
+...
+114 |       pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
+    |                     ^^^^^^^^^^^^^
+
+warning: associated function `new_unchecked` is never used
+   --> crates/algorithms/src/types/key.rs:303:19
+    |
+268 | / impl<A: AsymmetricAlgorithm, const N: usize> AsymmetricSecretKey<A, N>
+269 | | where
+270 | |     Self: ValidSecretKeySize<A, N>,
+    | |___________________________________- associated function in this implementation
+...
+303 |       pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
+    |                     ^^^^^^^^^^^^^
+
+warning: associated function `new_unchecked` is never used
+   --> crates/algorithms/src/types/key.rs:481:19
+    |
+454 | / impl<A: AsymmetricAlgorithm, const N: usize> AsymmetricPublicKey<A, N>
+455 | | where
+456 | |     Self: ValidPublicKeySize<A, N>,
+    | |___________________________________- associated function in this implementation
+...
+481 |       pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
+    |                     ^^^^^^^^^^^^^
+
+warning: associated function `new_unchecked` is never used
+  --> crates/algorithms/src/types/nonce.rs:61:19
+   |
+25 | impl<const N: usize> Nonce<N> {
+   | ----------------------------- associated function in this implementation
+...
+61 |     pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
+   |                   ^^^^^^^^^^^^^
+
+warning: associated function `new_unchecked` is never used
+  --> crates/algorithms/src/types/salt.rs:75:19
+   |
+24 | impl<const N: usize> Salt<N> {
+   | ---------------------------- associated function in this implementation
+...
+75 |     pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
+   |                   ^^^^^^^^^^^^^
+
+warning: associated function `new_unchecked` is never used
+  --> crates/algorithms/src/types/tag.rs:71:19
+   |
+24 | impl<const N: usize> Tag<N> {
+   | --------------------------- associated function in this implementation
+...
+71 |     pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
+   |                   ^^^^^^^^^^^^^
+
+warning: associated function `xof_state` is never used
+   --> crates/algorithms/src/xof/mod.rs:193:19
+    |
+191 | impl Error {
+    | ---------- associated function in this implementation
+192 |     /// Create an XOF state error
+193 |     pub(crate) fn xof_state(operation: &'static str, state: &'static str) -> Self {
+    |                   ^^^^^^^^^
+
+warning: method `update` is never used
+   --> crates/algorithms/src/xof/blake3/mod.rs:281:12
+    |
+214 | impl ChunkState {
+    | --------------- method in this implementation
+...
+281 |     pub fn update(&mut self, input: &[u8]) -> Result<()> {
+    |            ^^^^^^
+
+warning: function `bit_reverse` is never used
+  --> crates/algorithms/src/poly/ntt/mod.rs:26:4
+   |
+26 | fn bit_reverse(mut x: usize, log_n: u32) -> usize {
+   |    ^^^^^^^^^^^
+
+warning: function `bit_reverse_copy` is never used
+  --> crates/algorithms/src/poly/ntt/mod.rs:37:4
+   |
+37 | fn bit_reverse_copy<M: NttModulus>(coeffs: &mut [u32]) {
+   |    ^^^^^^^^^^^^^^^^
+
+warning: function `sub_mod` is never used
+   --> crates/algorithms/src/poly/ntt/mod.rs:171:4
+    |
+171 | fn sub_mod<M: Modulus>(a: u32, b: u32) -> u32 {
+    |    ^^^^^^^
+
+warning: function `sub_mod_pos` is never used
+   --> crates/algorithms/src/poly/ntt/mod.rs:185:4
+    |
+185 | fn sub_mod_pos<M: Modulus>(a: u32, b: u32) -> u32 {
+    |    ^^^^^^^^^^^
+
+warning: variable `S1` should have a snake case name
+   --> crates/algorithms/src/hash/sha2/mod.rs:233:17
+    |
+233 |             let S1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
+    |                 ^^ help: convert the identifier to snake case (notice the capitalization): `s1`
+    |
+    = note: `#[warn(non_snake_case)]` on by default
+
+warning: variable `S0` should have a snake case name
+   --> crates/algorithms/src/hash/sha2/mod.rs:240:17
+    |
+240 |             let S0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
+    |                 ^^ help: convert the identifier to snake case (notice the capitalization): `s0`
+
+warning: variable `S1` should have a snake case name
+   --> crates/algorithms/src/hash/sha2/mod.rs:411:17
+    |
+411 |             let S1 = e.rotate_right(14) ^ e.rotate_right(18) ^ e.rotate_right(41);
+    |                 ^^ help: convert the identifier to snake case (notice the capitalization): `s1`
+
+warning: variable `S0` should have a snake case name
+   --> crates/algorithms/src/hash/sha2/mod.rs:418:17
+    |
+418 |             let S0 = a.rotate_right(28) ^ a.rotate_right(34) ^ a.rotate_right(39);
+    |                 ^^ help: convert the identifier to snake case (notice the capitalization): `s0`
+
+warning: `algorithms` (lib) generated 112 warnings (run `cargo fix --lib -p algorithms` to apply 59 suggestions)
+warning: unused import: `ZeroizeOnDrop`
+ --> crates/sign/src/traditional/ecdsa/p192/mod.rs:9:24
+  |
+9 | use zeroize::{Zeroize, ZeroizeOnDrop};
+  |                        ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `Sha256Algorithm`
+  --> crates/sign/src/traditional/ecdsa/p192/mod.rs:12:38
+   |
+12 | use algorithms::hash::sha2::{Sha256, Sha256Algorithm}; // Use Sha256
+   |                                      ^^^^^^^^^^^^^^^
+
+warning: unused import: `HashAlgorithm`
+  --> crates/sign/src/traditional/ecdsa/p192/mod.rs:13:38
+   |
+13 | use algorithms::hash::{HashFunction, HashAlgorithm};
+   |                                      ^^^^^^^^^^^^^
+
+warning: unused imports: `SecretBuffer` and `SecureOperation`
+ --> crates/sign/src/traditional/ecdsa/p256/mod.rs:8:24
+  |
+8 | use common::security::{SecretBuffer, SecureOperation};
+  |                        ^^^^^^^^^^^^  ^^^^^^^^^^^^^^^
+
+warning: unused import: `ZeroizeOnDrop`
+ --> crates/sign/src/traditional/ecdsa/p256/mod.rs:9:24
+  |
+9 | use zeroize::{Zeroize, ZeroizeOnDrop};
+  |                        ^^^^^^^^^^^^^
+
+warning: unused import: `ZeroizeOnDrop`
+ --> crates/sign/src/traditional/ecdsa/p384/mod.rs:8:24
+  |
+8 | use zeroize::{Zeroize, ZeroizeOnDrop};
+  |                        ^^^^^^^^^^^^^
+
+warning: unused imports: `SecretBuffer` and `SecureOperation`
+ --> crates/sign/src/traditional/ecdsa/p521/mod.rs:8:24
+  |
+8 | use common::security::{SecretBuffer, SecureOperation};
+  |                        ^^^^^^^^^^^^  ^^^^^^^^^^^^^^^
+
+warning: unused import: `ZeroizeOnDrop`
+ --> crates/sign/src/traditional/ecdsa/p521/mod.rs:9:24
+  |
+9 | use zeroize::{Zeroize, ZeroizeOnDrop};
+  |                        ^^^^^^^^^^^^^
+
+warning: unused import: `NttModulus`
+  --> crates/sign/src/pq/dilithium/polyvec.rs:10:58
+   |
+10 | use algorithms::poly::params::{DilithiumParams, Modulus, NttModulus};
+   |                                                          ^^^^^^^^^^
+
+warning: unused import: `core::cmp`
+ --> crates/sign/src/pq/dilithium/arithmetic.rs:8:5
+  |
+8 | use core::cmp;
+  |     ^^^^^^^^^
+
+warning: unused imports: `Dilithium3Params` and `Dilithium5Params`
+   --> crates/sign/src/pq/dilithium/encoding.rs:527:52
+    |
+527 |     use params::pqc::dilithium::{Dilithium2Params, Dilithium3Params, Dilithium5Params};
+    |                                                    ^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+
+warning: unused import: `montgomery_reduce`
+  --> crates/sign/src/pq/dilithium/sign.rs:24:80
+   |
+24 | use super::polyvec::{PolyVecK, PolyVecL, expand_matrix_a, matrix_polyvecl_mul, montgomery_reduce};
+   |                                                                                ^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `PolynomialExt`, `buckets`, `check_centered_diff_norm`, `highbits_d`, `mul_q`, `schoolbook_mul_centered`, `schoolbook_mul_eta_centered`, and `schoolbook_mul`
+  --> crates/sign/src/pq/dilithium/sign.rs:26:71
+   |
+26 |     power2round_polyvec, highbits_polyvec, lowbits_polyvec, highbits, highbits_d,
+   |                                                                       ^^^^^^^^^^
+27 |     check_norm_polyvec_l, check_norm_polyvec_k, check_centered_diff_norm,
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^
+28 |     make_hint_polyveck, use_hint_polyveck, mul_q,
+   |                                            ^^^^^
+29 |     w1_encode_coeff, schoolbook_mul_centered, PolynomialExt,
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+30 |     challenge_poly_mul,  // Import for c·t1·2^d multiplication
+31 |     schoolbook_mul_eta_centered,  // Import the CORRECT version from arithmetic.rs
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+32 |     schoolbook_mul,  // Import plain schoolbook multiplication
+   |     ^^^^^^^^^^^^^^
+33 |     schoolbook_mul_generic, // Import the new generic multiplication
+34 |     buckets, // Import buckets function for high-bit sanity check
+   |     ^^^^^^^
+
+warning: unused import: `NttModulus`
+  --> crates/sign/src/pq/dilithium/sign.rs:51:49
+   |
+51 | use algorithms::poly::params::{DilithiumParams, NttModulus, Modulus}; 
+   |                                                 ^^^^^^^^^^
+
+warning: unused import: `algorithms::poly::polynomial::PolynomialNttExt`
+  --> crates/sign/src/pq/dilithium/sign.rs:52:5
+   |
+52 | use algorithms::poly::polynomial::PolynomialNttExt;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused macro definition: `dbg_once`
+  --> crates/sign/src/pq/dilithium/sign.rs:76:14
+   |
+76 | macro_rules! dbg_once {
+   |              ^^^^^^^^
+   |
+   = note: `#[warn(unused_macros)]` on by default
+
+warning: unused imports: `highbits_d` and `w1_bits_needed`
+  --> crates/sign/src/pq/dilithium/tests/mod.rs:21:39
+   |
+21 |     check_norm_poly, w1_encode_coeff, w1_bits_needed, highbits_d,
+   |                                       ^^^^^^^^^^^^^^  ^^^^^^^^^^
+
+warning: unused import: `NttModulus`
+  --> crates/sign/src/pq/dilithium/tests/mod.rs:31:58
+   |
+31 | use algorithms::poly::params::{DilithiumParams, Modulus, NttModulus};
+   |                                                          ^^^^^^^^^^
+
+warning: unused import: `crate::pq::dilithium::arithmetic::use_hint_polyveck`
+  --> crates/sign/src/pq/dilithium/tests/mod.rs:37:5
+   |
+37 | use crate::pq::dilithium::arithmetic::use_hint_polyveck;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::pq::dilithium::arithmetic::power2round_polyvec`
+  --> crates/sign/src/pq/dilithium/tests/mod.rs:38:5
+   |
+38 | use crate::pq::dilithium::arithmetic::power2round_polyvec;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::hash::Hasher`
+  --> crates/sign/src/pq/dilithium/tests/mod.rs:40:5
+   |
+40 | use std::hash::Hasher;
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `algorithms::hash::sha3::Sha3_256`
+  --> crates/sign/src/pq/dilithium/tests/mod.rs:58:9
+   |
+58 |     use algorithms::hash::sha3::Sha3_256;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::error::Error as SignError`
+    --> crates/sign/src/pq/dilithium/tests/mod.rs:1408:9
+     |
+1408 |     use crate::error::Error as SignError;
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::arithmetic::highbits_polyvec`
+    --> crates/sign/src/pq/dilithium/tests/mod.rs:1561:13
+     |
+1561 |         use super::arithmetic::highbits_polyvec;
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Modulus`
+  --> crates/sign/src/pq/dilithium/tests/mod.rs:31:49
+   |
+31 | use algorithms::poly::params::{DilithiumParams, Modulus, NttModulus};
+   |                                                 ^^^^^^^
+
+warning: unused import: `algorithms::hash::HashFunction`
+  --> crates/sign/src/pq/dilithium/tests/mod.rs:60:9
+   |
+60 |     use algorithms::hash::HashFunction;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `hmac_block_len`
+   --> crates/sign/src/traditional/ecdsa/p224/mod.rs:219:9
+    |
+219 |     let hmac_block_len = Sha224Algorithm::BLOCK_SIZE; // 64 bytes for SHA-224
+    |         ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_hmac_block_len`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: value assigned to `in_section` is never read
+  --> crates/sign/src/traditional/ecdsa/p256/tests.rs:92:13
+   |
+92 |             in_section = false;
+   |             ^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` on by default
+
+warning: value assigned to `in_section` is never read
+   --> crates/sign/src/traditional/ecdsa/p256/tests.rs:145:13
+    |
+145 |             in_section = false;
+    |             ^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `mismatch_hash_unexpected_pass` is never read
+   --> crates/sign/src/traditional/ecdsa/p256/tests.rs:785:21
+    |
+785 |                     mismatch_hash_unexpected_pass += 1;
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `in_section` is never read
+  --> crates/sign/src/traditional/ecdsa/p384/tests.rs:76:13
+   |
+76 |             in_section = false;
+   |             ^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `in_section` is never read
+   --> crates/sign/src/traditional/ecdsa/p384/tests.rs:119:13
+    |
+119 |             in_section = false;
+    |             ^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `mismatch_hash_unexpected_pass` is never read
+   --> crates/sign/src/traditional/ecdsa/p384/tests.rs:844:21
+    |
+844 |                     mismatch_hash_unexpected_pass += 1;
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `in_section` is never read
+   --> crates/sign/src/traditional/ecdsa/p521/tests.rs:128:13
+    |
+128 |             in_section = false;
+    |             ^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `in_section` is never read
+   --> crates/sign/src/traditional/ecdsa/p521/tests.rs:173:13
+    |
+173 |             in_section = false;
+    |             ^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `mismatch_hash_unexpected_pass` is never read
+   --> crates/sign/src/traditional/ecdsa/p521/tests.rs:805:21
+    |
+805 |                     mismatch_hash_unexpected_pass += 1;
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `message`
+  --> crates/sign/src/traditional/eddsa/main.rs:94:9
+   |
+94 |         message: &[u8],
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_message`
+
+warning: unused variable: `secret_key`
+  --> crates/sign/src/traditional/eddsa/main.rs:95:9
+   |
+95 |         secret_key: &Self::SecretKey,
+   |         ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_secret_key`
+
+warning: unused variable: `message`
+   --> crates/sign/src/traditional/eddsa/main.rs:105:9
+    |
+105 |         message: &[u8],
+    |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_message`
+
+warning: unused variable: `signature`
+   --> crates/sign/src/traditional/eddsa/main.rs:106:9
+    |
+106 |         signature: &Self::SignatureData,
+    |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_signature`
+
+warning: unused variable: `public_key`
+   --> crates/sign/src/traditional/eddsa/main.rs:107:9
+    |
+107 |         public_key: &Self::PublicKey,
+    |         ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_public_key`
+
+warning: variable does not need to be mutable
+   --> crates/sign/src/pq/dilithium/arithmetic.rs:253:9
+    |
+253 |     let mut r1 = (((a as i64) - (r0 as i64)) / (alpha as i64)) as u32;
+    |         ----^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `d_param`
+   --> crates/sign/src/pq/dilithium/arithmetic.rs:828:5
+    |
+828 |     d_param: u32,
+    |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_d_param`
+
+warning: unused variable: `eta`
+   --> crates/sign/src/pq/dilithium/arithmetic.rs:844:5
+    |
+844 |     eta: u32,
+    |     ^^^ help: if this is intentional, prefix it with an underscore: `_eta`
+
+warning: unused variable: `k_seed`
+  --> crates/sign/src/pq/dilithium/tests/mod.rs:84:20
+   |
+84 |     let (rho_seed, k_seed, tr_hash, s1_vec, s2_vec, t0_vec) = 
+   |                    ^^^^^^ help: if this is intentional, prefix it with an underscore: `_k_seed`
+
+warning: unused variable: `pk1`
+   --> crates/sign/src/pq/dilithium/tests/mod.rs:671:10
+    |
+671 |     let (pk1, sk1) = Dilithium2::keypair(&mut rng).unwrap();
+    |          ^^^ help: if this is intentional, prefix it with an underscore: `_pk1`
+
+warning: unused variable: `h`
+    --> crates/sign/src/pq/dilithium/tests/mod.rs:1201:22
+     |
+1201 |     let (c_tilde, z, h) = unpack_signature::<Dilithium2Params>(&sig.0).unwrap();
+     |                      ^ help: if this is intentional, prefix it with an underscore: `_h`
+
+warning: unused variable: `c_tilde`
+    --> crates/sign/src/pq/dilithium/tests/mod.rs:1574:14
+     |
+1574 |         let (c_tilde, z_vec, h_hint_poly) = unpack_signature::<Dilithium2Params>(&sig_bytes).unwrap();
+     |              ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_c_tilde`
+
+warning: unused variable: `z_vec`
+    --> crates/sign/src/pq/dilithium/tests/mod.rs:1574:23
+     |
+1574 |         let (c_tilde, z_vec, h_hint_poly) = unpack_signature::<Dilithium2Params>(&sig_bytes).unwrap();
+     |                       ^^^^^ help: if this is intentional, prefix it with an underscore: `_z_vec`
+
+warning: unused variable: `h_hint_poly`
+    --> crates/sign/src/pq/dilithium/tests/mod.rs:1574:30
+     |
+1574 |         let (c_tilde, z_vec, h_hint_poly) = unpack_signature::<Dilithium2Params>(&sig_bytes).unwrap();
+     |                              ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_h_hint_poly`
+
+warning: struct `SigGenVector` is never constructed
+  --> crates/sign/src/traditional/ecdsa/p521/tests.rs:90:8
+   |
+90 | struct SigGenVector {
+   |        ^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: function `parse_sig_gen_truncated_sha_vectors` is never used
+   --> crates/sign/src/traditional/ecdsa/p521/tests.rs:197:4
+    |
+197 | fn parse_sig_gen_truncated_sha_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigGenVector> {
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: methods `add`, `sub`, and `poly_mul_elementwise` are never used
+   --> crates/sign/src/pq/dilithium/polyvec.rs:100:12
+    |
+71  | impl<P: DilithiumSchemeParams> PolyVecL<P> {
+    | ------------------------------------------ methods in this implementation
+...
+100 |     pub fn add(&self, other: &Self) -> Self {
+    |            ^^^
+...
+109 |     pub fn sub(&self, other: &Self) -> Self {
+    |            ^^^
+...
+128 |     pub fn poly_mul_elementwise(&self, poly_scalar_ntt: &Polynomial<DilithiumParams>) -> Self {
+    |            ^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `GAMMA2_MODE2_3` is never used
+  --> crates/sign/src/pq/dilithium/arithmetic.rs:18:7
+   |
+18 | const GAMMA2_MODE2_3: i32 = (Q - 1) / 88;  // 95_232
+   |       ^^^^^^^^^^^^^^
+
+warning: constant `GAMMA2_MODE5` is never used
+  --> crates/sign/src/pq/dilithium/arithmetic.rs:19:7
+   |
+19 | const GAMMA2_MODE5: i32 = (Q - 1) / 32;    // 261_888
+   |       ^^^^^^^^^^^^
+
+warning: function `alpha` is never used
+  --> crates/sign/src/pq/dilithium/arithmetic.rs:23:10
+   |
+23 | const fn alpha(gamma2: i32) -> i32 {
+   |          ^^^^^
+
+warning: function `diff_mod_q` is never used
+  --> crates/sign/src/pq/dilithium/arithmetic.rs:75:15
+   |
+75 | pub(crate) fn diff_mod_q(a: u32, b: u32) -> u32 {
+   |               ^^^^^^^^^^
+
+warning: function `mask_alpha` is never used
+  --> crates/sign/src/pq/dilithium/arithmetic.rs:84:10
+   |
+84 | const fn mask_alpha(gamma2: i32) -> i32 {
+   |          ^^^^^^^^^^
+
+warning: function `schoolbook_mul` is never used
+   --> crates/sign/src/pq/dilithium/arithmetic.rs:173:8
+    |
+173 | pub fn schoolbook_mul(
+    |        ^^^^^^^^^^^^^^
+
+warning: trait `PolynomialExt` is never used
+   --> crates/sign/src/pq/dilithium/arithmetic.rs:198:18
+    |
+198 | pub(crate) trait PolynomialExt {
+    |                  ^^^^^^^^^^^^^
+
+warning: function `highbits_d` is never used
+   --> crates/sign/src/pq/dilithium/arithmetic.rs:308:8
+    |
+308 | pub fn highbits_d<P: DilithiumSchemeParams>(r_coeff: u32) -> u32 {
+    |        ^^^^^^^^^^
+
+warning: function `check_centered_diff_norm` is never used
+   --> crates/sign/src/pq/dilithium/arithmetic.rs:589:8
+    |
+589 | pub fn check_centered_diff_norm<P: DilithiumSchemeParams>(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `debug_hint_consistency` is never used
+   --> crates/sign/src/pq/dilithium/arithmetic.rs:852:8
+    |
+852 | pub fn debug_hint_consistency<P: DilithiumSchemeParams>(
+    |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `mod_inverse` is never used
+   --> crates/sign/src/pq/dilithium/sign.rs:166:4
+    |
+166 | fn mod_inverse(a: u64, m: u64) -> u64 {
+    |    ^^^^^^^^^^^
+
+warning: function `verify_w1_reconstruction` is never used
+   --> crates/sign/src/pq/dilithium/sign.rs:191:4
+    |
+191 | fn verify_w1_reconstruction<P: DilithiumSchemeParams>(
+    |    ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `store_signing_debug` is never used
+    --> crates/sign/src/pq/dilithium/tests/mod.rs:1423:8
+     |
+1423 |     fn store_signing_debug(data: SigningDebugData) {
+     |        ^^^^^^^^^^^^^^^^^^^
+
+warning: `sign` (lib test) generated 66 warnings (run `cargo fix --lib -p sign --tests` to apply 24 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running unittests src/lib.rs (/home/levijosman/depin-network/codebase/dcrypt/target/debug/deps/sign-6ff948b369a10c8b)
+[DEBUG] Starting signing process
+[DEBUG] NTT round-trip test starting
+[TRACE] Signing: A[0][0][0..4] = [703, 3801, 976, 3362]
+[DEBUG] Signing attempts (Legend: . = r0 fail, z = z norm fail, h = hint overflow, Z = z_for_hint fail, c = ct0 fail, S = success)
+[DEBUG] Progress: 
+[TRACE] Attempt 1: y[0][0..4] = [8328521, 8364841, 76766, 8375515]
+[DEBUG] decompose(2910044): r0=53084 (in (-95232, 95232]), r1=15
+[DEBUG] decompose(5280894): r0=-52098 (in (-95232, 95232]), r1=28
+[DEBUG] decompose(6394487): r0=-81289 (in (-95232, 95232]), r1=34
+[DEBUG] decompose(5556661): r0=33205 (in (-95232, 95232]), r1=29
+[DEBUG] decompose(1567646): r0=43934 (in (-95232, 95232]), r1=8
+[DEBUG] decompose(3806499): r0=-2781 (in (-95232, 95232]), r1=20
+[DEBUG] decompose(1633594): r0=-80582 (in (-95232, 95232]), r1=9
+[DEBUG] decompose(7733218): r0=-75806 (in (-95232, 95232]), r1=41
+[DEBUG] decompose(5645972): r0=-67948 (in (-95232, 95232]), r1=30
+[DEBUG] decompose(1547960): r0=24248 (in (-95232, 95232]), r1=8
+[DEBUG] decompose(1647015): r0=-67161 (in (-95232, 95232]), r1=9
+[TRACE] Attempt 1: w1[0][0..64] = [15, 28, 34, 29, 8, 20, 9, 41, 30, 8, 21, 25, 23, 0, 0, 40, 13, 33, 19, 28, 0, 20, 24, 14, 41, 42, 34, 30, 25, 23, 39, 34, 38, 20, 15, 1, 38, 29, 40, 3, 14, 15, 38, 31, 22, 39, 32, 43, 32, 24, 26, 31, 2, 4, 24, 24, 24, 36, 34, 40, 34, 16, 4, 30]
+[TRACE] SIGN w1_encoded[0][0..4] = [15, 28, 34, 29]
+[TRACE] pack_polyveck_w1: bits_per_coeff=6, K=4, total_bytes=768
+[TRACE] pack_polyveck_w1: GAMMA2=95232, buckets=45
+[TRACE] SIGN w1_packed.len() = 768
+[TRACE] SIGN w1_packed SHA256 = [00, 07, 28, 03, 86, 03, b9, f8, 23, 08, e4, 3d, e5, b8, 26, 37]
+[TRACE] SIGN w1_packed FULL = [3d, c8, 9d, 21, 42, 69, 78, 85, 59, 5c, 00, 28, 36, 14, dc, 01, 46, 0e, a6, a8, 9e, 65, 79, e2, 99, 43, c1, 99, da, 03, 38, f9, 9f, 5a, 78, 2b, 81, 86, 9f, 08, 46, 18, 62, 48, a8, 89, 01, 1e, 12, 98, 82, 46, b7, 86, 44, 98, db, a0, c9, e8, 5a, bb, 0e, 1e, c8, 67, 96, 47, 5a, 28, b9, 80, 0d, 95, 93, 70, 59, d3, 5e, 66, a5, 89, 61, 42, 82, 09, 81, 85, 01, c0, 61, 00, c7, 98, 52, cb, 78, 75, c7, 54, 34, d7, 82, 80, ab, 9d, 72, a0, 25, b6, de, 86, 4b, 1e, 41, 01, 88, 28, 56, 53, 69, 70, 67, 4c, 39, 69, 86, 16, e4, 8d, 28, a6, a1, 27, df, 29, 08, 86, 28, c9, 40, 4a, 28, 89, 6a, a9, d0, 51, 30, ec, 5a, 31, 68, 3d, a6, 49, 34, a2, 24, 4e, 44, 07, ad, f6, 01, 00, f5, 23, 3c, 49, 8a, 46, 64, c8, 79, 51, 19, 98, 92, 9f, 41, db, 18, 18, 85, 4b, 3a, 41, 15, 5a, 40, da, 6a, 20, e7, 75, 04, 4d, 91, 97, 9d, 90, 37, c6, 16, 03, 18, 3d, c5, 44, 09, 60, 53, 4a, a7, dd, 59, d5, 9f, 29, f1, 9c, 80, 66, 47, 04, fa, cb, 6d, 1a, 52, 5c, 27, aa, 66, 14, 17, 26, 45, 81, 42, 27, 18, 35, a6, e3, 30, 67, c1, 0c, b8, 28, 39, da, 45, 9c, 04, 0c, 6c, a1, 06, 3d, e7, 98, 21, b3, ca, 08, 31, dd, 79, 72, 10, 8d, 21, 8e, 09, f9, 43, 78, 93, 86, 94, 48, 8d, ac, 34, 12, a5, b8, 4d, 31, ca, 58, 4c, a9, c4, 58, f0, 89, a0, 3a, 4d, 5c, a4, c7, 11, 43, cc, 66, 25, 6a, 7e, 43, 60, 69, 86, 42, 14, 49, db, 50, 34, 1a, 49, 22, 61, 2c, a6, 88, 11, 75, da, 65, 46, 66, 10, 65, 1a, 54, ba, c5, 9a, 98, a0, 5c, b0, d3, 76, 10, 1e, 39, 60, 5c, 18, 98, 6b, 61, 26, 1d, 80, 42, 8b, 69, 56, 86, 11, 20, c8, 86, a1, 6c, 3a, 31, 69, 16, 13, 82, a8, 30, 58, 8e, a3, 4b, 6e, 46, de, 44, a2, 08, 40, a4, 2b, 75, da, c4, 18, 82, 9f, 55, 44, 48, ae, a5, 41, a5, a0, dc, 34, 34, 25, 8d, c3, 4c, 0d, a8, 91, 4c, d7, 81, 68, d0, e5, 1e, 85, e1, a2, 07, 53, 72, 63, 0d, 48, 2a, 45, 10, 27, 02, 44, a3, 11, 8c, 90, 89, 31, 47, e7, 8a, a9, da, 3e, 33, 8c, 08, 82, 06, 98, 90, 62, 7a, a8, cd, 30, f6, ce, 66, 09, 8a, 15, 58, c0, 18, c5, a9, 74, 65, 18, 11, 9a, c3, 29, 65, 97, 31, 81, d0, 08, 73, 08, 3c, 93, 17, 4c, d9, 68, 4c, 77, 13, 4e, 31, 65, 49, 06, 41, 11, 5a, d3, 24, 15, 17, 86, 49, 8e, 80, 03, 9c, 36, 82, e2, 6c, 71, 98, a1, 73, df, 84, 22, 1d, 84, f5, 4a, 28, 45, db, 78, 42, 27, 76, 55, 13, 08, 29, 08, 24, 43, 4c, 7c, 61, 01, 8a, 82, 8c, a4, 43, 88, 70, 78, 2c, 92, 48, e0, 52, 53, 1c, b2, 66, e1, 70, f9, 84, aa, 15, d8, 0e, 03, 85, 66, 85, 8a, 64, 32, 98, 9d, 6a, 91, 7a, a9, dc, 9c, d6, db, 68, 47, 4f, 4d, 99, d2, 3a, 9a, 5b, 69, 21, eb, 89, 00, 05, 62, 69, a0, 25, 53, c8, 7c, 65, c1, 11, 3a, e7, 41, 46, 4f, 72, 36, 56, 86, 9a, 5e, 02, 15, 05, 84, 73, 84, 26, b0, 98, 45, 1a, 5a, ad, c9, 4c, 7e, a2, d3, 46, b5, 84, 3a, 52, a8, 71, 16, 44, 6d, 20, 5f, 39, 90, 15, 98, c7, ea, a4, 22, 87, a1, c2, db, 11, ea, 53, 7a, 78, 56, 31, 08, a7, 3a, 62, e3, 36, 21, 4a, 2c, 58, 56, ac, 58, c2, 35, 2a, ab, 28, 68, 9c, 42, 32, 65, 84, 94, 55, 91, 06, a0, 3a, 91, 61, ae, 14, 66, 6e, a6, 83, 24, 45, 63, 2d, 12, e2, a8, a0, 0e, 8a, b2, 93, 6e, b9, 59, 0c, b4, da, a9, 22, 44, 54, 60, 46, 1c, ca, c6, 78, 36, a2, a9, 13, d5, 46, 74, 89, 89, 57, a3, 68, 71, 69, 14, 44, 6b, 68, 54, 83, 89, b9, d6, 74, fa, 93]
+[TRACE] SIGN w1_vec coefficients for test comparison:
+  w1[0][0..32] = [15, 28, 34, 29, 8, 20, 9, 41, 30, 8, 21, 25, 23, 0, 0, 40, 13, 33, 19, 28, 0, 20, 24, 14, 41, 42, 34, 30, 25, 23, 39, 34]
+  w1[0][32..64] = [38, 20, 15, 1, 38, 29, 40, 3, 14, 15, 38, 31, 22, 39, 32, 43, 32, 24, 26, 31, 2, 4, 24, 24, 24, 36, 34, 40, 34, 16, 4, 30]
+  w1[0][64..96] = [4, 41, 34, 2, 17, 43, 30, 6, 17, 9, 35, 27, 40, 12, 39, 40, 22, 43, 44, 14, 7, 44, 33, 39, 37, 36, 29, 26, 10, 11, 38, 0]
+  w1[1][0..32] = [26, 34, 3, 39, 29, 16, 17, 13, 36, 25, 30, 29, 36, 3, 31, 6, 5, 32, 12, 24, 15, 28, 21, 4, 2, 22, 1, 19, 18, 42, 31, 29]
+  w1[2][0..32] = [27, 36, 27, 30, 17, 10, 8, 8, 16, 10, 16, 43, 29, 29, 43, 4, 6, 8, 10, 31, 21, 20, 17, 8, 43, 42, 21, 1, 41, 26, 3, 28]
+  w1[3][0..32] = [25, 40, 22, 10, 25, 3, 10, 24, 39, 22, 42, 17, 30, 42, 39, 28, 39, 13, 27, 27, 26, 4, 29, 15, 19, 25, 39, 18, 14, 41, 41, 27]
+[TRACE] SIGN c̃ hash input μ[0..16]‖w1[0..16] = [3b, 6b, b9, fe, a9, 0c, 23, 0f, 88, 17, 54, 05, 44, 44, f9, 49, 3d, c8, 9d, 21, 42, 69, 78, 85, 59, 5c, 00, 28, 36, 14, dc, 01]
+[TRACE] Attempt 1: challenge non-zero positions (first 5): [1, 2, 3, 7, 8]
+[TRACE] SCHOOLBOOK_MUL #1: a_centered=true, b_centered=true
+        a[0..4]: [0, 1, 8380416, 8380416]
+        b[0..4]: [8380416, 0, 1, 0]
+[TRACE] SCHOOLBOOK_MUL #2: a_centered=true, b_centered=true
+        a[0..4]: [0, 1, 8380416, 8380416]
+        b[0..4]: [0, 0, 8380416, 1]
+[TRACE] SCHOOLBOOK_MUL #3: a_centered=true, b_centered=true
+        a[0..4]: [0, 1, 8380416, 8380416]
+        b[0..4]: [0, 0, 1, 8380416]
+[DEBUG] decompose(4708245): r0=-53355 (in (-95232, 95232]), r1=25
+
+[SIGN DEBUG] First attempt - ct0 and cs2 analysis:
+  Position [0][25]:
+    ct0: raw=8362890, centered=-17527
+    cs2: raw=8380415, centered=-2
+    ct0-cs2 (centered): -17525
+  Position [0][82]:
+    ct0: raw=6250, centered=6250
+    cs2: raw=8380414, centered=-3
+    ct0-cs2 (centered): 6253
+
+[SIGN DEBUG] z_for_hint (ct0 - cs2) analysis:
+  Position [0][25]: raw=8362892, centered=-17525
+  Position [0][82]: raw=6253, centered=6253
+[DEBUG] make_hint_polyveck: Starting hint generation
+        alpha=190464, gamma2=95232, m=45 buckets
+[DEBUG] Hint 1 at [0][10]: r=4087133, z_signed=9115, r1=21 → v1=22
+
+[HINT DEBUG] Position [0][25]:
+  r (w) = 8088070
+  z (ct0-cs2) raw = 8362892
+  z_signed (centered) = -17525
+  r + z_signed = 8088070 + -17525 = 8070545
+  (r + z) mod q = 8070545
+  decompose(r=8088070) → r0=88582, r1=42
+  decompose(r+z=8070545) → r0=71057, r1=42
+  HighBits(r) = 42, HighBits(r+z) = 42
+  Hint needed: false (NO)
+[DEBUG] Hint 2 at [0][41]: r=2936986, z_signed=19338, r1=15 → v1=16
+
+[HINT DEBUG] Position [0][82]:
+  r (w) = 8287669
+  z (ct0-cs2) raw = 6253
+  z_signed (centered) = 6253
+  r + z_signed = 8287669 + 6253 = 8293922
+  (r + z) mod q = 8293922
+  decompose(r=8287669) → r0=-92747, r1=44
+  decompose(r+z=8293922) → r0=-86494, r1=44
+  HighBits(r) = 44, HighBits(r+z) = 44
+  Hint needed: false (NO)
+[DEBUG] Hint 3 at [0][86]: r=6207098, z_signed=-18891, r1=33 → v1=32
+[DEBUG] Hint 4 at [0][121]: r=3138139, z_signed=10769, r1=16 → v1=17
+[DEBUG] Hint 5 at [0][160]: r=5036077, z_signed=19400, r1=26 → v1=27
+[DEBUG] Hint 6 at [0][174]: r=6568951, z_signed=20737, r1=34 → v1=35
+[DEBUG] Hint 7 at [0][191]: r=1799672, z_signed=13057, r1=9 → v1=10
+[DEBUG] Hint 8 at [0][204]: r=2937798, z_signed=18200, r1=15 → v1=16
+[DEBUG] Hint 9 at [0][211]: r=6766446, z_signed=-26589, r1=36 → v1=35
+[DEBUG] Hint 10 at [0][213]: r=6783905, z_signed=-28437, r1=36 → v1=35
+[DEBUG] decompose(5275446): r0=-57546 (in (-95232, 95232]), r1=28
+[DEBUG] decompose(4730708): r0=-30892 (in (-95232, 95232]), r1=25
+[DEBUG] make_hint_polyveck: Generated 62 hints (limit=80)
+[TRACE] Hints at attempt 1: total=62, positions=[(0, 10), (0, 41), (0, 86), (0, 121), (0, 160), (0, 174), (0, 191), (0, 204), (0, 211), (0, 213)]
+[TRACE] W1 values at first 10 hint positions:
+  w1[0][10] = 21
+  w1[0][41] = 15
+  w1[0][86] = 33
+  w1[0][121] = 16
+  w1[0][160] = 26
+  w1[0][174] = 34
+  w1[0][191] = 9
+  w1[0][204] = 15
+  w1[0][211] = 36
+  w1[0][213] = 36
+[DEBUG] decompose(8179): r0=8179 (in (-95232, 95232]), r1=0
+
+[TRACE] Attempt 1: HighBits(ct0-cs2)[0][0..4] = [0, 44, 44, 0]
+[TRACE] Attempt 1: Original w1[0][0..4] = [15, 28, 34, 29]
+[DEBUG] Progress: S
+[TRACE] FINAL (kappa=0, ω=62) c̃[0..8]=[30, 99, e4, a9, f7, b5, 52, 1c]
+[TRACE] Success: z[0][0..4] = [8328515, 8364848, 76768, 8375514]
+[TRACE] Success: w1[0][0..6] = [15, 28, 34, 29, 8, 20]
+[INFO] Signing succeeded at attempt 1 with 62 hints
+[DEBUG] Starting verification
+[DEBUG] Unpacked 62 hints (limit=80)
+[TRACE] Verification: hint positions (first 20): [(0, 10), (0, 41), (0, 86), (0, 121), (0, 160), (0, 174), (0, 191), (0, 204), (0, 211), (0, 213), (0, 221), (0, 228), (0, 231), (0, 232), (1, 21), (1, 28), (1, 30), (1, 57), (1, 63), (1, 76)]
+[TRACE] Verification: z[0][0..4] = [8328515, 8364848, 76768, 8375514]
+[TRACE] Verification: A[0][0][0..4] = [703, 3801, 976, 3362]
+[TRACE] w′[0][..4]=[2303015, 4660615, 5973538, 5134886]
+[DEBUG] use_hint_polyveck: Starting hint application
+        Total hints to apply: 62
+[DEBUG] use_hint_coeff #1 (hint #0): r_coeff=2925614, r0=68654, r1=15, m=45, hint=false
+[DEBUG] use_hint_coeff #2 (hint #0): r_coeff=5242254, r0=-90738, r1=28, m=45, hint=false
+[DEBUG] use_hint_coeff #3 (hint #0): r_coeff=6391336, r0=-84440, r1=34, m=45, hint=false
+[DEBUG] use_hint_coeff #4 (hint #0): r_coeff=5569067, r0=45611, r1=29, m=45, hint=false
+[DEBUG] use_hint_coeff #5 (hint #0): r_coeff=1569189, r0=45477, r1=8, m=45, hint=false
+[DEBUG] use_hint_coeff #11 (hint #1): r_coeff=4096248, r0=-93960, r1=22, m=45, hint=true
+        → r0=-93960 < 0, so rotate DOWN: r1=22 → new_r1=21
+        decompose(4096248, 190464) gave r0=-93960 (signed), r1=22
+        DOWN rotation: (22 + 45 - 1) % 45 = 21
+[DEBUG] use_hint_coeff #42 (hint #2): r_coeff=2956324, r0=-91100, r1=16, m=45, hint=true
+        → r0=-91100 < 0, so rotate DOWN: r1=16 → new_r1=15
+        decompose(2956324, 190464) gave r0=-91100 (signed), r1=16
+        DOWN rotation: (16 + 45 - 1) % 45 = 15
+[DEBUG] use_hint_coeff #87 (hint #3): r_coeff=6188207, r0=93359, r1=32, m=45, hint=true
+        → r0=93359 >= 0, so rotate UP: r1=32 → new_r1=33
+        decompose(6188207, 190464) gave r0=93359 (signed), r1=32
+        UP rotation: (32 + 1) % 45 = 33
+[DEBUG] use_hint_coeff #122 (hint #4): r_coeff=3148908, r0=-88980, r1=17, m=45, hint=true
+        → r0=-88980 < 0, so rotate DOWN: r1=17 → new_r1=16
+        decompose(3148908, 190464) gave r0=-88980 (signed), r1=17
+        DOWN rotation: (17 + 45 - 1) % 45 = 16
+[DEBUG] use_hint_coeff #161 (hint #5): r_coeff=5055477, r0=-87051, r1=27, m=45, hint=true
+        → r0=-87051 < 0, so rotate DOWN: r1=27 → new_r1=26
+        decompose(5055477, 190464) gave r0=-87051 (signed), r1=27
+        DOWN rotation: (27 + 45 - 1) % 45 = 26
+[DEBUG] use_hint_coeff #175 (hint #6): r_coeff=6589688, r0=-76552, r1=35, m=45, hint=true
+        → r0=-76552 < 0, so rotate DOWN: r1=35 → new_r1=34
+        decompose(6589688, 190464) gave r0=-76552 (signed), r1=35
+        DOWN rotation: (35 + 45 - 1) % 45 = 34
+[DEBUG] use_hint_coeff #192 (hint #7): r_coeff=1812729, r0=-91911, r1=10, m=45, hint=true
+        → r0=-91911 < 0, so rotate DOWN: r1=10 → new_r1=9
+        decompose(1812729, 190464) gave r0=-91911 (signed), r1=10
+        DOWN rotation: (10 + 45 - 1) % 45 = 9
+[DEBUG] use_hint_coeff #205 (hint #8): r_coeff=2955998, r0=-91426, r1=16, m=45, hint=true
+        → r0=-91426 < 0, so rotate DOWN: r1=16 → new_r1=15
+        decompose(2955998, 190464) gave r0=-91426 (signed), r1=16
+        DOWN rotation: (16 + 45 - 1) % 45 = 15
+[DEBUG] use_hint_coeff #212 (hint #9): r_coeff=6739857, r0=73617, r1=35, m=45, hint=true
+        → r0=73617 >= 0, so rotate UP: r1=35 → new_r1=36
+        decompose(6739857, 190464) gave r0=73617 (signed), r1=35
+        UP rotation: (35 + 1) % 45 = 36
+[DEBUG] use_hint_coeff #214 (hint #10): r_coeff=6755468, r0=89228, r1=35, m=45, hint=true
+        → r0=89228 >= 0, so rotate UP: r1=35 → new_r1=36
+        decompose(6755468, 190464) gave r0=89228 (signed), r1=35
+        UP rotation: (35 + 1) % 45 = 36
+[DEBUG] use_hint_coeff #222 (hint #11): r_coeff=2759542, r0=93046, r1=14, m=45, hint=true
+        → r0=93046 >= 0, so rotate UP: r1=14 → new_r1=15
+[DEBUG] use_hint_coeff #229 (hint #12): r_coeff=3136632, r0=89208, r1=16, m=45, hint=true
+        → r0=89208 >= 0, so rotate UP: r1=16 → new_r1=17
+[DEBUG] use_hint_coeff #232 (hint #13): r_coeff=1418636, r0=85388, r1=7, m=45, hint=true
+        → r0=85388 >= 0, so rotate UP: r1=7 → new_r1=8
+[DEBUG] use_hint_coeff #233 (hint #14): r_coeff=5809915, r0=-94469, r1=31, m=45, hint=true
+        → r0=-94469 < 0, so rotate DOWN: r1=31 → new_r1=30
+[DEBUG] use_hint_coeff #278 (hint #15): r_coeff=5210781, r0=68253, r1=27, m=45, hint=true
+        → r0=68253 >= 0, so rotate UP: r1=27 → new_r1=28
+[DEBUG] use_hint_coeff #285 (hint #16): r_coeff=3527028, r0=-91788, r1=19, m=45, hint=true
+        → r0=-91788 < 0, so rotate DOWN: r1=19 → new_r1=18
+[DEBUG] use_hint_coeff #287 (hint #17): r_coeff=5805078, r0=91158, r1=30, m=45, hint=true
+        → r0=91158 >= 0, so rotate UP: r1=30 → new_r1=31
+[DEBUG] use_hint_coeff #314 (hint #18): r_coeff=6383990, r0=-91786, r1=34, m=45, hint=true
+        → r0=-91786 < 0, so rotate DOWN: r1=34 → new_r1=33
+[DEBUG] use_hint_coeff #320 (hint #19): r_coeff=76511, r0=76511, r1=0, m=45, hint=true
+        → r0=76511 >= 0, so rotate UP: r1=0 → new_r1=1
+[DEBUG] use_hint_coeff #333 (hint #20): r_coeff=443185, r0=62257, r1=2, m=45, hint=true
+        → r0=62257 >= 0, so rotate UP: r1=2 → new_r1=3
+[DEBUG] decompose(3574959): r0=-43857 (in (-95232, 95232]), r1=19
+[DEBUG] Hint application details (first 20):
+  Hint at [0][10]: w'=4096248, direct_highbits=22, recovered=21 MISMATCH
+  Hint at [0][41]: w'=2956324, direct_highbits=16, recovered=15 MISMATCH
+  Hint at [0][86]: w'=6188207, direct_highbits=32, recovered=33 MISMATCH
+  Hint at [0][121]: w'=3148908, direct_highbits=17, recovered=16 MISMATCH
+  Hint at [0][160]: w'=5055477, direct_highbits=27, recovered=26 MISMATCH
+  Hint at [0][174]: w'=6589688, direct_highbits=35, recovered=34 MISMATCH
+  Hint at [0][191]: w'=1812729, direct_highbits=10, recovered=9 MISMATCH
+  Hint at [0][204]: w'=2955998, direct_highbits=16, recovered=15 MISMATCH
+  Hint at [0][211]: w'=6739857, direct_highbits=35, recovered=36 MISMATCH
+  Hint at [0][213]: w'=6755468, direct_highbits=35, recovered=36 MISMATCH
+  Hint at [0][221]: w'=2759542, direct_highbits=14, recovered=15 MISMATCH
+  Hint at [0][228]: w'=3136632, direct_highbits=16, recovered=17 MISMATCH
+  Hint at [0][231]: w'=1418636, direct_highbits=7, recovered=8 MISMATCH
+  Hint at [0][232]: w'=5809915, direct_highbits=31, recovered=30 MISMATCH
+  Hint at [1][21]: w'=5210781, direct_highbits=27, recovered=28 MISMATCH
+  Hint at [1][28]: w'=3527028, direct_highbits=19, recovered=18 MISMATCH
+  Hint at [1][30]: w'=5805078, direct_highbits=30, recovered=31 MISMATCH
+  Hint at [1][57]: w'=6383990, direct_highbits=34, recovered=33 MISMATCH
+  Hint at [1][63]: w'=76511, direct_highbits=0, recovered=1 MISMATCH
+  Hint at [1][76]: w'=443185, direct_highbits=2, recovered=3 MISMATCH
+[WARNING] 62 hint applications resulted in mismatches!
+
+[VERIFY DEBUG] Checking specific positions:
+  Position [0][25]:
+    w' = 8070545
+    hint = 0
+    HighBits(w') = 42
+    w1'' (after UseHint) = 42
+  Position [0][82]:
+    w' = 8293922
+    hint = 0
+    HighBits(w') = 44
+    w1'' (after UseHint) = 44
+
+[DEBUG] === W1 COMPARISON WITH SIGNING DATA ===
+  Total mismatches: 0 (hints: 0)
+
+  Values at first 10 hint positions:
+    [0,10]: sign=21 verify=21 direct=22 match=true
+    [0,41]: sign=15 verify=15 direct=16 match=true
+    [0,86]: sign=33 verify=33 direct=32 match=true
+    [0,121]: sign=16 verify=16 direct=17 match=true
+    [0,160]: sign=26 verify=26 direct=27 match=true
+    [0,174]: sign=34 verify=34 direct=35 match=true
+    [0,191]: sign=9 verify=9 direct=10 match=true
+    [0,204]: sign=15 verify=15 direct=16 match=true
+    [0,211]: sign=36 verify=36 direct=35 match=true
+    [0,213]: sign=36 verify=36 direct=35 match=true
+[DEBUG] === END W1 COMPARISON ===
+
+[TRACE] Verification: w1_recovered[0][0..32] = [15, 28, 34, 29, 8, 20, 9, 41, 30, 8, 21, 25, 23, 0, 0, 40, 13, 33, 19, 28, 0, 20, 24, 14, 41, 42, 34, 30, 25, 23, 39, 34]
+[TRACE] Verification: w1_recovered[0][32..64] = [38, 20, 15, 1, 38, 29, 40, 3, 14, 15, 38, 31, 22, 39, 32, 43, 32, 24, 26, 31, 2, 4, 24, 24, 24, 36, 34, 40, 34, 16, 4, 30]
+[TRACE] pack_polyveck_w1: bits_per_coeff=6, K=4, total_bytes=768
+[TRACE] pack_polyveck_w1: GAMMA2=95232, buckets=45
+[TRACE] VERIFY w1_packed.len() = 768
+[TRACE] VERIFY w1_packed SHA256 = [00, 07, 28, 03, 86, 03, b9, f8, 23, 08, e4, 3d, e5, b8, 26, 37]
+[TRACE] VERIFY w1_packed FULL = [3d, c8, 9d, 21, 42, 69, 78, 85, 59, 5c, 00, 28, 36, 14, dc, 01, 46, 0e, a6, a8, 9e, 65, 79, e2, 99, 43, c1, 99, da, 03, 38, f9, 9f, 5a, 78, 2b, 81, 86, 9f, 08, 46, 18, 62, 48, a8, 89, 01, 1e, 12, 98, 82, 46, b7, 86, 44, 98, db, a0, c9, e8, 5a, bb, 0e, 1e, c8, 67, 96, 47, 5a, 28, b9, 80, 0d, 95, 93, 70, 59, d3, 5e, 66, a5, 89, 61, 42, 82, 09, 81, 85, 01, c0, 61, 00, c7, 98, 52, cb, 78, 75, c7, 54, 34, d7, 82, 80, ab, 9d, 72, a0, 25, b6, de, 86, 4b, 1e, 41, 01, 88, 28, 56, 53, 69, 70, 67, 4c, 39, 69, 86, 16, e4, 8d, 28, a6, a1, 27, df, 29, 08, 86, 28, c9, 40, 4a, 28, 89, 6a, a9, d0, 51, 30, ec, 5a, 31, 68, 3d, a6, 49, 34, a2, 24, 4e, 44, 07, ad, f6, 01, 00, f5, 23, 3c, 49, 8a, 46, 64, c8, 79, 51, 19, 98, 92, 9f, 41, db, 18, 18, 85, 4b, 3a, 41, 15, 5a, 40, da, 6a, 20, e7, 75, 04, 4d, 91, 97, 9d, 90, 37, c6, 16, 03, 18, 3d, c5, 44, 09, 60, 53, 4a, a7, dd, 59, d5, 9f, 29, f1, 9c, 80, 66, 47, 04, fa, cb, 6d, 1a, 52, 5c, 27, aa, 66, 14, 17, 26, 45, 81, 42, 27, 18, 35, a6, e3, 30, 67, c1, 0c, b8, 28, 39, da, 45, 9c, 04, 0c, 6c, a1, 06, 3d, e7, 98, 21, b3, ca, 08, 31, dd, 79, 72, 10, 8d, 21, 8e, 09, f9, 43, 78, 93, 86, 94, 48, 8d, ac, 34, 12, a5, b8, 4d, 31, ca, 58, 4c, a9, c4, 58, f0, 89, a0, 3a, 4d, 5c, a4, c7, 11, 43, cc, 66, 25, 6a, 7e, 43, 60, 69, 86, 42, 14, 49, db, 50, 34, 1a, 49, 22, 61, 2c, a6, 88, 11, 75, da, 65, 46, 66, 10, 65, 1a, 54, ba, c5, 9a, 98, a0, 5c, b0, d3, 76, 10, 1e, 39, 60, 5c, 18, 98, 6b, 61, 26, 1d, 80, 42, 8b, 69, 56, 86, 11, 20, c8, 86, a1, 6c, 3a, 31, 69, 16, 13, 82, a8, 30, 58, 8e, a3, 4b, 6e, 46, de, 44, a2, 08, 40, a4, 2b, 75, da, c4, 18, 82, 9f, 55, 44, 48, ae, a5, 41, a5, a0, dc, 34, 34, 25, 8d, c3, 4c, 0d, a8, 91, 4c, d7, 81, 68, d0, e5, 1e, 85, e1, a2, 07, 53, 72, 63, 0d, 48, 2a, 45, 10, 27, 02, 44, a3, 11, 8c, 90, 89, 31, 47, e7, 8a, a9, da, 3e, 33, 8c, 08, 82, 06, 98, 90, 62, 7a, a8, cd, 30, f6, ce, 66, 09, 8a, 15, 58, c0, 18, c5, a9, 74, 65, 18, 11, 9a, c3, 29, 65, 97, 31, 81, d0, 08, 73, 08, 3c, 93, 17, 4c, d9, 68, 4c, 77, 13, 4e, 31, 65, 49, 06, 41, 11, 5a, d3, 24, 15, 17, 86, 49, 8e, 80, 03, 9c, 36, 82, e2, 6c, 71, 98, a1, 73, df, 84, 22, 1d, 84, f5, 4a, 28, 45, db, 78, 42, 27, 76, 55, 13, 08, 29, 08, 24, 43, 4c, 7c, 61, 01, 8a, 82, 8c, a4, 43, 88, 70, 78, 2c, 92, 48, e0, 52, 53, 1c, b2, 66, e1, 70, f9, 84, aa, 15, d8, 0e, 03, 85, 66, 85, 8a, 64, 32, 98, 9d, 6a, 91, 7a, a9, dc, 9c, d6, db, 68, 47, 4f, 4d, 99, d2, 3a, 9a, 5b, 69, 21, eb, 89, 00, 05, 62, 69, a0, 25, 53, c8, 7c, 65, c1, 11, 3a, e7, 41, 46, 4f, 72, 36, 56, 86, 9a, 5e, 02, 15, 05, 84, 73, 84, 26, b0, 98, 45, 1a, 5a, ad, c9, 4c, 7e, a2, d3, 46, b5, 84, 3a, 52, a8, 71, 16, 44, 6d, 20, 5f, 39, 90, 15, 98, c7, ea, a4, 22, 87, a1, c2, db, 11, ea, 53, 7a, 78, 56, 31, 08, a7, 3a, 62, e3, 36, 21, 4a, 2c, 58, 56, ac, 58, c2, 35, 2a, ab, 28, 68, 9c, 42, 32, 65, 84, 94, 55, 91, 06, a0, 3a, 91, 61, ae, 14, 66, 6e, a6, 83, 24, 45, 63, 2d, 12, e2, a8, a0, 0e, 8a, b2, 93, 6e, b9, 59, 0c, b4, da, a9, 22, 44, 54, 60, 46, 1c, ca, c6, 78, 36, a2, a9, 13, d5, 46, 74, 89, 89, 57, a3, 68, 71, 69, 14, 44, 6b, 68, 54, 83, 89, b9, d6, 74, fa, 93]
+[TRACE] VERIFY w1_reconstructed coefficients:
+  w1''[0][0..32] = [15, 28, 34, 29, 8, 20, 9, 41, 30, 8, 21, 25, 23, 0, 0, 40, 13, 33, 19, 28, 0, 20, 24, 14, 41, 42, 34, 30, 25, 23, 39, 34]
+  w1''[0][32..64] = [38, 20, 15, 1, 38, 29, 40, 3, 14, 15, 38, 31, 22, 39, 32, 43, 32, 24, 26, 31, 2, 4, 24, 24, 24, 36, 34, 40, 34, 16, 4, 30]
+  w1''[0][64..96] = [4, 41, 34, 2, 17, 43, 30, 6, 17, 9, 35, 27, 40, 12, 39, 40, 22, 43, 44, 14, 7, 44, 33, 39, 37, 36, 29, 26, 10, 11, 38, 0]
+  w1''[1][0..32] = [26, 34, 3, 39, 29, 16, 17, 13, 36, 25, 30, 29, 36, 3, 31, 6, 5, 32, 12, 24, 15, 28, 21, 4, 2, 22, 1, 19, 18, 42, 31, 29]
+  w1''[2][0..32] = [27, 36, 27, 30, 17, 10, 8, 8, 16, 10, 16, 43, 29, 29, 43, 4, 6, 8, 10, 31, 21, 20, 17, 8, 43, 42, 21, 1, 41, 26, 3, 28]
+  w1''[3][0..32] = [25, 40, 22, 10, 25, 3, 10, 24, 39, 22, 42, 17, 30, 42, 39, 28, 39, 13, 27, 27, 26, 4, 29, 15, 19, 25, 39, 18, 14, 41, 41, 27]
+[TRACE] VERIFY μ[0..16]‖w1″[0..16] = [3b, 6b, b9, fe, a9, 0c, 23, 0f, 88, 17, 54, 05, 44, 44, f9, 49, 3d, c8, 9d, 21, 42, 69, 78, 85, 59, 5c, 00, 28, 36, 14, dc, 01]
+[TRACE] Verification: c_tilde_seed_recomputed[0..8] = [30, 99, e4, a9, f7, b5, 52, 1c]
+
+--- DEBUG VERIFY (message_len=27) ---
+Original c̃ from sig: [30, 99, e4, a9, f7, b5, 52, 1c]
+Recomputed c̃:       [30, 99, e4, a9, f7, b5, 52, 1c]
+
+w' (Az - ct1·2^d) before hints:
+  w'[0][0..6] raw coeffs: [2925614, 5242254, 6391336, 5569067, 1569189, 3813880]
+  w'[0][0..6] highbits:   [15, 28, 34, 29, 8, 20]
+
+w1'' (after UseHint):
+  w1''[0][0..6] values: [15, 28, 34, 29, 8, 20]
+
+Hints applied at positions (first 10): [10, 41, 86, 121, 160, 174, 191, 204, 211, 213]
+
+Packed w1'' length: 768 bytes
+Packed w1''[0..16]: [3d, c8, 9d, 21, 42, 69, 78, 85, 59, 5c, 00, 28, 36, 14, dc, 01]
+
+μ[0..16]: [3b, 6b, b9, fe, a9, 0c, 23, 0f, 88, 17, 54, 05, 44, 44, f9, 49]
+
+[DETAILED ANALYSIS] First 96 coefficients of polynomial 0:
+  [10]: w'=4096248 highbits=22 w1''=21 hint=1 CHANGED
+  [41]: w'=2956324 highbits=16 w1''=15 hint=1 CHANGED
+  [86]: w'=6188207 highbits=32 w1''=33 hint=1 CHANGED
+
+Challenge match: true
+--- END DEBUG VERIFY ---
+
+[INFO] Verification succeeded
+[DEBUG] decompose(6669283): r0=3043 (in (-95232, 95232]), r1=35
+[DEBUG] make_hint_polyveck: Starting hint generation
+        alpha=190464, gamma2=95232, m=45 buckets
+
+[HINT DEBUG] Position [0][25]:
+  r (w) = 8088070
+  z (ct0-cs2) raw = 8362892
+  z_signed (centered) = -17525
+  r + z_signed = 8088070 + -17525 = 8070545
+  (r + z) mod q = 8070545
+  decompose(r=8088070) → r0=88582, r1=42
+  decompose(r+z=8070545) → r0=71057, r1=42
+  HighBits(r) = 42, HighBits(r+z) = 42
+  Hint needed: false (NO)
+
+[HINT DEBUG] Position [0][82]:
+  r (w) = 8287669
+  z (ct0-cs2) raw = 6253
+  z_signed (centered) = 6253
+  r + z_signed = 8287669 + 6253 = 8293922
+  (r + z) mod q = 8293922
+  decompose(r=8287669) → r0=-92747, r1=44
+  decompose(r+z=8293922) → r0=-86494, r1=44
+  HighBits(r) = 44, HighBits(r+z) = 44
+  Hint needed: false (NO)
+[DEBUG] decompose(4185545): r0=-4663 (in (-95232, 95232]), r1=22
+[DEBUG] decompose(4315871): r0=-64801 (in (-95232, 95232]), r1=23
+[DEBUG] make_hint_polyveck: Generated 62 hints (limit=80)
+[DEBUG] use_hint_polyveck: Starting hint application
+        Total hints to apply: 62
+[DEBUG] decompose(6580119): r0=-86121 (in (-95232, 95232]), r1=35
+[DEBUG] Hint application details (first 20):
+  Hint at [0][10]: w'=4096248, direct_highbits=22, recovered=21 MISMATCH
+  Hint at [0][41]: w'=2956324, direct_highbits=16, recovered=15 MISMATCH
+  Hint at [0][86]: w'=6188207, direct_highbits=32, recovered=33 MISMATCH
+  Hint at [0][121]: w'=3148908, direct_highbits=17, recovered=16 MISMATCH
+  Hint at [0][160]: w'=5055477, direct_highbits=27, recovered=26 MISMATCH
+  Hint at [0][174]: w'=6589688, direct_highbits=35, recovered=34 MISMATCH
+  Hint at [0][191]: w'=1812729, direct_highbits=10, recovered=9 MISMATCH
+  Hint at [0][204]: w'=2955998, direct_highbits=16, recovered=15 MISMATCH
+  Hint at [0][211]: w'=6739857, direct_highbits=35, recovered=36 MISMATCH
+  Hint at [0][213]: w'=6755468, direct_highbits=35, recovered=36 MISMATCH
+  Hint at [0][221]: w'=2759542, direct_highbits=14, recovered=15 MISMATCH
+  Hint at [0][228]: w'=3136632, direct_highbits=16, recovered=17 MISMATCH
+  Hint at [0][231]: w'=1418636, direct_highbits=7, recovered=8 MISMATCH
+  Hint at [0][232]: w'=5809915, direct_highbits=31, recovered=30 MISMATCH
+  Hint at [1][21]: w'=5210781, direct_highbits=27, recovered=28 MISMATCH
+  Hint at [1][28]: w'=3527028, direct_highbits=19, recovered=18 MISMATCH
+  Hint at [1][30]: w'=5805078, direct_highbits=30, recovered=31 MISMATCH
+  Hint at [1][57]: w'=6383990, direct_highbits=34, recovered=33 MISMATCH
+  Hint at [1][63]: w'=76511, direct_highbits=0, recovered=1 MISMATCH
+  Hint at [1][76]: w'=443185, direct_highbits=2, recovered=3 MISMATCH
+[WARNING] 62 hint applications resulted in mismatches!
+[TRACE] pack_polyveck_w1: bits_per_coeff=6, K=4, total_bytes=768
+[TRACE] pack_polyveck_w1: GAMMA2=95232, buckets=45

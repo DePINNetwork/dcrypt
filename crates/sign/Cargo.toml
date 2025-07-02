@@ -8,6 +8,7 @@ repository.workspace = true
 license.workspace = true
 
 [features]
+trace = []
 default = ["std"]
 std = [
     "api/std", 
@@ -35,6 +36,7 @@ zeroize = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true, optional = true }
 subtle = "2.5"
+
 
 [dev-dependencies]
 rand_chacha = { workspace = true }
