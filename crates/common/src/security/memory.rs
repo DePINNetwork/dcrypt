@@ -15,6 +15,10 @@ extern crate alloc;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{vec::Vec, boxed::Box};
 
+/// Type alias for cleanup functions used in secure operations
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub type CleanupFn<T> = Box<dyn FnOnce(&mut T)>;
+
 /// Trait for secure cryptographic operations
 ///
 /// This trait ensures that sensitive data is properly handled and cleared
@@ -52,7 +56,7 @@ pub trait SecureOperationExt: Sized {
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub struct SecureOperationBuilder<T> {
     state: T,
-    cleanup_fns: Vec<Box<dyn FnOnce(&mut T)>>,
+    cleanup_fns: Vec<CleanupFn<T>>,
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]

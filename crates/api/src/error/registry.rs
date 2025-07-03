@@ -86,6 +86,12 @@ impl ErrorRegistry {
     }
 }
 
+impl Default for ErrorRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Drop for ErrorRegistry {
     fn drop(&mut self) {
         self.clear();

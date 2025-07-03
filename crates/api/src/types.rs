@@ -94,7 +94,7 @@ impl<const N: usize> DerefMut for SecretBytes<N> {
 
 impl<const N: usize> PartialEq for SecretBytes<N> {
     fn eq(&self, other: &Self) -> bool {
-        ct_eq(&self.data, &other.data)
+        ct_eq(self.data, other.data)
     }
 }
 

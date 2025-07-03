@@ -44,7 +44,7 @@ impl<'a> ZeroGuard<'a> {
     }
 }
 
-impl<'a> Drop for ZeroGuard<'a> {
+impl Drop for ZeroGuard<'_> {
     fn drop(&mut self) {
         secure_zero(self.0);
     }

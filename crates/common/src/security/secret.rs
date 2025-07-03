@@ -5,6 +5,7 @@
 
 use core::fmt;
 use core::ops::{Deref, DerefMut};
+use core::convert::{AsRef, AsMut};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 // Handle Vec import based on features
@@ -80,7 +81,7 @@ impl<const N: usize> SecureZeroingType for SecretBuffer<N> {
     }
     
     fn secure_clone(&self) -> Self {
-        Self::new(self.data.clone())
+        Self::new(self.data)  // Fixed: removed .clone() since [u8; N] implements Copy
     }
 }
 
@@ -235,14 +236,17 @@ impl<T: Zeroize> EphemeralSecret<T> {
             core::ptr::read(&this.inner)
         }
     }
-    
-    /// Get a reference to the inner value
-    pub fn as_ref(&self) -> &T {
+}
+
+// Fixed: Implement actual AsRef and AsMut traits instead of methods
+impl<T: Zeroize> AsRef<T> for EphemeralSecret<T> {
+    fn as_ref(&self) -> &T {
         &self.inner
     }
-    
-    /// Get a mutable reference to the inner value
-    pub fn as_mut(&mut self) -> &mut T {
+}
+
+impl<T: Zeroize> AsMut<T> for EphemeralSecret<T> {
+    fn as_mut(&mut self) -> &mut T {
         &mut self.inner
     }
 }
@@ -300,13 +304,14 @@ impl<'a, T: Zeroize> ZeroizeGuard<'a, T> {
     }
 }
 
-impl<'a, T: Zeroize> Drop for ZeroizeGuard<'a, T> {
+// Fixed: Use lifetime elision instead of explicit lifetimes
+impl<T: Zeroize> Drop for ZeroizeGuard<'_, T> {
     fn drop(&mut self) {
         self.value.zeroize();
     }
 }
 
-impl<'a, T: Zeroize> Deref for ZeroizeGuard<'a, T> {
+impl<T: Zeroize> Deref for ZeroizeGuard<'_, T> {
     type Target = T;
     
     fn deref(&self) -> &Self::Target {
@@ -314,7 +319,7 @@ impl<'a, T: Zeroize> Deref for ZeroizeGuard<'a, T> {
     }
 }
 
-impl<'a, T: Zeroize> DerefMut for ZeroizeGuard<'a, T> {
+impl<T: Zeroize> DerefMut for ZeroizeGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.value
     }

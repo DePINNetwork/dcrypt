@@ -21,12 +21,12 @@ pub mod simd {
     pub fn is_available() -> bool {
         #[cfg(target_feature = "sse2")]
         {
-            return true;
+            true
         }
 
         #[cfg(not(target_feature = "sse2"))]
         {
-            return false;
+            false
         }
     }
 }

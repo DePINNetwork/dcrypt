@@ -11,7 +11,7 @@ pub trait Operation<T> {
 }
 
 /// Base trait for encryption operations
-pub trait EncryptOperation<'a, C: SymmetricCipher + ?Sized>: Operation<C::Ciphertext> {
+pub trait EncryptOperation<'a, C: SymmetricCipher>: Operation<C::Ciphertext> {
     /// Set the nonce for encryption
     fn with_nonce(self, nonce: &'a C::Nonce) -> Self;
     
@@ -23,7 +23,7 @@ pub trait EncryptOperation<'a, C: SymmetricCipher + ?Sized>: Operation<C::Cipher
 }
 
 /// Base trait for decryption operations
-pub trait DecryptOperation<'a, C: SymmetricCipher + ?Sized>: Operation<Vec<u8>> {
+pub trait DecryptOperation<'a, C: SymmetricCipher>: Operation<Vec<u8>> {
     /// Set the nonce for decryption
     fn with_nonce(self, nonce: &'a C::Nonce) -> Self;
     
@@ -55,10 +55,10 @@ pub trait SymmetricCipher: Sized {
     fn name() -> &'static str;
     
     /// Begin encryption operation
-    fn encrypt<'a>(&'a self) -> Self::EncryptOperation<'a>;
+    fn encrypt(&self) -> Self::EncryptOperation<'_>;
     
     /// Begin decryption operation
-    fn decrypt<'a>(&'a self) -> Self::DecryptOperation<'a>;
+    fn decrypt(&self) -> Self::DecryptOperation<'_>;
     
     /// Generate a new random key
     fn generate_key<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self::Key>;
