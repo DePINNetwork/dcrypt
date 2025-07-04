@@ -35,7 +35,7 @@ use alloc::vec::Vec;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::error::{Error, Result, validate};
-use crate::types::{Nonce, SecretBytes, Tag};
+use crate::types::{Nonce, SecretBytes};
 use rand::{CryptoRng, RngCore};
 
 pub mod aes;

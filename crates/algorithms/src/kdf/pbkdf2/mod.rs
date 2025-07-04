@@ -12,12 +12,12 @@ use crate::hash::HashFunction;
 use crate::mac::hmac::Hmac;
 use crate::kdf::{KeyDerivationFunction, ParamProvider, PasswordHashFunction};
 use crate::kdf::{SecurityLevel, PasswordHash, KdfAlgorithm, KdfOperation};
-use crate::kdf::common::{constant_time_eq, generate_salt};
+use crate::kdf::common::constant_time_eq;
 use crate::types::{Salt, SecretBytes, ByteSerializable};
 use crate::types::salt::Pbkdf2Compatible;
 
 // Import security types
-use common::security::{SecretBuffer, SecretVec, SecureZeroingType, ZeroizeGuard};
+use common::security::SecretVec;
 
 // Conditional imports based on features
 #[cfg(feature = "std")]
@@ -110,7 +110,7 @@ pub struct Pbkdf2<H: HashFunction + Clone, const S: usize = 16> {
 pub struct Pbkdf2Builder<'a, H: HashFunction + Clone, const S: usize = 16> {
     kdf: &'a Pbkdf2<H, S>,
     ikm: Option<&'a [u8]>,
-    salt: Option<&'a Salt<S>>,
+    salt: Option<&'a [u8]>,
     iterations: u32,
     length: usize,
 }
@@ -131,10 +131,7 @@ where Salt<S>: Pbkdf2Compatible {
     }
     
     fn with_salt(mut self, salt: &'a [u8]) -> Self {
-        // We're receiving a regular byte slice here, but our implementation expects Salt<S>
-        // In a real implementation, you'd need to handle this conversion safely
-        // This is simplified for demonstration purposes
-        self.salt = None; // We'd convert &[u8] to Salt<S> here
+        self.salt = Some(salt);
         self
     }
     
@@ -155,7 +152,7 @@ where Salt<S>: Pbkdf2Compatible {
         ))?;
         
         let salt = match self.salt {
-            Some(s) => s.as_ref(),
+            Some(s) => s,
             None => self.kdf.params.salt.as_ref(),
         };
         

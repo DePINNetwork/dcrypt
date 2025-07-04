@@ -323,7 +323,6 @@ impl NttModulus for DilithiumParamsMont {
 }
 
 /// Helper functions for parameter validation
-
 /// Check if a number is prime (simplified check)
 pub fn is_prime(q: u32) -> bool {
     if q < 2 {

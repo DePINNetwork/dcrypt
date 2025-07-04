@@ -6,7 +6,6 @@ use crate::ec::p192::{
     scalar::Scalar,
 };
 use crate::error::{Error, Result, validate};
-use params::traditional::ecdsa::NIST_P192;
 use subtle::Choice;
 
 /// Format of a serialized elliptic‐curve point

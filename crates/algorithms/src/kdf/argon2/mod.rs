@@ -6,29 +6,21 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-#[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
-#[cfg(feature = "std")]
-use std::boxed::Box;
 
 use crate::error::{Error, Result, validate};
 // KdfAlgorithm trait, and PasswordHash related types
 use super::{KeyDerivationFunction, SecurityLevel, PasswordHashFunction, PasswordHash};
 use super::{KdfAlgorithm, KdfOperation}; // KdfAlgorithm is the trait, Argon2Algorithm is our marker
 use super::params::ParamProvider; // For ParamProvider trait
-use crate::hash::HashAlgorithm; // For Blake2bAlgorithm::OUTPUT_SIZE
 use crate::hash::HashFunction;   // Applied Edit 3
 use base64::Engine;
 use crate::types::{Salt, SecretBytes};
 use crate::Argon2Compatible;
 use std::collections::BTreeMap;
 use std::time::Duration;
-use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
+use zeroize::{Zeroize, Zeroizing};
 use rand::{CryptoRng, RngCore};
-use common::security::{SecretVec};
-use core::cmp::min;
 use core::convert::TryInto;
-use core::ops::Deref; // Applied Edit 7
 use crate::hash::blake2::Blake2b;
 
 // Argon2 specific constants

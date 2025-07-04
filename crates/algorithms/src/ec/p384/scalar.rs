@@ -2,7 +2,7 @@
 
 use crate::ec::p384::constants::P384_SCALAR_SIZE;
 use crate::error::{Error, Result, validate};
-use common::security::{SecretBuffer, SecureOperation, SecureCompare};
+use common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use params::traditional::ecdsa::NIST_P384;
 

@@ -56,12 +56,12 @@ pub use self::chacha20poly1305::ChaCha20Poly1305;
 #[cfg(feature = "alloc")]
 pub use self::xchacha20poly1305::XChaCha20Poly1305;
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Error, Result};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
-use crate::types::{SecretBytes, Tag, Nonce};
+use crate::types::{SecretBytes, Nonce};
 
 /// Marker trait for AEAD algorithms
 pub trait AeadAlgorithm {

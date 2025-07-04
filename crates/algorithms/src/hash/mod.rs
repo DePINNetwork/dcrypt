@@ -6,7 +6,7 @@
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use crate::error::{Result, validate};
+use crate::error::Result;
 use crate::types::Digest;
 
 pub mod sha1;

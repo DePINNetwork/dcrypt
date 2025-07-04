@@ -5,7 +5,6 @@ use crate::kdf::Pbkdf2Params;
 use crate::kdf::params::ParamProvider;
 use crate::kdf::KeyDerivationFunction;
 use crate::types::Salt;
-use zeroize::Zeroizing;
 use hex;
 
 /// Test PBKDF2-HMAC-SHA1 against RFC 6070 Test Case 1

@@ -9,7 +9,7 @@ use core::ops::{Deref, DerefMut};
 use zeroize::Zeroize;
 use subtle::ConstantTimeEq;
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Result, validate};
 use crate::types::{ConstantTimeEq as LocalConstantEq, RandomGeneration, SecureZeroingType, FixedSize, ByteSerializable};
 use crate::types::sealed::Sealed;
 

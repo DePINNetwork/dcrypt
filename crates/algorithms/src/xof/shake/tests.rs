@@ -2,9 +2,6 @@
 
 use super::*;
 use hex;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::Path;
 
 #[test]
 fn test_shake128_empty_output() {

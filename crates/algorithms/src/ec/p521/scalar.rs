@@ -1,9 +1,9 @@
 //! P-521 scalar arithmetic operations
 
-use crate::ec::p521::constants::{P521_SCALAR_SIZE, P521_LIMBS, p521_bytes_to_limbs, p521_limbs_to_bytes};
+use crate::ec::p521::constants::{P521_SCALAR_SIZE, p521_bytes_to_limbs, p521_limbs_to_bytes};
 use crate::ec::p521::field::FieldElement;
 use crate::error::{Error, Result, validate};
-use common::security::{SecretBuffer, SecureOperation};
+use common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use params::traditional::ecdsa::NIST_P521;
 
@@ -229,7 +229,7 @@ impl Scalar {
     /// 2. Compare with curve order using constant-time comparison
     /// 3. Conditionally subtract n if input >= n
     /// 4. Verify result is still non-zero
-    /// Constant-time “a ≥ b” test on 66-byte big-endian values
+    /// Constant-time "a ≥ b" test on 66-byte big-endian values
     #[inline(always)]
     fn ge_be(a: &[u8; P521_SCALAR_SIZE], b: &[u8; P521_SCALAR_SIZE]) -> bool {
         let mut gt = 0u8;

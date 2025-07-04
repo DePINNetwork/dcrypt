@@ -8,7 +8,7 @@ use core::ops::{Deref, DerefMut};
 use zeroize::Zeroize;
 use hex;
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Error, Result};
 use crate::types::{ConstantTimeEq, SecureZeroingType, FixedSize, ByteSerializable};
 
 /// A cryptographic digest with a fixed size

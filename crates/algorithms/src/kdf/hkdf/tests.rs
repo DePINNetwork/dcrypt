@@ -1,9 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::hash::{HashFunction, Sha256, Sha512};
     use crate::kdf::Hkdf;
-    use zeroize::Zeroizing;
     use hex;
     
     /// Test HKDF implementation against RFC 5869 Test Case 1
@@ -123,6 +121,8 @@ mod tests {
     /// 2. Output length too large
     #[test]
     fn test_hkdf_invalid_parameters() {
+        use zeroize::Zeroizing;
+        
         // Test with PRK too short (should be at least HashLen)
         let short_prk = Zeroizing::new(vec![0; 16]); // Sha256::output_size is 32
         let info = b"info";

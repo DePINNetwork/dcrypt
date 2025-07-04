@@ -4,7 +4,7 @@
 //! Note: SHA-1 is considered cryptographically broken and should only be used
 //! for compatibility with existing systems.
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Error, Result};
 use crate::hash::{Hash, HashFunction, HashAlgorithm};
 use crate::types::Digest;
 use byteorder::{BigEndian, ByteOrder};

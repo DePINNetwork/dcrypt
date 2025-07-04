@@ -7,8 +7,8 @@
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+// #[cfg(feature = "alloc")]
+// use alloc::vec::Vec;
 
 // /// Represents a sparse binary matrix.
 // pub struct SparseBinaryMatrix {

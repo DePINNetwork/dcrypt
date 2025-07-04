@@ -8,7 +8,7 @@ use core::ops::{Deref, DerefMut};
 use rand::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Result, validate};
 use crate::types::{ConstantTimeEq, RandomGeneration, SecureZeroingType, FixedSize, ByteSerializable};
 use crate::types::sealed::Sealed;
 

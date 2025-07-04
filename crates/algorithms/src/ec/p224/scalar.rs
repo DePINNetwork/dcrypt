@@ -1,8 +1,8 @@
 //! P-224 scalar arithmetic operations
 
-use crate::ec::p224::constants::{P224_SCALAR_SIZE, bytes_to_limbs_le, limbs_to_bytes_be};
+use crate::ec::p224::constants::P224_SCALAR_SIZE;
 use crate::error::{Error, Result, validate};
-use common::security::{SecretBuffer, SecureOperation, SecureCompare};
+use common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use params::traditional::ecdsa::NIST_P224;
 

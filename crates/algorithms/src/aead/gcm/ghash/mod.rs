@@ -1,39 +1,39 @@
-/// GHASH implementation for Galois/Counter Mode (GCM)
-/// 
-/// This module provides an implementation of the GHASH function as specified in
-/// NIST SP 800-38D for use with GCM mode. 
-///
-/// ## Implementation Note
-///
-/// NIST SP 800-38D allows for multiple valid implementations of the Galois field
-/// arithmetic that underpins GHASH. This implementation has been validated against
-/// the official NIST test vectors for the complete GCM algorithm, ensuring
-/// interoperability and correctness of the overall authenticated encryption.
-///
-/// The Galois field multiplication in particular may produce intermediate values
-/// that differ from other implementations (like OpenSSL, Bouncy Castle, etc.)
-/// while still producing correct final results for the full GCM operation.
-/// 
-/// This is due to differences in:
-/// 1. Bit ordering conventions
-/// 2. Polynomial reduction implementation
-/// 3. Internal state representation
-///
-/// Our implementation has been tested against the NIST CAVP (Cryptographic Algorithm
-/// Validation Program) test vectors for GCM mode, which is the authoritative
-/// reference for validating GCM implementations.
-///
-/// ## Constant-Time Guarantees
-///
-/// This implementation is designed to be timing-attack resistant:
-/// - All block operations process the entire block to avoid data-dependent timing
-/// - All conditional operations use arithmetic rather than branches
-/// - GF(2^128) multiplication is implemented in a constant-time manner
-/// - Memory barriers prevent compiler optimizations that could introduce timing variation
+//! GHASH implementation for Galois/Counter Mode (GCM)
+//! 
+//! This module provides an implementation of the GHASH function as specified in
+//! NIST SP 800-38D for use with GCM mode. 
+//!
+//! ## Implementation Note
+//!
+//! NIST SP 800-38D allows for multiple valid implementations of the Galois field
+//! arithmetic that underpins GHASH. This implementation has been validated against
+//! the official NIST test vectors for the complete GCM algorithm, ensuring
+//! interoperability and correctness of the overall authenticated encryption.
+//!
+//! The Galois field multiplication in particular may produce intermediate values
+//! that differ from other implementations (like OpenSSL, Bouncy Castle, etc.)
+//! while still producing correct final results for the full GCM operation.
+//! 
+//! This is due to differences in:
+//! 1. Bit ordering conventions
+//! 2. Polynomial reduction implementation
+//! 3. Internal state representation
+//!
+//! Our implementation has been tested against the NIST CAVP (Cryptographic Algorithm
+//! Validation Program) test vectors for GCM mode, which is the authoritative
+//! reference for validating GCM implementations.
+//!
+//! ## Constant-Time Guarantees
+//!
+//! This implementation is designed to be timing-attack resistant:
+//! - All block operations process the entire block to avoid data-dependent timing
+//! - All conditional operations use arithmetic rather than branches
+//! - GF(2^128) multiplication is implemented in a constant-time manner
+//! - Memory barriers prevent compiler optimizations that could introduce timing variation
 
 use byteorder::{BigEndian, ByteOrder};
 use zeroize::Zeroize;
-use crate::error::{Error, Result, validate};
+use crate::error::{Result, validate};
 
 // FIXED: Use proper import for atomic operations
 #[cfg(feature = "std")]
@@ -86,21 +86,16 @@ impl GHash {
     pub fn update(&mut self, data: &[u8]) -> Result<()> {
         let mut offset = 0;
         
-        // Keep track of work done for timing consistency
-        let mut blocks_processed = 0;
-        
         // Process full 16-byte blocks
         while offset + GCM_BLOCK_SIZE <= data.len() {
             self.update_block(&data[offset..offset + GCM_BLOCK_SIZE], GCM_BLOCK_SIZE)?;
             offset += GCM_BLOCK_SIZE;
-            blocks_processed += 1;
         }
         
         // Handle any remaining partial block
         if offset < data.len() {
             let remaining = data.len() - offset;
             self.update_block(&data[offset..], remaining)?;
-            blocks_processed += 1;
         }
         
         // Add dummy operations for smaller inputs to provide more consistent timing
@@ -110,7 +105,6 @@ impl GHash {
             
             // Create a temporary state for dummy operations to avoid changing the real state
             let mut dummy_y = self.y;
-            let dummy_data = [0u8; GCM_BLOCK_SIZE];
             
             // Perform dummy operations with memory barriers to prevent optimization
             compiler_fence(Ordering::SeqCst);

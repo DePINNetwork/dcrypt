@@ -19,7 +19,7 @@ use core::{cmp::min, convert::TryInto};
 use zeroize::Zeroize;
 
 use crate::error::{validate, Error, Result};
-use crate::hash::{Hash, HashAlgorithm, HashFunction};
+use crate::hash::{HashAlgorithm, HashFunction};
 use crate::types::Digest;
 use common::security::{EphemeralSecret, SecretBuffer, SecureZeroingType};
 

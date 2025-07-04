@@ -8,7 +8,7 @@ use core::fmt;
 use core::ops::{Deref, DerefMut};
 use zeroize::Zeroize;
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Result, validate};
 use crate::types::{ConstantTimeEq, RandomGeneration, SecureZeroingType, ByteSerializable, FixedSize};
 use crate::types::sealed::Sealed;
 

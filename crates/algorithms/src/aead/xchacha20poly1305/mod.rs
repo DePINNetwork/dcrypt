@@ -6,7 +6,7 @@
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
-use crate::error::{Error, Result, validate};
+use crate::error::{Result, validate};
 use crate::stream::chacha::chacha20::{ChaCha20, CHACHA20_NONCE_SIZE};
 use crate::aead::chacha20poly1305::{
     ChaCha20Poly1305, CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_TAG_SIZE,

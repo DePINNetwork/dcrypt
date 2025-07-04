@@ -21,7 +21,7 @@ use core::fmt;
 use core::str::FromStr;
 use zeroize::{Zeroize, Zeroizing};
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Error, Result};
 
 /// Trait for algorithms with configurable parameters
 pub trait ParamProvider {

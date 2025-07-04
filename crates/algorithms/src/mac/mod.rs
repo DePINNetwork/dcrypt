@@ -3,7 +3,7 @@
 //! This module contains implementations of various Message Authentication Codes (MACs)
 //! used throughout the DCRYPT library, with improved type safety and ergonomic APIs.
 
-use crate::error::{Error, Result, validate};
+use crate::error::Result;
 use zeroize::Zeroize;
 use subtle::ConstantTimeEq;
 
@@ -95,7 +95,7 @@ impl<'a, M: Mac> MacBuilder<'a, M> for GenericMacBuilder<'a, M> {
         Ok(self)
     }
     
-    fn update_multi(mut self, data: &[&'a [u8]]) -> Result<Self> {
+    fn update_multi(self, data: &[&'a [u8]]) -> Result<Self> {
         for chunk in data {
             self.mac.update(chunk)?;
         }

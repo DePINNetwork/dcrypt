@@ -44,7 +44,6 @@
 /// assert_eq!(key1, key2);
 /// assert_eq!(&key1, key3.as_ref());
 /// ```
-
 // Conditional imports for no_std
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -66,8 +65,8 @@ use ::core::marker::PhantomData;
 use rand::{CryptoRng, RngCore};
 
 // Import the new error types
-use crate::error::{Error, Result, validate};
-use crate::types::{Salt, SecretBytes};
+use crate::error::{Error, Result};
+use crate::types::Salt;
 use crate::hash::HashFunction;
 use zeroize::Zeroize;
 

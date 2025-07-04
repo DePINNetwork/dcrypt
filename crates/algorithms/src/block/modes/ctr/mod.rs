@@ -12,7 +12,7 @@ use byteorder::{ByteOrder, BigEndian};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use super::super::BlockCipher;
-use crate::error::{Error, Result, validate};
+use crate::error::{Result, validate};
 use crate::types::Nonce;
 use crate::types::nonce::AesCtrCompatible;
 

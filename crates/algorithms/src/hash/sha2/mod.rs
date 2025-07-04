@@ -6,7 +6,7 @@
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Result, validate};
 use crate::hash::{Hash, HashFunction, HashAlgorithm};
 use crate::types::Digest;
 use byteorder::{BigEndian, ByteOrder};

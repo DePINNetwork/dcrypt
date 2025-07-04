@@ -8,17 +8,15 @@ use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
 use rand::{CryptoRng, RngCore};
 use subtle::ConstantTimeEq;
-// Corrected import for ConstantTimeEquals, assuming it's defined within internal::constant_time
-use internal::constant_time::ConstantTimeEquals as InternalConstantTimeEquals; 
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Result, validate};
 use crate::types::{RandomGeneration, SecureZeroingType, FixedSize, ByteSerializable, ConstantTimeEq as LocalConstantEq};
 use crate::types::sealed::Sealed;
 use crate::types::{ValidKeySize, ValidSecretKeySize, ValidPublicKeySize};
 
 // Import security types from dcrypt-core
-use common::security::{SecretBuffer, SecureZeroingType as CoreSecureZeroingType};
+use common::security::SecretBuffer;
 
 // Add these imports to fix the "cannot find type" errors
 use crate::types::algorithms::{

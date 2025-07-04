@@ -13,7 +13,7 @@ use crate::error::{Error, Result};
 use crate::ec::p521::constants::{
     P521_FIELD_ELEMENT_SIZE, P521_LIMBS, p521_bytes_to_limbs, p521_limbs_to_bytes
 };
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+use subtle::{Choice, ConditionallySelectable};
 use zeroize::Zeroize;
 
 /// P-521 field element representing values in Fₚ (p = 2^521 − 1).

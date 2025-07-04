@@ -1,6 +1,7 @@
 use super::*;
 use hex;
 use crate::types::SecretBytes;
+use crate::error::Error;
 use params::utils::symmetric::AES_BLOCK_SIZE;
 
 #[test]

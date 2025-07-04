@@ -2,6 +2,7 @@ use super::*; // Imports items from the parent module (argon2/mod.rs)
 use common::security::SecretVec;
 use hex; // For decoding expected hex strings in RFC vectors
 use rand::RngCore; // For fill_bytes
+use std::ops::Deref; // For deref() method on Zeroizing
 
 // RFC-9106 constant inputs --------------------------------------------------
 const PASSWORD: [u8; 32] = [0x01; 32];           // Password[32] 01 01 … 01

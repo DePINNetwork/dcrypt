@@ -16,7 +16,7 @@ use crate::error::{Error, Result, validate};
 
 // Import security types from dcrypt-core
 use common::security::{
-    SecretBuffer, EphemeralSecret, SecureZeroingType, SecureOperation, barrier
+    SecretBuffer, EphemeralSecret, SecureZeroingType, barrier
 };
 
 // SHAKE constants

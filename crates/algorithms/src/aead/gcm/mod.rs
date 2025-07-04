@@ -356,11 +356,13 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> SymmetricCipher for Gcm<B> {
 // Implement Operation for GcmEncryptOperation
 impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Ciphertext> for GcmEncryptOperation<'a, B> {
     fn execute(self) -> std::result::Result<Ciphertext, CoreError> {
-        let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
-            context: "GCM encryption",
-            #[cfg(feature = "std")]
-            message: "Nonce is required for GCM encryption".to_string(),
-        })?;
+        if self.nonce.is_none() {
+            return Err(CoreError::InvalidParameter {
+                context: "GCM encryption",
+                #[cfg(feature = "std")]
+                message: "Nonce is required for GCM encryption".to_string(),
+            });
+        }
         let plaintext = b""; // Default empty plaintext
         
         let ciphertext = self.cipher.internal_encrypt(
@@ -385,11 +387,13 @@ impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> EncryptOperation<'a, Gcm<B>> 
     }
     
     fn encrypt(self, plaintext: &'a [u8]) -> std::result::Result<Ciphertext, CoreError> {
-        let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
-            context: "GCM encryption",
-            #[cfg(feature = "std")]
-            message: "Nonce is required for GCM encryption".to_string(),
-        })?;
+        if self.nonce.is_none() {
+            return Err(CoreError::InvalidParameter {
+                context: "GCM encryption",
+                #[cfg(feature = "std")]
+                message: "Nonce is required for GCM encryption".to_string(),
+            });
+        }
         
         let ciphertext = self.cipher.internal_encrypt(
             plaintext,
@@ -424,11 +428,13 @@ impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> DecryptOperation<'a, Gcm<B>> 
     }
     
     fn decrypt(self, ciphertext: &'a <Gcm<B> as SymmetricCipher>::Ciphertext) -> std::result::Result<Vec<u8>, CoreError> {
-        let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
-            context: "GCM decryption",
-            #[cfg(feature = "std")]
-            message: "Nonce is required for GCM decryption".to_string(),
-        })?;
+        if self.nonce.is_none() {
+            return Err(CoreError::InvalidParameter {
+                context: "GCM decryption",
+                #[cfg(feature = "std")]
+                message: "Nonce is required for GCM decryption".to_string(),
+            });
+        }
         
         self.cipher.internal_decrypt(
             ciphertext.as_ref(),

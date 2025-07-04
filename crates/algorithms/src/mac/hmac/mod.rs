@@ -110,7 +110,7 @@ where
     pub fn finalize(&mut self) -> Result<Vec<u8>> {
         if self.is_finalized {
             // Equal-cost burn: mimic normal finalisation cost.
-            let mut inner_dummy = [0u8; 64]; // max SHA-512 output
+            let inner_dummy = [0u8; 64]; // max SHA-512 output
             let mut outer = H::new();
             outer.update(&self.opad.as_ref()[..self.block_size])?;
             outer.update(&inner_dummy[..H::output_size()])?;

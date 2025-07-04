@@ -11,10 +11,9 @@ use crate::mac::hmac::Hmac;
 use crate::kdf::{KeyDerivationFunction, ParamProvider, SecurityLevel, KdfAlgorithm, KdfOperation};
 use crate::types::Salt;
 use crate::types::salt::HkdfCompatible;
-use crate::types::sealed::Sealed;
 
 // Import security types from dcrypt-core
-use common::security::{EphemeralSecret, SecretBuffer, SecureZeroingType};
+use common::security::{EphemeralSecret, SecureZeroingType};
 
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use rand::{CryptoRng, RngCore};
@@ -74,7 +73,7 @@ pub struct Hkdf<H: HashFunction, const S: usize = 16> {
 pub struct HkdfOperation<'a, H: HashFunction, const S: usize = 16> {
     kdf: &'a Hkdf<H, S>,
     ikm: Option<&'a [u8]>,
-    salt: Option<&'a Salt<S>>,
+    salt: Option<&'a [u8]>,
     info: Option<&'a [u8]>,
     length: usize,
 }
@@ -89,10 +88,7 @@ where
     }
     
     fn with_salt(mut self, salt: &'a [u8]) -> Self {
-        // We're receiving a regular byte slice here, but our implementation expects Salt<S>
-        // In a real implementation, you'd need to handle this conversion safely
-        // This is simplified for demonstration purposes
-        self.salt = None; // We'd convert &[u8] to Salt<S> here
+        self.salt = Some(salt);
         self
     }
     
@@ -109,7 +105,7 @@ where
     fn derive(self) -> Result<Vec<u8>> {
         let ikm = self.ikm.ok_or_else(|| Error::param("ikm", "Input keying material is required"))?;
         
-        let salt_bytes = self.salt.map(|s| s.as_ref());
+        let salt_bytes = self.salt;
         let info_bytes = self.info;
         
         // Fix: Convert Zeroizing<Vec<u8>> to Vec<u8>

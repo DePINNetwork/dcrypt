@@ -8,7 +8,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 use core::marker::PhantomData;
-use core::ops::{Add, Sub, Neg, Mul};
+use core::ops::{Add, Sub, Neg};
 use super::params::{Modulus, NttModulus}; // FIXED: Import NttModulus from params
 use super::ntt::montgomery_reduce;
 use crate::error::{Result, Error};

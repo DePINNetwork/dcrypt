@@ -1,9 +1,8 @@
 //! Essential tests for Number Theoretic Transform implementation
 
 use super::*;
-use super::super::params::{DilithiumParams, Kyber256Params, PostInvNtt};
+use super::super::params::{DilithiumParams, Kyber256Params};
 use super::super::polynomial::Polynomial;
-use crate::poly::polynomial::PolynomialNttExt;
 
 /// Test NTT linearity property: NTT(a + b) = NTT(a) + NTT(b)
 #[test]

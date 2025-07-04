@@ -7,8 +7,8 @@
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+// #[cfg(feature = "alloc")]
+// use alloc::vec::Vec;
 
 // /// Represents a system of m quadratic polynomials in n variables over GF(q).
 // pub struct MultivariateQuadraticSystem {

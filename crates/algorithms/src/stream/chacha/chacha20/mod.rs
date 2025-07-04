@@ -4,7 +4,6 @@
 
 use byteorder::{ByteOrder, LittleEndian};
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use crate::error::{Error, Result};
 use crate::types::Nonce;
 use crate::types::nonce::ChaCha20Compatible;
 use common::security::{SecretBuffer, EphemeralSecret};

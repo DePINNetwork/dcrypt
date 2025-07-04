@@ -9,14 +9,9 @@
 use alloc::vec::Vec;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-use crate::error::{Error, Result, validate};
+use crate::error::Result;
 use crate::hash::{HashFunction, HashAlgorithm};
 use crate::types::Digest;
-
-use params::utils::hash::{
-    SHA3_224_OUTPUT_SIZE, SHA3_256_OUTPUT_SIZE, SHA3_384_OUTPUT_SIZE, SHA3_512_OUTPUT_SIZE,
-    SHA3_256_BLOCK_SIZE, SHA3_512_BLOCK_SIZE
-};
 
 /// Default output size for SHAKE128 (256 bits / 32 bytes)
 pub const SHAKE128_OUTPUT_SIZE: usize = 32;  // 256 bits

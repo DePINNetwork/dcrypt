@@ -6,7 +6,7 @@
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use crate::error::{validate, Error, Result};
+use crate::error::{validate, Result};
 use crate::mac::{Mac, MacAlgorithm};
 use crate::types::Tag;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
@@ -133,7 +133,7 @@ impl Poly1305 {
     ///
     /// After this call the `Poly1305` instance must be discarded because its
     /// internal key material has been moved.
-    pub fn finalize(mut self) -> Tag<POLY1305_TAG_SIZE> {
+    pub fn finalize(self) -> Tag<POLY1305_TAG_SIZE> {
         // 1) polynomial evaluation h = Σ (block · r^i)
         let mut h = [0u64; 3];
         let r = self.get_r(); // Get r values from SecretBuffer
