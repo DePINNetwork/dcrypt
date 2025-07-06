@@ -1,10 +1,11 @@
-//! Fixed CBC mode implementation with proper error propagation
+//! Cipher Block Chaining (CBC) mode implementation
 //!
-//! Cipher Block Chaining (CBC) mode of operation for block ciphers
+//! CBC mode is a block cipher mode of operation that provides confidentiality
+//! by XORing each plaintext block with the previous ciphertext block before
+//! encryption. The first block is XORed with an initialization vector (IV).
 //!
-//! CBC mode encrypts each block of plaintext by XORing it with the previous
-//! ciphertext block before applying the cipher. The first block is XORed with
-//! an initialization vector (IV).
+//! This implementation follows NIST SP 800-38A specifications and provides
+//! secure memory handling with automatic zeroization of sensitive data.
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
@@ -46,22 +47,6 @@ impl<B: BlockCipher + CipherAlgorithm + Zeroize + ZeroizeOnDrop> Cbc<B> {
             cipher,
             iv: iv.as_ref().to_vec(),
         })
-    }
-    
-    /// Creates a new CBC mode instance with the given cipher and IV, with unchecked validation
-    /// 
-    /// # Safety
-    /// 
-    /// This method does not validate that the IV size matches the block size.
-    /// It is the caller's responsibility to ensure that the IV is the correct size.
-    pub(crate) fn new_unchecked<const N: usize>(cipher: B, iv: &Nonce<N>) -> Self
-    where 
-        Nonce<N>: CbcCompatible
-    {
-        Self {
-            cipher,
-            iv: iv.as_ref().to_vec(),
-        }
     }
     
     /// Encrypts a message using CBC mode
@@ -129,7 +114,7 @@ impl<B: BlockCipher + CipherAlgorithm + Zeroize + ZeroizeOnDrop> Cbc<B> {
             block[..chunk.len()].copy_from_slice(chunk);
             
             // Save current ciphertext block
-            let current_block = block.clone();
+            let current_block = block;
             
             // Decrypt the block
             self.cipher.decrypt_block(&mut block)?;

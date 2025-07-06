@@ -68,7 +68,7 @@ fn parse_aes_cbc_test_file(filepath: &str) -> Vec<AesCbcTestVector> {
     
     let mut test_vectors = Vec::new();
     let mut current_vector: Option<AesCbcTestVector> = None;
-    let mut is_encrypt_mode = false;
+    let mut _is_encrypt_mode = false;
     
     while let Some(Ok(line)) = lines.next() {
         let line = line.trim();
@@ -80,10 +80,10 @@ fn parse_aes_cbc_test_file(filepath: &str) -> Vec<AesCbcTestVector> {
         
         // Detect test mode (encryption or decryption)
         if line == "[ENCRYPT]" {
-            is_encrypt_mode = true;
+            _is_encrypt_mode = true;
             continue;
         } else if line == "[DECRYPT]" {
-            is_encrypt_mode = false;
+            _is_encrypt_mode = false;
             continue;
         }
         

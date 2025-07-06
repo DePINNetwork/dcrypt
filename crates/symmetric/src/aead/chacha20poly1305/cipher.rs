@@ -3,7 +3,7 @@
 //! This module provides an implementation of the ChaCha20Poly1305 authenticated encryption
 //! algorithm as defined in RFC 8439.
 
-use crate::error::{Error, Result, validate};
+use crate::error::{Result, validate, from_primitive_error};
 use algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
 use algorithms::aead::xchacha20poly1305::XChaCha20Poly1305;
 use algorithms::aead::chacha20poly1305::CHACHA20POLY1305_TAG_SIZE;
@@ -47,7 +47,7 @@ impl Aead for ChaCha20Poly1305Cipher {
         
         // Use the converted nonce
         self.cipher.encrypt(&primitives_nonce, plaintext, aad)
-            .map_err(|e| Error::from(e))
+            .map_err(from_primitive_error)
     }
     
     fn decrypt(&self, nonce: &Self::Nonce, ciphertext: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
@@ -61,10 +61,12 @@ impl Aead for ChaCha20Poly1305Cipher {
         self.cipher.decrypt(&primitives_nonce, ciphertext, aad)
             .map_err(|e| match e {
                 PrimitiveError::Authentication { .. } => 
-                    Error::Primitive(PrimitiveError::Authentication { 
-                        algorithm: "ChaCha20Poly1305" 
-                    }),
-                _ => Error::from(e),
+                    api::error::Error::AuthenticationFailed { 
+                        context: "ChaCha20Poly1305",
+                        #[cfg(feature = "std")]
+                        message: "authentication tag verification failed".to_string(),
+                    },
+                _ => from_primitive_error(e),
             })
     }
     
@@ -173,9 +175,10 @@ impl XChaCha20Poly1305Nonce {
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
         let bytes = base64::decode(s)
-            .map_err(|_| Error::Format { 
+            .map_err(|_| api::error::Error::SerializationError { 
                 context: "XChaCha20Poly1305 nonce base64 decode", 
-                details: "invalid base64 encoding" 
+                #[cfg(feature = "std")]
+                message: "invalid base64 encoding".to_string()
             })?;
             
         validate::length("XChaCha20Poly1305 nonce", bytes.len(), 24)?;
@@ -196,7 +199,7 @@ impl Aead for XChaCha20Poly1305Cipher {
         
         // Use the converted nonce
         self.cipher.encrypt(&primitives_nonce, plaintext, aad)
-            .map_err(|e| Error::from(e))
+            .map_err(from_primitive_error)
     }
     
     fn decrypt(&self, nonce: &Self::Nonce, ciphertext: &[u8], aad: Option<&[u8]>) -> Result<Vec<u8>> {
@@ -210,10 +213,12 @@ impl Aead for XChaCha20Poly1305Cipher {
         self.cipher.decrypt(&primitives_nonce, ciphertext, aad)
             .map_err(|e| match e {
                 PrimitiveError::Authentication { .. } => 
-                    Error::Primitive(PrimitiveError::Authentication { 
-                        algorithm: "XChaCha20Poly1305" 
-                    }),
-                _ => Error::from(e),
+                    api::error::Error::AuthenticationFailed { 
+                        context: "XChaCha20Poly1305",
+                        #[cfg(feature = "std")]
+                        message: "authentication tag verification failed".to_string(),
+                    },
+                _ => from_primitive_error(e),
             })
     }
     

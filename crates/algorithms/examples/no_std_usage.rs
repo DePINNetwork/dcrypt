@@ -5,15 +5,14 @@
 
 // Standard library features (if available)
 #[cfg(feature = "std")]
-use std::{println, vec, vec::Vec, string::String, format};
+use std::{println, vec::Vec};
 
 // No-std + alloc features
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{println, vec, vec::Vec, string::String, format};
+use alloc::{println, vec::Vec};
 
 // Core DCRYPT API traits and types
 use api::error::{Error as CoreError, Result as CoreResult};
-use api::Key as ApiKey;
 use api::Ciphertext as ApiCiphertext;
 use api::traits::SymmetricCipher as ApiSymmetricCipherTrait; // Import the trait
 use api::traits::symmetric::{EncryptOperation, DecryptOperation}; // Import operation traits
@@ -23,10 +22,9 @@ use api::traits::symmetric::{EncryptOperation, DecryptOperation}; // Import oper
 use algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
 use algorithms::hash::sha2::Sha256;
 use algorithms::hash::HashFunction; // Import the trait for new, update, finalize
-use algorithms::kdf::hkdf::Hkdf;
 use algorithms::mac::hmac::Hmac;
-use algorithms::types::{Nonce, Salt, Digest, Tag, SecretBytes};
-use algorithms::error::{Error as AlgorithmsError, Result as AlgorithmsResult};
+use algorithms::types::{Nonce, Digest, SecretBytes};
+
 
 // Randomness (requires a no_std compatible RNG or specific target features)
 #[cfg(feature = "std")]
@@ -42,9 +40,9 @@ fn main() -> CoreResult<()> {
     let data_to_hash = b"Hello, DCRYPT no_std!";
     let mut hasher = Sha256::new(); // Now uses HashFunction::new()
     hasher.update(data_to_hash) // Now uses HashFunction::update()
-        .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+        .map_err(CoreError::from)?;
     let digest_result = hasher.finalize() // Now uses HashFunction::finalize()
-        .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+        .map_err(CoreError::from)?;
     let digest_bytes: Digest<32> = digest_result;
 
     println!("Data: {:?}", core::str::from_utf8(data_to_hash).unwrap_or("Invalid UTF-8"));
@@ -61,11 +59,11 @@ fn main() -> CoreResult<()> {
 
         let message_to_mac = b"Authenticated message";
         let mut hmac = Hmac::<Sha256>::new(mac_key.as_ref())
-            .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+            .map_err(CoreError::from)?;
         hmac.update(message_to_mac)
-            .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+            .map_err(CoreError::from)?;
         let tag_result = hmac.finalize()
-            .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+            .map_err(CoreError::from)?;
         let tag_bytes: Vec<u8> = tag_result;
 
         println!("Message: {:?}", core::str::from_utf8(message_to_mac).unwrap_or("Invalid UTF-8"));

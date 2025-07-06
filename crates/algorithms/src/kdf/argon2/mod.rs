@@ -29,7 +29,6 @@ const ARGON2_BLOCK_SIZE: usize = 1024;
 const ARGON2_QWORDS_IN_BLOCK: usize = ARGON2_BLOCK_SIZE / 8; // 128 qwords
 const ARGON2_SYNC_POINTS: u32 = 4; // Number of synchronization points (slices) per pass per lane
 
-const ARGON2_PREHASH_DIGEST_LENGTH: usize = 64; // H0 output size
 const ARGON2_PREHASH_SEED_LENGTH: usize = 72;
 
 /// Creates a Blake2b instance configured for Argon2's H₀ function (pre-hash)
@@ -97,7 +96,6 @@ impl Zeroize for Block {
 type MemBlock = Block;      // replace the old alias
 
 // ─── BLAMKA round + G mixing ──────────────────────────────────────────
-const ARGON2_VERSION_NUMBER: u32 = 0x13;
 
 #[inline(always)]
 fn mul_alpha(x: u64, y: u64) -> u64 {
@@ -256,13 +254,10 @@ pub struct Argon2<const S: usize> where Salt<S>: Argon2Compatible {
 }
 
 
-const MIN_PWD_LEN: usize = 0;
 const MAX_PWD_LEN: u32 = 0xFFFFFFFF;
 const MIN_SALT_LEN: usize = 8;
 const MAX_SALT_LEN: u32 = 0xFFFFFFFF;
-const MIN_AD_LEN: usize = 0;
 const MAX_AD_LEN: u32 = 0xFFFFFFFF;
-const MIN_SECRET_LEN: usize = 0;
 const MAX_SECRET_LEN: u32 = 0xFFFFFFFF;
 
 const MIN_LANES: u32 = 1;
@@ -270,7 +265,6 @@ const MAX_LANES: u32 = 0xFFFFFF;
 const MIN_OUT_LEN: usize = 4;
 const MAX_OUT_LEN: u32 = 0xFFFFFFFF;
 const MIN_TIME_COST: u32 = 1;
-const MAX_TIME_COST: u32 = 0xFFFFFFFF;
 const MIN_ABS_MEMORY_COST_KIB: u32 = 8;
 
 
@@ -349,13 +343,10 @@ fn fill_address_block_for_segment(
     buf.0[off..off+8].copy_from_slice(&counter.to_le_bytes());
     // No need to bump off further, the rest is zero
 
-    // unpack into u64 array for G function
+    // unpack into u64 array for G function - FIXED: Using iterator
     let mut input_q = [0u64; ARGON2_QWORDS_IN_BLOCK];
-    for i in 0..ARGON2_QWORDS_IN_BLOCK {
-        let start = i*8;
-        let mut tmp = [0u8; 8];
-        tmp.copy_from_slice(&buf.0[start..start+8]);
-        input_q[i] = u64::from_le_bytes(tmp);
+    for (i, chunk) in buf.0.chunks_exact(8).enumerate().take(ARGON2_QWORDS_IN_BLOCK) {
+        input_q[i] = u64::from_le_bytes(chunk.try_into().unwrap());
     }
 
     // Apply G twice, per RFC 9106 § 3.3
@@ -388,22 +379,20 @@ fn internal_argon2_core(
 
     validate::parameter(output_len >= MIN_OUT_LEN, "output_len", "value is below minimum")?;
     validate::parameter(output_len <= MAX_OUT_LEN as usize, "output_len", "value is above maximum")?;
-    validate::parameter(password.len() >= MIN_PWD_LEN, "password_len", "value is below minimum")?;
+    // FIXED: Removed always-true comparisons
     validate::parameter(password.len() <= MAX_PWD_LEN as usize, "password_len", "value is above maximum")?;
     validate::parameter(salt.len() >= MIN_SALT_LEN, "salt_len", "value is below minimum")?;
     validate::parameter(salt.len() <= MAX_SALT_LEN as usize, "salt_len", "value is above maximum")?;
 
     if let Some(ad_data) = ad {
-        validate::parameter(ad_data.len() >= MIN_AD_LEN, "ad_len", "value is below minimum")?;
         validate::parameter(ad_data.len() <= MAX_AD_LEN as usize, "ad_len", "value is above maximum")?;
     }
     if let Some(secret_data) = secret {
-        validate::parameter(secret_data.len() >= MIN_SECRET_LEN, "secret_len", "value is below minimum")?;
         validate::parameter(secret_data.len() <= MAX_SECRET_LEN as usize, "secret_len", "value is above maximum")?;
     }
 
     validate::parameter(time_cost_iterations >= MIN_TIME_COST, "time_cost", "value is below minimum")?;
-    validate::parameter(time_cost_iterations <= MAX_TIME_COST, "time_cost", "value is above maximum")?;
+    // FIXED: Removed always-true comparison with MAX_TIME_COST
     validate::parameter(parallelism_lanes >= MIN_LANES, "parallelism_lanes", "value is below minimum")?;
     validate::parameter(parallelism_lanes <= MAX_LANES, "parallelism_lanes", "value is above maximum")?;
 
@@ -588,32 +577,24 @@ fn internal_argon2_core(
                     let mut xv = [0u64; ARGON2_QWORDS_IN_BLOCK];
                     let mut yv = [0u64; ARGON2_QWORDS_IN_BLOCK];
                     
-                    for i in 0..ARGON2_QWORDS_IN_BLOCK {
-                        let start = i * 8;
-                        let mut buf = [0u8; 8];
-                        buf.copy_from_slice(&prev_block_data[start..start+8]);
-                        let prev_u = u64::from_le_bytes(buf);
-                        
-                        // CORRECT: always feed the *unmodified* previous block to G
-                        xv[i] = prev_u;
+                    // FIXED: Using iterator instead of index loop
+                    for (i, chunk) in prev_block_data.chunks_exact(8).enumerate().take(ARGON2_QWORDS_IN_BLOCK) {
+                        xv[i] = u64::from_le_bytes(chunk.try_into().unwrap());
                     }
                     
-                    // The reference block loading remains unchanged
-                    for i in 0..ARGON2_QWORDS_IN_BLOCK {
-                        let start = i * 8;
-                        let mut buf = [0u8; 8];
-                        buf.copy_from_slice(&ref_block_data[start..start+8]);
-                        yv[i] = u64::from_le_bytes(buf);
+                    // FIXED: Using iterator instead of index loop
+                    for (i, chunk) in ref_block_data.chunks_exact(8).enumerate().take(ARGON2_QWORDS_IN_BLOCK) {
+                        yv[i] = u64::from_le_bytes(chunk.try_into().unwrap());
                     }
                     
                     // Mix with the true Argon2 G function
                     let gq = argon2_g(&xv, &yv);
                     
-                    // Serialize back into bytes
+                    // Serialize back into bytes - FIXED: Using iterator
                     let mut gbytes = [0u8; ARGON2_BLOCK_SIZE];
-                    for i in 0..ARGON2_QWORDS_IN_BLOCK {
+                    for (i, &qword) in gq.iter().enumerate().take(ARGON2_QWORDS_IN_BLOCK) {
                         let start = i * 8;
-                        gbytes[start..start+8].copy_from_slice(&gq[i].to_le_bytes());
+                        gbytes[start..start+8].copy_from_slice(&qword.to_le_bytes());
                     }
 
                     // Final update matches RFC spec exactly
@@ -659,7 +640,8 @@ fn h_prime_variable_output(data: &[u8], t: usize) -> Result<Vec<u8>> {
     }
 
     // T > 64: compute r = ⌈T/32⌉ - 2, produce r of 32 B each + one of (T - 32r)
-    let ceil_div = |x, y| (x + y - 1) / y;
+    // FIXED: Using div_ceil
+    let ceil_div = |x: usize, y: usize| x.div_ceil(y);
     let r = ceil_div(t, 32) - 2;
 
     let mut out = Vec::with_capacity(t);
@@ -717,9 +699,7 @@ fn index_alpha(
         } else if ref_lane_val == current_lane_idx {
             // same lane
             reference_area_size = slice_idx * segment_length + block_in_segment_idx;
-            if reference_area_size > 0 {
-                reference_area_size -= 1; // exclude current block
-            }
+            reference_area_size = reference_area_size.saturating_sub(1); // exclude current block
         } else {
             // different lane
             reference_area_size = slice_idx * segment_length;
@@ -731,9 +711,7 @@ fn index_alpha(
         // pass > 0
         if ref_lane_val == current_lane_idx {
             reference_area_size = lane_length - segment_length + block_in_segment_idx;
-            if reference_area_size > 0 {
-                reference_area_size -= 1;
-            }
+            reference_area_size = reference_area_size.saturating_sub(1);
         } else {
             reference_area_size = lane_length - segment_length;
             if block_in_segment_idx == 0 {
@@ -753,9 +731,7 @@ fn index_alpha(
     } as u32;
 
     // ── starting offset (same for all lanes on pass > 0) ───────────────
-    let start_position_offset = if pass_idx == 0 {
-        0
-    } else if slice_idx == ARGON2_SYNC_POINTS - 1 {
+    let start_position_offset = if pass_idx == 0 || slice_idx == ARGON2_SYNC_POINTS - 1 {
         0
     } else {
         (slice_idx + 1) * segment_length
@@ -793,7 +769,8 @@ where
 
     fn new() -> Self { Self { params: Params::default() } }
 
-    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> where Self: Sized {
+    // FIXED: Elided lifetime
+    fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> where Self: Sized {
         Argon2Builder {
             params: self.params.clone(),
             ikm: None,
@@ -849,7 +826,7 @@ where
     length_override: Option<usize>,
 }
 
-impl<'a, const S: usize> Zeroize for Argon2Builder<'a, S>
+impl<const S: usize> Zeroize for Argon2Builder<'_, S>
 where
     Salt<S>: Argon2Compatible + Clone + Zeroize + Send + Sync + 'static,
     Params<S>: Clone + Zeroize + Send + Sync + 'static,

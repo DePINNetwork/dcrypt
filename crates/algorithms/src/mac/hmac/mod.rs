@@ -51,6 +51,7 @@ where
         let mut k_prime = [0u8; MAX_BLOCK];
         let long = (key.len() > bs) as u8;      // 1 if key > bs
         let mask = long.wrapping_neg();         // 0xFF when long else 0x00
+        #[allow(clippy::needless_range_loop)] // We need the index for multiple arrays
         for i in 0..bs {
             let k  = *key.get(i).unwrap_or(&0);
             let hk = hashed.as_ref().get(i).copied().unwrap_or(0);
@@ -60,6 +61,7 @@ where
         /* --- Build inner / outer paddings --- */
         let mut ipad_bytes = [0u8; MAX_BLOCK];
         let mut opad_bytes = [0u8; MAX_BLOCK];
+        #[allow(clippy::needless_range_loop)] // We need to index multiple arrays
         for i in 0..bs {
             ipad_bytes[i] = k_prime[i] ^ Self::IPAD_BYTE;
             opad_bytes[i] = k_prime[i] ^ Self::OPAD_BYTE;
@@ -147,6 +149,7 @@ where
         // Always iterate over the fixed, public digest length to avoid
         // timing variation when the caller supplies a shorter tag.
         let mut diff = 0u8;
+        #[allow(clippy::needless_range_loop)] // Accessing both arrays with same index
         for i in 0..H::output_size() {
             let a = expected.get(i).copied().unwrap_or(0);
             let b = tag.get(i).copied().unwrap_or(0);

@@ -290,11 +290,11 @@ fn test_scalar_validation() -> Result<()> {
     
     // Valid scalar (less than curve order)
     let valid_scalar_bytes = [0x11; 48];
-    let valid_scalar = Scalar::new(valid_scalar_bytes)?;
+    let _valid_scalar = Scalar::new(valid_scalar_bytes)?;
     
     // Test scalar that's larger than the curve order
     // P-384 order is much larger, but all 0xFF is definitely larger than curve order
-    let mut invalid_scalar_bytes = [0xFF; 48];
+    let invalid_scalar_bytes = [0xFF; 48];
     let result = Scalar::new(invalid_scalar_bytes);
     
     // Should succeed but reduce the scalar mod order
@@ -979,9 +979,9 @@ fn test_p384_kem_ephemeral_scalar() -> Result<()> {
 
     // Expected coordinates for scalar * G (would need to be computed with a reference implementation)
     // These are placeholder values - replace with actual test vectors
-    let expected_x_hex =
+    let _expected_x_hex =
         "f4a13945d898c2964fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5f4a13945d898c296";
-    let expected_y_hex =
+    let _expected_y_hex =
         "6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c2964fe342e2fe1a7f9b8ee7eb4a7c0f9e16";
 
     // --- Prepare scalar ----------------------------------------------------

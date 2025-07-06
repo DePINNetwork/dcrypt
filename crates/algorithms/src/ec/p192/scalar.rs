@@ -60,9 +60,9 @@ impl Scalar {
     #[inline(always)]
     fn to_le_limbs(bytes_be: &[u8; 24]) -> [u32; 6] {
         let mut limbs = [0u32; 6];
-        for i in 0..6 {
+        for (i, limb) in limbs.iter_mut().enumerate() {
             let offset = (5 - i) * 4; // Start from the end for LE
-            limbs[i] = u32::from_be_bytes([
+            *limb = u32::from_be_bytes([
                 bytes_be[offset],
                 bytes_be[offset + 1],
                 bytes_be[offset + 2],
@@ -76,8 +76,8 @@ impl Scalar {
     #[inline(always)]
     fn limbs_to_be(limbs: &[u32; 6]) -> [u8; 24] {
         let mut out = [0u8; 24];
-        for i in 0..6 {
-            let b = limbs[i].to_be_bytes();
+        for (i, &limb) in limbs.iter().enumerate() {
+            let b = limb.to_be_bytes();
             let offset = (5 - i) * 4;
             out[offset..offset + 4].copy_from_slice(&b);
         }
@@ -90,9 +90,9 @@ impl Scalar {
         let b_limbs = Self::to_le_limbs(&other.serialize());
         let mut r = [0u32; 6];
         let mut carry: u64 = 0;
-        for i in 0..6 {
-            let tmp = a_limbs[i] as u64 + b_limbs[i] as u64 + carry;
-            r[i] = tmp as u32;
+        for ((&a_limb, &b_limb), r_limb) in a_limbs.iter().zip(b_limbs.iter()).zip(r.iter_mut()) {
+            let tmp = a_limb as u64 + b_limb as u64 + carry;
+            *r_limb = tmp as u32;
             carry = tmp >> 32;
         }
         // If overflow OR r ≥ n, subtract n
@@ -108,22 +108,22 @@ impl Scalar {
         let b_limbs = Self::to_le_limbs(&other.serialize());
         let mut r = [0u32; 6];
         let mut borrow: i64 = 0;
-        for i in 0..6 {
-            let tmp = a_limbs[i] as i64 - b_limbs[i] as i64 - borrow;
+        for ((&a_limb, &b_limb), r_limb) in a_limbs.iter().zip(b_limbs.iter()).zip(r.iter_mut()) {
+            let tmp = a_limb as i64 - b_limb as i64 - borrow;
             if tmp < 0 {
-                r[i] = (tmp + (1i64 << 32)) as u32;
+                *r_limb = (tmp + (1i64 << 32)) as u32;
                 borrow = 1;
             } else {
-                r[i] = tmp as u32;
+                *r_limb = tmp as u32;
                 borrow = 0;
             }
         }
         if borrow == 1 {
             // Add n back
             let mut c: u64 = 0;
-            for i in 0..6 {
-                let tmp = r[i] as u64 + Self::N_LIMBS[i] as u64 + c;
-                r[i] = tmp as u32;
+            for (&n_limb, r_limb) in Self::N_LIMBS.iter().zip(r.iter_mut()) {
+                let tmp = *r_limb as u64 + n_limb as u64 + c;
+                *r_limb = tmp as u32;
                 c = tmp >> 32;
             }
         }
@@ -189,13 +189,13 @@ impl Scalar {
         let mut r = [0u32; 6];
         let n = Self::N_LIMBS;
         let mut borrow: i64 = 0;
-        for i in 0..6 {
-            let tmp = n[i] as i64 - a_limbs[i] as i64 - borrow;
+        for ((&n_limb, &a_limb), r_limb) in n.iter().zip(a_limbs.iter()).zip(r.iter_mut()) {
+            let tmp = n_limb as i64 - a_limb as i64 - borrow;
             if tmp < 0 {
-                r[i] = (tmp + (1i64 << 32)) as u32;
+                *r_limb = (tmp + (1i64 << 32)) as u32;
                 borrow = 1;
             } else {
-                r[i] = tmp as u32;
+                *r_limb = tmp as u32;
                 borrow = 0;
             }
         }
@@ -257,11 +257,11 @@ impl Scalar {
     #[inline(always)]
     fn sub_in_place(a: &mut [u32; 6], b: &[u32; 6]) {
         let mut borrow = 0u64;
-        for i in 0..6 {
-            let tmp = (a[i] as u64)
-                .wrapping_sub(b[i] as u64)
+        for (a_limb, &b_limb) in a.iter_mut().zip(b.iter()) {
+            let tmp = (*a_limb as u64)
+                .wrapping_sub(b_limb as u64)
                 .wrapping_sub(borrow);
-            a[i] = tmp as u32;
+            *a_limb = tmp as u32;
             borrow = (tmp >> 63) & 1;
         }
     }

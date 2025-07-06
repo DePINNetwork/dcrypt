@@ -355,7 +355,7 @@ mod scalar_tests {
         let scalar = Scalar::new(scalar_bytes).unwrap();
 
         let negated = scalar.negate();
-        let sum = scalar.add_mod_n(&negated).unwrap();
+        let _sum = scalar.add_mod_n(&negated).unwrap();
 
         // The sum should be zero (but we can't create zero scalars, so this should wrap)
         // Instead, let's verify that -(-x) = x
@@ -366,7 +366,7 @@ mod scalar_tests {
     #[test]
     fn test_scalar_order_reduction() {
         // Try to create a scalar with value >= order
-        let mut large_bytes = [0xFF; P192_SCALAR_SIZE];
+        let large_bytes = [0xFF; P192_SCALAR_SIZE];
         // This should be reduced modulo the order
         assert!(Scalar::new(large_bytes).is_ok());
     }
@@ -568,9 +568,6 @@ mod property_tests {
 
     #[test]
     fn test_point_addition_properties() {
-        let mut rng = ChaCha20Rng::from_seed([1u8; 32]);
-        let g = base_point_g();
-        
         // Generate some test points by scalar multiplication
         let mut test_points = Vec::new();
         for i in 1..=5 {

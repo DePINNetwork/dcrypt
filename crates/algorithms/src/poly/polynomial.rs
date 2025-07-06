@@ -170,10 +170,11 @@ impl<M: Modulus> Polynomial<M> {
         let mut tmp = vec![0u64; 2 * n];
         
         // Step 1: Compute full convolution without modular reduction
-        for i in 0..n {
-            let ai = self.coeffs[i] as u64;
-            for j in 0..n {
-                let bj = other.coeffs[j] as u64;
+        // FIXED: Use iterator instead of indexing
+        for (i, &ai_u32) in self.coeffs.iter().enumerate().take(n) {
+            let ai = ai_u32 as u64;
+            for (j, &bj_u32) in other.coeffs.iter().enumerate().take(n) {
+                let bj = bj_u32 as u64;
                 tmp[i + j] = tmp[i + j].wrapping_add(ai * bj);
             }
         }
@@ -191,6 +192,8 @@ impl<M: Modulus> Polynomial<M> {
         }
         
         // Step 3: Final reduction to [0, q)
+        #[allow(clippy::needless_range_loop)]
+        // We need indexed access here to match tmp and result.coeffs indices
         for i in 0..n {
             result.coeffs[i] = (tmp[i] % q) as u32;
         }
@@ -237,27 +240,12 @@ pub fn barrett_reduce<M: Modulus>(a: u32) -> u32 {
 }
 
 // Implement standard ops traits for ergonomic usage
-impl<M: Modulus> Add for Polynomial<M> {
-    type Output = Self;
-    
-    fn add(self, other: Self) -> Self::Output {
-        (&self).add(&other)
-    }
-}
-
+// Define reference implementations first
 impl<M: Modulus> Add for &Polynomial<M> {
     type Output = Polynomial<M>;
     
     fn add(self, other: Self) -> Self::Output {
         self.add(other)
-    }
-}
-
-impl<M: Modulus> Sub for Polynomial<M> {
-    type Output = Self;
-    
-    fn sub(self, other: Self) -> Self::Output {
-        (&self).sub(&other)
     }
 }
 
@@ -269,19 +257,36 @@ impl<M: Modulus> Sub for &Polynomial<M> {
     }
 }
 
-impl<M: Modulus> Neg for Polynomial<M> {
-    type Output = Self;
-    
-    fn neg(self) -> Self::Output {
-        (&self).neg()
-    }
-}
-
 impl<M: Modulus> Neg for &Polynomial<M> {
     type Output = Polynomial<M>;
     
     fn neg(self) -> Self::Output {
         self.neg()
+    }
+}
+
+// Now owned implementations can use the reference implementations
+impl<M: Modulus> Add for Polynomial<M> {
+    type Output = Self;
+    
+    fn add(self, other: Self) -> Self::Output {
+        &self + &other
+    }
+}
+
+impl<M: Modulus> Sub for Polynomial<M> {
+    type Output = Self;
+    
+    fn sub(self, other: Self) -> Self::Output {
+        &self - &other
+    }
+}
+
+impl<M: Modulus> Neg for Polynomial<M> {
+    type Output = Self;
+    
+    fn neg(self) -> Self::Output {
+        -&self
     }
 }
 

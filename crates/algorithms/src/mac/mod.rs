@@ -120,11 +120,11 @@ impl<'a, M: Mac> MacBuilder<'a, M> for GenericMacBuilder<'a, M> {
 /// Extension trait for MAC implementations to provide builder methods
 pub trait MacExt: Mac {
     /// Creates a builder for this MAC instance
-    fn builder<'a>(&'a mut self) -> GenericMacBuilder<'a, Self>;
+    fn builder(&mut self) -> GenericMacBuilder<'_, Self>;
 }
 
 impl<T: Mac> MacExt for T {
-    fn builder<'a>(&'a mut self) -> GenericMacBuilder<'a, Self> {
+    fn builder(&mut self) -> GenericMacBuilder<'_, Self> {
         GenericMacBuilder { mac: self }
     }
 }

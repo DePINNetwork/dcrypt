@@ -76,14 +76,11 @@
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use crate::error::{Error, Result};
-use crate::error::validate;
+use crate::error::{Result, validate, from_primitive_error};
 use algorithms::block::aes::{Aes128, Aes256};
 use algorithms::aead::Gcm;
 use algorithms::block::BlockCipher;
-use api::traits::symmetric::SymmetricCipher as CoreSymmetricCipher;
-use api::traits::symmetric::{EncryptOperation, DecryptOperation};
-use api::types::{SecretBytes, Ciphertext};
+use api::types::SecretBytes;
 // Import the new Nonce type
 use algorithms::types::Nonce;
 use algorithms::error::Error as PrimitiveError;
@@ -161,7 +158,7 @@ impl Aead for Aes128Gcm {
         
         // Use internal_encrypt method directly
         gcm.internal_encrypt(plaintext, aad)
-            .map_err(|e| Error::from(e))
+            .map_err(from_primitive_error)
     }
     
     fn decrypt(
@@ -188,10 +185,12 @@ impl Aead for Aes128Gcm {
         gcm.internal_decrypt(ciphertext, aad)
             .map_err(|e| match e {
                 PrimitiveError::Authentication { .. } => 
-                    Error::Primitive(PrimitiveError::Authentication { 
-                        algorithm: "AES-128-GCM" 
-                    }),
-                _ => Error::from(e),
+                    api::error::Error::AuthenticationFailed { 
+                        context: "AES-128-GCM",
+                        #[cfg(feature = "std")]
+                        message: "authentication tag verification failed".to_string(),
+                    },
+                _ => from_primitive_error(e),
             })
     }
     
@@ -239,7 +238,7 @@ impl Aead for Aes256Gcm {
         
         // Use internal_encrypt method directly
         gcm.internal_encrypt(plaintext, aad)
-            .map_err(|e| Error::from(e))
+            .map_err(from_primitive_error)
     }
     
     fn decrypt(
@@ -266,10 +265,12 @@ impl Aead for Aes256Gcm {
         gcm.internal_decrypt(ciphertext, aad)
             .map_err(|e| match e {
                 PrimitiveError::Authentication { .. } => 
-                    Error::Primitive(PrimitiveError::Authentication { 
-                        algorithm: "AES-256-GCM" 
-                    }),
-                _ => Error::from(e),
+                    api::error::Error::AuthenticationFailed { 
+                        context: "AES-256-GCM",
+                        #[cfg(feature = "std")]
+                        message: "authentication tag verification failed".to_string(),
+                    },
+                _ => from_primitive_error(e),
             })
     }
     

@@ -557,7 +557,7 @@ impl ProjectivePoint {
         let mut y3 = four_beta.sub(&x3);
         y3 = alpha.mul(&y3);
 
-        let mut gamma_sq = gamma.square();              // Γ²
+        let gamma_sq = gamma.square();              // Γ²
         let mut eight_gamma_sq = gamma_sq.add(&gamma_sq);   // 2Γ²
         eight_gamma_sq = eight_gamma_sq.add(&eight_gamma_sq); // 4Γ²
         eight_gamma_sq = eight_gamma_sq.add(&eight_gamma_sq); // 8Γ²

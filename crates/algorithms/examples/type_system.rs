@@ -2,11 +2,11 @@
 
 // Standard library features (if available)
 #[cfg(feature = "std")]
-use std::{println, format};
+use std::println;
 
 // No-std + alloc features
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{println, format};
+use alloc::println;
 
 // Core DCRYPT API traits and types
 use api::error::{Error as CoreError, Result as CoreResult};
@@ -14,7 +14,7 @@ use api::error::{Error as CoreError, Result as CoreResult};
 // Algorithms crate components and types
 use algorithms::types::{
     SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey,
-    Nonce, Salt, Tag, SecretBytes, RandomGeneration, // Added RandomGeneration
+    Nonce, Salt, SecretBytes, RandomGeneration, // Added RandomGeneration
     // Algorithm marker types
     algorithms::{Aes128, ChaCha20Poly1305, Ed25519},
     // Compatibility traits (examples)
@@ -22,7 +22,7 @@ use algorithms::types::{
     salt::HkdfCompatible,
     key::SymmetricAlgorithm, // For SymmetricKey's A parameter
 };
-use algorithms::error::{Error as AlgorithmsError, Result as AlgorithmsResult};
+
 
 // Randomness (requires 'std' or a no_std RNG)
 #[cfg(feature = "std")]
@@ -81,11 +81,11 @@ fn main() -> CoreResult<()> {
         let mut rng = OsRng;
         // Use RandomGeneration::random explicitly for types that implement it
         let random_key: SymmetricKey<ChaCha20Poly1305, 32> = RandomGeneration::random(&mut rng)
-            .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+            .map_err(CoreError::from)?;
         println!("Generated random ChaCha20Poly1305 Key: {:?}", random_key);
 
         let random_nonce: Nonce<12> = RandomGeneration::random(&mut rng)
-            .map_err(|e| CoreError::from(AlgorithmsError::from(e)))?;
+            .map_err(CoreError::from)?;
         println!("Generated random Nonce<12>: {:?}", random_nonce);
     }
 

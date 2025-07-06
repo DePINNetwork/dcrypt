@@ -111,13 +111,13 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
         )?;
 
         validate::parameter(
-            nonce.len() >= 1 && nonce.len() <= 16,
+            !nonce.is_empty() && nonce.len() <= 16,
             "nonce_length",
             "GCM nonce must be between 1 and 16 bytes"
         )?;
 
         validate::parameter(
-            tag_len >= 1 && tag_len <= GCM_TAG_SIZE,
+            (1..=GCM_TAG_SIZE).contains(&tag_len),
             "tag_length",
             "GCM tag length must be between 1 and 16 bytes"
         )?;
@@ -162,7 +162,7 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
 
     /// Generate encryption keystream for CTR mode
     fn generate_keystream(&self, j0: &[u8; GCM_BLOCK_SIZE], data_len: usize) -> Result<Zeroizing<Vec<u8>>> {
-        let num_blocks = (data_len + GCM_BLOCK_SIZE - 1) / GCM_BLOCK_SIZE;
+        let num_blocks = data_len.div_ceil(GCM_BLOCK_SIZE);
         let mut keystream = Zeroizing::new(Vec::with_capacity(num_blocks * GCM_BLOCK_SIZE));
 
         let mut counter = *j0;
@@ -271,7 +271,7 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
             // Zeroize the plaintext securely before returning to avoid leaking data
             // This runs on the error path, but doesn't leak timing information about the tag
             // since all cryptographic work is already done by this point
-            return Err(Error::Authentication { algorithm: "GCM" });
+            Err(Error::Authentication { algorithm: "GCM" })
         } else {
             Ok(plaintext.to_vec())
         }
@@ -310,7 +310,7 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> SymmetricCipher for Gcm<B> {
         "GCM"
     }
     
-    fn encrypt<'a>(&'a self) -> <Self as SymmetricCipher>::EncryptOperation<'a> {
+    fn encrypt(&self) -> <Self as SymmetricCipher>::EncryptOperation<'_> {
         GcmEncryptOperation {
             cipher: self,
             nonce: None,
@@ -318,7 +318,7 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> SymmetricCipher for Gcm<B> {
         }
     }
     
-    fn decrypt<'a>(&'a self) -> <Self as SymmetricCipher>::DecryptOperation<'a> {
+    fn decrypt(&self) -> <Self as SymmetricCipher>::DecryptOperation<'_> {
         GcmDecryptOperation {
             cipher: self,
             nonce: None,
@@ -354,7 +354,7 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> SymmetricCipher for Gcm<B> {
 }
 
 // Implement Operation for GcmEncryptOperation
-impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Ciphertext> for GcmEncryptOperation<'a, B> {
+impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Ciphertext> for GcmEncryptOperation<'_, B> {
     fn execute(self) -> std::result::Result<Ciphertext, CoreError> {
         if self.nonce.is_none() {
             return Err(CoreError::InvalidParameter {
@@ -368,7 +368,7 @@ impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Ciphertext> for Gcm
         let ciphertext = self.cipher.internal_encrypt(
             plaintext,
             self.aad,
-        ).map_err(|e| CoreError::from(e))?;
+        ).map_err(CoreError::from)?;
         
         Ok(Ciphertext::new(&ciphertext))
     }
@@ -398,14 +398,14 @@ impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> EncryptOperation<'a, Gcm<B>> 
         let ciphertext = self.cipher.internal_encrypt(
             plaintext,
             self.aad,
-        ).map_err(|e| CoreError::from(e))?;
+        ).map_err(CoreError::from)?;
         
         Ok(Ciphertext::new(&ciphertext))
     }
 }
 
 // Implement Operation for GcmDecryptOperation
-impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Vec<u8>> for GcmDecryptOperation<'a, B> {
+impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Vec<u8>> for GcmDecryptOperation<'_, B> {
     fn execute(self) -> std::result::Result<Vec<u8>, CoreError> {
         Err(CoreError::InvalidParameter {
             context: "GCM decryption",
@@ -439,7 +439,7 @@ impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> DecryptOperation<'a, Gcm<B>> 
         self.cipher.internal_decrypt(
             ciphertext.as_ref(),
             self.aad,
-        ).map_err(|e| CoreError::from(e))
+        ).map_err(CoreError::from)
     }
 }
 

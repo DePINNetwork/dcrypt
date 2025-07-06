@@ -70,9 +70,9 @@ impl FieldElement {
         // Convert from big-endian bytes to little-endian limbs
         // limbs[0] = least-significant 4 bytes (bytes[44..48])
         // limbs[11] = most-significant 4 bytes (bytes[0..4])
-        for i in 0..12 {
+        for (i, limb) in limbs.iter_mut().enumerate() {
             let offset = (11 - i) * 4; // Byte offset: 44, 40, 36, ..., 0
-            limbs[i] = u32::from_be_bytes([
+            *limb = u32::from_be_bytes([
                 bytes[offset],
                 bytes[offset + 1],
                 bytes[offset + 2],
@@ -417,9 +417,9 @@ impl FieldElement {
 
         // 3) first signed carry-propagate
         let mut carry1: i128 = 0;
-        for i in 0..12 {
-            let tmp = s[i] + carry1;
-            s[i] = tmp & 0xffff_ffff;
+        for limb in s.iter_mut().take(12) {
+            let tmp = *limb + carry1;
+            *limb = tmp & 0xffff_ffff;
             carry1 = tmp >> 32;  // arithmetic shift
         }
 
@@ -432,9 +432,9 @@ impl FieldElement {
 
         // 5) second signed carry-propagate
         let mut carry2: i128 = 0;
-        for i in 0..12 {
-            let tmp = s[i] + carry2;
-            s[i] = tmp & 0xffff_ffff;
+        for limb in s.iter_mut().take(12) {
+            let tmp = *limb + carry2;
+            *limb = tmp & 0xffff_ffff;
             carry2 = tmp >> 32;
         }
 
@@ -465,18 +465,5 @@ impl FieldElement {
     /// Returns the NIST P-384 prime modulus for use in reduction operations.
     pub(crate) fn get_modulus() -> Self {
         FieldElement(Self::MOD_LIMBS)
-    }
-
-    /// Reduce the field element modulo p if needed
-    /// 
-    /// Repeatedly subtracts p until the value is in canonical form.
-    /// Note: This is a simple implementation - production code would
-    /// use more efficient reduction methods.
-    fn reduce(&self) -> Self {
-        let mut result = self.clone();
-        while !result.is_valid() {
-            result = result.sub(&FieldElement::get_modulus());
-        }
-        result
     }
 }

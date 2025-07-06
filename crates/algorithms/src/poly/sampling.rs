@@ -146,7 +146,7 @@ impl<M: Modulus> CbdSampler<M> for DefaultSamplers {
         let q = M::Q;
         
         // CBD(eta): sample 2*eta bits, compute sum of first eta bits minus sum of second eta bits
-        let bytes_per_sample = (2 * eta as usize + 7) / 8;
+        let bytes_per_sample = (2 * eta as usize).div_ceil(8);  // FIXED: Use div_ceil
         let mut buffer = [0u8; 4]; // Max 32 bits for eta=16
         
         for i in 0..n {

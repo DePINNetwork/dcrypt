@@ -160,10 +160,10 @@ fn test_scalar_validation() -> Result<()> {
     
     // Valid scalar (less than curve order)
     let valid_scalar_bytes = [0x11; 28];
-    let valid_scalar = Scalar::new(valid_scalar_bytes)?;
+    let _valid_scalar = Scalar::new(valid_scalar_bytes)?;
     
     // Test scalar that's larger than the curve order
-    let mut invalid_scalar_bytes = [0xFF; 28];
+    let invalid_scalar_bytes = [0xFF; 28];
     let result = Scalar::new(invalid_scalar_bytes);
     
     // Should succeed but reduce the scalar mod order

@@ -7,7 +7,7 @@
 //!   * 32-bit little-endian limbs stored in `[u32; 17]` (544 bits, only the
 //!     lower 521 are used).
 //!   * reduction uses the Mersenne trick for p = 2^521 − 1:
-//!          (H · 2^521 + L)  ≡  H + L   (mod p)
+//!     (H · 2^521 + L)  ≡  H + L   (mod p)
 
 use crate::error::{Error, Result};
 use crate::ec::p521::constants::{
@@ -326,8 +326,8 @@ impl FieldElement {
         //   p  in bytes is   0x01 | 0xFF * 65
         let mut exp = [0u8; P521_FIELD_ELEMENT_SIZE];
         exp[0] = 0x01; 
-        for i in 1..66 { 
-            exp[i] = 0xFF; 
+        for byte in exp.iter_mut().skip(1) { 
+            *byte = 0xFF; 
         }
         // subtract 2                                      (big-endian)
         let mut borrow = 2u16;
@@ -339,7 +339,7 @@ impl FieldElement {
 
         // Left-to-right binary exponentiation
         let mut result = FieldElement::one();
-        let mut base   = self.clone();
+        let base   = self.clone();
         for byte in exp.iter() {
             for bit in (0..8).rev() {
                 result = result.square();

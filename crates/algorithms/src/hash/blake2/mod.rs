@@ -182,18 +182,6 @@ impl Blake2b {
         v[b] = (v[b] ^ v[c]).rotate_right(63);
     }
 
-    #[inline(always)]
-    fn blamka_g(v: &mut [u64; 16], a: usize, b: usize, c: usize, d: usize, x: u64, y: u64) {
-        v[a] = v[a].wrapping_add(v[b]).wrapping_add(x);
-        v[d] = (v[d] ^ v[a]).rotate_right(32);
-        v[c] = v[c].wrapping_add(v[d]);
-        v[b] = (v[b] ^ v[c]).rotate_right(24);
-        v[a] = v[a].wrapping_add(v[b]).wrapping_add(y);
-        v[d] = (v[d] ^ v[a]).rotate_right(16);
-        v[c] = v[c].wrapping_add(v[d]);
-        v[b] = (v[b] ^ v[c]).rotate_right(63);
-    }
-
     fn compress(&mut self, last: bool) -> Result<()> {
         let mut v = [0u64; 16];
         v[..8].copy_from_slice(&self.h);
@@ -203,14 +191,13 @@ impl Blake2b {
         if last { v[14] ^= 0xFFFF_FFFF_FFFF_FFFF; } // RFC 7693 §3.2, step 3
         
         let mut m = [0u64; 16];
-        for i in 0..16 {
+        for (i, elem) in m.iter_mut().enumerate().take(16) {
             let idx = i*8;
             validate::max_length("BLAKE2b buffer slice", idx + 8, self.buf.len())?;
-            m[i] = u64::from_le_bytes(self.buf[idx..idx+8].try_into().map_err(|_| Error::Processing { operation: "BLAKE2b compression", details: "Failed to convert bytes to u64", })?);
+            *elem = u64::from_le_bytes(self.buf[idx..idx+8].try_into().map_err(|_| Error::Processing { operation: "BLAKE2b compression", details: "Failed to convert bytes to u64", })?);
         }
         let m_ephemeral = EphemeralSecret::new(m);
-        for round in 0..BLAKE2B_ROUNDS {
-            let s = &BLAKE2B_SIGMA[round];
+        for s in BLAKE2B_SIGMA.iter().take(BLAKE2B_ROUNDS) {
             Self::blake2b_g(&mut v,0,4,8,12,m_ephemeral[s[0]],m_ephemeral[s[1]]);
             Self::blake2b_g(&mut v,1,5,9,13,m_ephemeral[s[2]],m_ephemeral[s[3]]);
             Self::blake2b_g(&mut v,2,6,10,14,m_ephemeral[s[4]],m_ephemeral[s[5]]);
@@ -435,7 +422,7 @@ impl Blake2s {
         if last { v[14] = !v[14]; }
         
         let mut m = [0u32;16];
-        for i in 0..16 {
+        for (i, elem) in m.iter_mut().enumerate().take(16) {
             let idx = i*4;
             // Validate buffer bounds
             validate::max_length(
@@ -445,7 +432,7 @@ impl Blake2s {
             )?;
             
             // Convert bytes to u32 with proper error handling
-            m[i] = u32::from_le_bytes(
+            *elem = u32::from_le_bytes(
                 self.buf[idx..idx+4].try_into()
                     .map_err(|_| Error::Processing {
                         operation: "BLAKE2s compression",
@@ -457,8 +444,7 @@ impl Blake2s {
         // Use EphemeralSecret to ensure intermediate values are zeroized
         let m_ephemeral = EphemeralSecret::new(m);
         
-        for i in 0..BLAKE2S_ROUNDS {
-            let s = &BLAKE2S_SIGMA[i];
+        for s in BLAKE2S_SIGMA.iter().take(BLAKE2S_ROUNDS) {
             Self::g(&mut v,0,4,8,12,m_ephemeral[s[0]],m_ephemeral[s[1]]);
             Self::g(&mut v,1,5,9,13,m_ephemeral[s[2]],m_ephemeral[s[3]]);
             Self::g(&mut v,2,6,10,14,m_ephemeral[s[4]],m_ephemeral[s[5]]);

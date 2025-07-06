@@ -22,7 +22,7 @@ use super::{
     AES256GCM_KEY_LEN,
     AES256GCM_NONCE_LEN,
 };
-use crate::error::{Result as PkeResult, Error as PkeError};
+use crate::error::Error as PkeError;
 
 /// Public key for ECIES P-384. Stores serialized uncompressed point.
 #[derive(Clone, Debug)]

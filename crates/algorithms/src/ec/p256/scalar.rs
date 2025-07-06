@@ -87,6 +87,7 @@ impl Scalar {
         let mut limbs = [0u32; 8];
         
         // limb-0 must hold the 4 least-significant bytes, limb-7 the 4 most-significant
+        #[allow(clippy::needless_range_loop)]  // Index used for offset calculation
         for i in 0..8 {
             let start = 28 - i * 4;  // index of the MS-byte of this limb
             limbs[i] = u32::from_le_bytes([
@@ -108,6 +109,7 @@ impl Scalar {
         let mut carry = 0u64;
         
         // Plain 256-bit add
+        #[allow(clippy::needless_range_loop)]  // Index used for multiple arrays
         for i in 0..8 {
             let tmp = self_limbs[i] as u64 + other_limbs[i] as u64 + carry;
             r[i] = tmp as u32;
@@ -131,6 +133,7 @@ impl Scalar {
         let mut r = [0u32; 8];
         let mut borrow = 0i64;
         
+        #[allow(clippy::needless_range_loop)]  // Index used for multiple arrays
         for i in 0..8 {
             let tmp = self_limbs[i] as i64 - other_limbs[i] as i64 - borrow;
             if tmp < 0 {
@@ -145,6 +148,7 @@ impl Scalar {
         if borrow == 1 {
             // Result was negative → add n back
             let mut c = 0u64;
+            #[allow(clippy::needless_range_loop)]  // Index used for multiple arrays
             for i in 0..8 {
                 let tmp = r[i] as u64 + Self::N_LIMBS[i] as u64 + c;
                 r[i] = tmp as u32;
@@ -247,6 +251,7 @@ impl Scalar {
         
         // Subtract self from n
         let mut borrow = 0i64;
+        #[allow(clippy::needless_range_loop)]  // Index used for multiple arrays
         for i in 0..8 {
             let tmp = n_limbs[i] as i64 - self_limbs[i] as i64 - borrow;
             if tmp < 0 {
@@ -295,9 +300,9 @@ impl Scalar {
             gt |= ((x > y) as u8) & (!lt);
             lt |= ((x < y) as u8) & (!gt);
         }
-        let ge = gt | (!lt); // ge = gt || eq (if not less, then greater or equal)
+        let ge = gt | ((!lt) & 1); // ge = gt || eq (if not less, then greater or equal)
     
-        if gt == 1 || (lt == 0 && gt == 0) {
+        if ge == 1 {
             // If scalar >= order, perform modular reduction
             let mut borrow = 0u16;
             let mut temp_bytes = *bytes;
@@ -344,6 +349,7 @@ impl Scalar {
     #[inline(always)]
     fn sub_in_place(a: &mut [u32; 8], b: &[u32; 8]) {
         let mut borrow = 0u64;
+        #[allow(clippy::needless_range_loop)]  // Index used for multiple arrays
         for i in 0..8 {
             let tmp = (a[i] as u64)
                      .wrapping_sub(b[i] as u64)

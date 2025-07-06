@@ -189,14 +189,6 @@ pub trait DeriveKeyXof: ExtendableOutputFunction {
 
 // Error conversion helpers for XOF-specific errors
 impl Error {
-    /// Create an XOF state error
-    pub(crate) fn xof_state(operation: &'static str, state: &'static str) -> Self {
-        Error::Processing {
-            operation,
-            details: state,
-        }
-    }
-    
     /// Create an XOF finalization error
     pub(crate) fn xof_finalized() -> Self {
         Error::Processing {

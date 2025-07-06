@@ -84,10 +84,10 @@ impl Scalar {
     #[inline(always)]
     fn to_le_limbs(bytes_be: &[u8; 48]) -> [u32; 12] {
         let mut limbs = [0u32; 12];
-        for i in 0..12 {
+        for (i, limb) in limbs.iter_mut().enumerate() {
             // MS limb first ⇒ start index counts back from the end
             let start = 44 - i * 4;
-            limbs[i] = u32::from_le_bytes([
+            *limb = u32::from_le_bytes([
                 bytes_be[start + 3],
                 bytes_be[start + 2],
                 bytes_be[start + 1],
@@ -144,13 +144,13 @@ impl Scalar {
         let mut r = [0u32; 12];
         let mut borrow = 0i64;
 
-        for i in 0..12 {
+        for (i, r_limb) in r.iter_mut().enumerate() {
             let tmp = a[i] as i64 - b[i] as i64 - borrow;
             if tmp < 0 {
-                r[i] = (tmp + (1i64 << 32)) as u32;
+                *r_limb = (tmp + (1i64 << 32)) as u32;
                 borrow = 1;
             } else {
-                r[i] = tmp as u32;
+                *r_limb = tmp as u32;
                 borrow = 0;
             }
         }
@@ -158,9 +158,9 @@ impl Scalar {
         // if negative ⇒ add n back
         if borrow == 1 {
             let mut c = 0u64;
-            for i in 0..12 {
-                let tmp = r[i] as u64 + Self::N_LIMBS[i] as u64 + c;
-                r[i] = tmp as u32;
+            for (i, r_limb) in r.iter_mut().enumerate() {
+                let tmp = *r_limb as u64 + Self::N_LIMBS[i] as u64 + c;
+                *r_limb = tmp as u32;
                 c = tmp >> 32;
             }
         }
@@ -291,7 +291,6 @@ impl Scalar {
             gt |= ((x > y) as u8) & (!lt);
             lt |= ((x < y) as u8) & (!gt);
         }
-        let ge = gt | (!lt); // ge = gt || eq (if not less, then greater or equal)
     
         if gt == 1 || (lt == 0 && gt == 0) {
             // If scalar >= order, perform modular reduction

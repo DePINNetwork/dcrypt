@@ -160,8 +160,8 @@ pub trait KeyDerivationFunction {
     #[cfg(feature = "alloc")]
     fn derive_key(&self, input: &[u8], salt: Option<&[u8]>, info: Option<&[u8]>, length: usize) -> Result<Vec<u8>>;
     
-    /// Creates a builder for fluent API usage
-    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> where Self: Sized;
+    /// Creates a builder for fluent API usage - FIXED: Elided lifetime
+    fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> where Self: Sized;
     
     /// Returns the security level of the KDF in bits
     fn security_level() -> SecurityLevel {
@@ -221,7 +221,8 @@ impl<H: HashFunction + Clone> KeyDerivationFunction for TypedHkdf<H> {
         self.inner.derive_key(input, salt, info, length)
     }
     
-    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
+    // FIXED: Elided lifetime
+    fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> {
         HKdfOperation {
             kdf: self,
             ikm: None,
@@ -231,10 +232,10 @@ impl<H: HashFunction + Clone> KeyDerivationFunction for TypedHkdf<H> {
         }
     }
     
+    // FIXED: Removed unnecessary let binding
     fn generate_salt<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Salt {
-        let salt_bytes = Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE)
-            .expect("Salt generation failed");
-        salt_bytes
+        Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE)
+            .expect("Salt generation failed")
     }
 }
 
@@ -345,7 +346,8 @@ impl<H: HashFunction + Clone> KeyDerivationFunction for TypedPbkdf2<H> {
         self.inner.derive_key(input, salt, info, length)
     }
     
-    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
+    // FIXED: Elided lifetime
+    fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> {
         Pbkdf2Builder {
             kdf: self,
             password: None,
@@ -355,10 +357,10 @@ impl<H: HashFunction + Clone> KeyDerivationFunction for TypedPbkdf2<H> {
         }
     }
     
+    // FIXED: Removed unnecessary let binding
     fn generate_salt<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Salt {
-        let salt_bytes = Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE)
-            .expect("Salt generation failed");
-        salt_bytes
+        Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE)
+            .expect("Salt generation failed")
     }
 }
 
@@ -372,8 +374,9 @@ pub struct Pbkdf2Builder<'a, H: HashFunction + Clone> {
     length: usize,
 }
 
+// FIXED: Elided lifetime in impl block
 #[cfg(feature = "alloc")]
-impl<'a, H: HashFunction + Clone> Pbkdf2Builder<'a, H> {
+impl<H: HashFunction + Clone> Pbkdf2Builder<'_, H> {
     /// Set the number of iterations
     pub fn with_iterations(mut self, iterations: u32) -> Self {
         self.iterations = iterations;

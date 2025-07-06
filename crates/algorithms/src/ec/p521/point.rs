@@ -342,7 +342,7 @@ impl Point {
         // Montgomery ladder — MSB→LSB
         for byte in scalar.as_secret_buffer().as_ref() {
             for bit in (0..8).rev() {
-                let choice = Choice::from(((byte >> bit) & 1) as u8);
+                let choice = Choice::from((byte >> bit) & 1);
 
                 ProjectivePoint::conditional_swap(&mut r0, &mut r1, choice);
                 // "ladder step"

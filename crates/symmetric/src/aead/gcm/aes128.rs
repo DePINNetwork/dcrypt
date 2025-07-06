@@ -1,6 +1,6 @@
 //! AES-128 cipher implementations
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::aes::keys::Aes128Key;
 use super::types::{GcmNonce, AesCiphertextPackage};
 use super::Aes128Gcm;

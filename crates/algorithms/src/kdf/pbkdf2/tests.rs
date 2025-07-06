@@ -1,7 +1,5 @@
 use super::*;
 use crate::hash::{Sha1, Sha256, Sha512};
-use crate::kdf::Pbkdf2; 
-use crate::kdf::Pbkdf2Params;
 use crate::kdf::params::ParamProvider;
 use crate::kdf::KeyDerivationFunction;
 use crate::types::Salt;

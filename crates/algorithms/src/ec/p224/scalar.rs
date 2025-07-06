@@ -127,9 +127,9 @@ impl Scalar {
         let mut carry = 0u64;
         
         // Plain 224-bit add
-        for i in 0..7 {
+        for (i, result) in r.iter_mut().enumerate() {
             let tmp = self_limbs[i] as u64 + other_limbs[i] as u64 + carry;
-            r[i] = tmp as u32;
+            *result = tmp as u32;
             carry = tmp >> 32;
         }
         
@@ -150,13 +150,13 @@ impl Scalar {
         let mut r = [0u32; 7];
         let mut borrow = 0i64;
         
-        for i in 0..7 {
+        for (i, result) in r.iter_mut().enumerate() {
             let tmp = self_limbs[i] as i64 - other_limbs[i] as i64 - borrow;
             if tmp < 0 {
-                r[i] = (tmp + (1i64 << 32)) as u32;
+                *result = (tmp + (1i64 << 32)) as u32;
                 borrow = 1;
             } else {
-                r[i] = tmp as u32;
+                *result = tmp as u32;
                 borrow = 0;
             }
         }
@@ -164,9 +164,9 @@ impl Scalar {
         if borrow == 1 {
             // Result was negative → add n back
             let mut c = 0u64;
-            for i in 0..7 {
-                let tmp = r[i] as u64 + Self::N_LIMBS[i] as u64 + c;
-                r[i] = tmp as u32;
+            for (i, result) in r.iter_mut().enumerate() {
+                let tmp = *result as u64 + Self::N_LIMBS[i] as u64 + c;
+                *result = tmp as u32;
                 c = tmp >> 32;
             }
         }
@@ -266,13 +266,13 @@ impl Scalar {
         
         // Subtract self from n
         let mut borrow = 0i64;
-        for i in 0..7 {
+        for (i, result) in res.iter_mut().enumerate() {
             let tmp = n_limbs[i] as i64 - self_limbs[i] as i64 - borrow;
             if tmp < 0 {
-                res[i] = (tmp + (1i64 << 32)) as u32;
+                *result = (tmp + (1i64 << 32)) as u32;
                 borrow = 1;
             } else {
-                res[i] = tmp as u32;
+                *result = tmp as u32;
                 borrow = 0;
             }
         }
@@ -314,9 +314,9 @@ impl Scalar {
             gt |= ((x > y) as u8) & (!lt);
             lt |= ((x < y) as u8) & (!gt);
         }
-        let ge = gt | (!lt); // ge = gt || eq (if not less, then greater or equal)
+        let ge = gt | ((!lt) & 1); // ge = gt || eq (if not less, then greater or equal)
     
-        if gt == 1 || (lt == 0 && gt == 0) {
+        if ge == 1 {
             // If scalar >= order, perform modular reduction
             let mut borrow = 0u16;
             let mut temp_bytes = *bytes;
@@ -363,11 +363,11 @@ impl Scalar {
     #[inline(always)]
     fn sub_in_place(a: &mut [u32; 7], b: &[u32; 7]) {
         let mut borrow = 0u64;
-        for i in 0..7 {
-            let tmp = (a[i] as u64)
+        for (i, elem) in a.iter_mut().enumerate() {
+            let tmp = (*elem as u64)
                      .wrapping_sub(b[i] as u64)
                      .wrapping_sub(borrow);
-            a[i] = tmp as u32;
+            *elem = tmp as u32;
             borrow = (tmp >> 63) & 1;  // 1 if we wrapped
         }
     }

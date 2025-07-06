@@ -71,6 +71,7 @@ pub struct Hkdf<H: HashFunction, const S: usize = 16> {
 
 /// Operation for HKDF operations
 pub struct HkdfOperation<'a, H: HashFunction, const S: usize = 16> {
+    #[allow(dead_code)] // Kept for potential future use and API consistency
     kdf: &'a Hkdf<H, S>,
     ikm: Option<&'a [u8]>,
     salt: Option<&'a [u8]>,
@@ -152,8 +153,8 @@ where
         // PRK length check (must be at least one hash block)
         validate::min_length("PRK for HKDF-Expand", prk.len(), hash_len)?;
 
-        // Number of blocks needed
-        let n = (length + hash_len - 1) / hash_len;
+        // Number of blocks needed - FIXED: Using div_ceil
+        let n = length.div_ceil(hash_len);
 
         // Pre-allocate OKM buffer and temporary block buffer
         let mut okm = Zeroizing::new(vec![0u8; n * hash_len]);
@@ -239,7 +240,8 @@ where
         Ok(result.to_vec())
     }
     
-    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
+    // FIXED: Elided lifetime
+    fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> {
         HkdfOperation {
             kdf: self,
             ikm: None,

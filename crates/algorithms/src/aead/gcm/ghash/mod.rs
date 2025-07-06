@@ -70,11 +70,6 @@ impl GHash {
         Self { h: h_copy, y }
     }
 
-    /// Resets the current hash value `y` to zero.
-    pub fn reset(&mut self) {
-        self.y = [0u8; GCM_BLOCK_SIZE];
-    }
-
     /// Updates the hash with input data, processing it in 16-byte blocks.
     /// This version has improved timing consistency for test purposes.
     ///
@@ -101,7 +96,7 @@ impl GHash {
         // Add dummy operations for smaller inputs to provide more consistent timing
         // This would not be done in production code, but helps with timing leak tests
         if data.len() < MAX_INPUT_SIZE_FOR_TESTING {
-            let dummy_blocks = (MAX_INPUT_SIZE_FOR_TESTING - data.len() + GCM_BLOCK_SIZE - 1) / GCM_BLOCK_SIZE;
+            let dummy_blocks = (MAX_INPUT_SIZE_FOR_TESTING - data.len()).div_ceil(GCM_BLOCK_SIZE);
             
             // Create a temporary state for dummy operations to avoid changing the real state
             let mut dummy_y = self.y;
@@ -115,7 +110,7 @@ impl GHash {
             compiler_fence(Ordering::SeqCst);
             
             // Use dummy_y in a way that doesn't affect result but prevents optimization
-            if dummy_y[0] == 0xff && dummy_y[1] == 0xff && data.len() == 0 {
+            if dummy_y[0] == 0xff && dummy_y[1] == 0xff && data.is_empty() {
                 // This branch is extremely unlikely (practically impossible) but prevents
                 // compiler from optimizing out the dummy operations
                 self.y[0] ^= 1; // Toggle a bit in a way that would break the result
@@ -152,15 +147,15 @@ impl GHash {
             let source_byte = if i < block_len { block[i] } else { 0 };
             
             // Masked assignment (constant-time selection)
-            temp_block[i] = (source_byte & mask) | (0 & !mask);
+            temp_block[i] = source_byte & mask;
         }
         
         // Ensure all operations above can't be optimized out
         compiler_fence(Ordering::SeqCst);
         
         // XOR with current state
-        for i in 0..GCM_BLOCK_SIZE {
-            self.y[i] ^= temp_block[i];
+        for (y_byte, temp_byte) in self.y.iter_mut().zip(temp_block.iter()) {
+            *y_byte ^= temp_byte;
         }
         
         // Multiply by H in GF(2^128)
@@ -213,18 +208,18 @@ impl GHash {
         let mut v = *y;
         
         // Process each byte of x
-        for i in 0..16 {
+        for x_byte in x.iter() {
             // Process each bit in the byte (MSB first in byte representation)
             for j in 0..8 {
                 // Extract the bit value (0 or 1) in constant time
-                let bit_val = (x[i] >> (7 - j)) & 1;
+                let bit_val = (x_byte >> (7 - j)) & 1;
                 
                 // Create a mask from the bit: 0xFF if bit=1, 0x00 if bit=0
                 let mask = 0u8.wrapping_sub(bit_val);
                 
                 // XOR the value of V into Z if the bit is set (in constant time)
-                for k in 0..16 {
-                    z[k] ^= v[k] & mask;
+                for (z_byte, v_byte) in z.iter_mut().zip(v.iter()) {
+                    *z_byte ^= v_byte & mask;
                 }
                 
                 // Check if LSB of V is set (in constant time)
@@ -235,9 +230,9 @@ impl GHash {
                 
                 // Right shift V by 1 bit (in big-endian representation)
                 let mut carry = 0;
-                for k in 0..16 {
-                    let next_carry = v[k] & 1;
-                    v[k] = (v[k] >> 1) | (carry << 7);
+                for v_byte in &mut v {
+                    let next_carry = *v_byte & 1;
+                    *v_byte = (*v_byte >> 1) | (carry << 7);
                     carry = next_carry;
                 }
                 

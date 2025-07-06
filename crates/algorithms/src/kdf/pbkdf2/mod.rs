@@ -115,7 +115,8 @@ pub struct Pbkdf2Builder<'a, H: HashFunction + Clone, const S: usize = 16> {
     length: usize,
 }
 
-impl<'a, H: HashFunction + Clone, const S: usize> Pbkdf2Builder<'a, H, S> {
+// FIXED: Elided lifetime in impl block
+impl<H: HashFunction + Clone, const S: usize> Pbkdf2Builder<'_, H, S> {
     /// Set the number of iterations
     pub fn with_iterations(mut self, iterations: u32) -> Self {
         self.iterations = iterations;
@@ -231,8 +232,8 @@ impl<H: HashFunction + Clone, const S: usize> Pbkdf2<H, S> {
         
         let hash_len = H::output_size();
 
-        // Calculate how many blocks we need to generate
-        let block_count = (key_length + hash_len - 1) / hash_len;
+        // Calculate how many blocks we need to generate - FIXED: Using div_ceil
+        let block_count = key_length.div_ceil(hash_len);
         
         // Check that the output length is not too large
         // RFC 8018 section 5.2 states that the maximum output length is (2^32 - 1) * hash_len
@@ -343,10 +344,10 @@ where Salt<S>: Pbkdf2Compatible {
     
     #[cfg(feature = "alloc")]
     fn derive_key(&self, input: &[u8], salt: Option<&[u8]>, _info: Option<&[u8]>, length: usize) -> Result<Vec<u8>> {
-        // Use provided salt or fallback to default from params
+        // Use provided salt or fallback to default from params - FIXED: Removed needless borrow
         let effective_salt = match salt {
             Some(s) => s,
-            None => &self.params.salt.as_ref(),
+            None => self.params.salt.as_ref(),
         };
         
         // Use provided length or fallback to default from params
@@ -356,7 +357,8 @@ where Salt<S>: Pbkdf2Compatible {
         Self::pbkdf2_secure(input, effective_salt, self.params.iterations, effective_length)
     }
     
-    fn builder<'a>(&'a self) -> impl KdfOperation<'a, Self::Algorithm> {
+    // FIXED: Elided lifetime
+    fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> {
         Pbkdf2Builder {
             kdf: self,
             ikm: None,

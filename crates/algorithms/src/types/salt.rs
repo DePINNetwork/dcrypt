@@ -69,12 +69,6 @@ impl<const N: usize> Salt<N> {
     pub fn is_empty(&self) -> bool {
         N == 0
     }
-    
-    /// Unchecked constructor for internal use
-    #[doc(hidden)]
-    pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
-        Self { data }
-    }
 }
 
 impl<const N: usize> AsRef<[u8]> for Salt<N> {
@@ -119,7 +113,7 @@ impl<const N: usize> fmt::Debug for Salt<N> {
 
 impl<const N: usize> ConstantTimeEq for Salt<N> {
     fn ct_eq(&self, other: &Self) -> bool {
-        internal::constant_time::ct_eq(&self.data, &other.data)
+        internal::constant_time::ct_eq(self.data, other.data)
     }
 }
 

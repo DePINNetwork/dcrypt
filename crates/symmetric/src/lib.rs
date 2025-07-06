@@ -1,8 +1,7 @@
-// File: dcrypt-symmetric/src/lib.rs
 //! Symmetric encryption algorithms for the DCRYPT library
 //!
 //! This crate provides high-level symmetric encryption algorithms built on top of
-//! the primitives in dcrypt-primitives.
+//! the primitives in dcrypt-primitives and uses the unified API error system.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
@@ -26,4 +25,9 @@ pub use aead::chacha20poly1305::{
     XChaCha20Poly1305Nonce
 };
 pub use cipher::{SymmetricCipher, Aead};
-pub use error::{Error, Result};
+
+// Re-export the API error system instead of custom error types
+pub use api::error::{Error, Result};
+
+// Re-export commonly used validation and error handling utilities
+pub use api::error::{validate, ResultExt, SecureErrorHandling, ERROR_REGISTRY};

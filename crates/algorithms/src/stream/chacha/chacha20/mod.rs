@@ -90,17 +90,6 @@ impl ChaCha20 {
         }
     }
     
-    /// Creates from a SecretBuffer key (internal use)
-    pub(crate) fn from_secret_key<const N: usize>(
-        key: &SecretBuffer<CHACHA20_KEY_SIZE>, 
-        nonce: &Nonce<N>
-    ) -> Self
-    where
-        Nonce<N>: ChaCha20Compatible
-    {
-        Self::with_counter_secure(key, nonce, 0)
-    }
-    
     /// The ChaCha20 quarter round function
     #[inline]
     fn quarter_round(state: &mut [u32], a: usize, b: usize, c: usize, d: usize) {

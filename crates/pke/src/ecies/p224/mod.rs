@@ -21,7 +21,7 @@ use super::{
     CHACHA20POLY1305_KEY_LEN,
     CHACHA20POLY1305_NONCE_LEN,
 };
-use crate::error::{Result as PkeResult, Error as PkeError};
+use crate::error::Error as PkeError;
 
 /// Public key for ECIES P-224. Stores serialized uncompressed point.
 #[derive(Clone, Debug)]

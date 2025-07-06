@@ -1,5 +1,70 @@
-//! Minimal BLAKE3 implementation focusing on correctness over performance
-//! Directly adapted from the official reference implementation
+//! BLAKE3 extendable output function (XOF) implementation
+//!
+//! This module provides a pure Rust implementation of the BLAKE3 cryptographic
+//! hash function in XOF (eXtendable Output Function) mode, allowing for
+//! arbitrary-length output generation.
+//!
+//! # Overview
+//!
+//! BLAKE3 is a cryptographic hash function that is:
+//! - **Fast**: Optimized for modern CPUs with SIMD instructions
+//! - **Secure**: Based on the well-analyzed ChaCha permutation
+//! - **Versatile**: Supports hashing, keyed hashing, and key derivation
+//! - **Parallelizable**: Can process multiple chunks simultaneously
+//! - **Incremental**: Supports streaming/incremental hashing
+//!
+//! # Security Properties
+//!
+//! - **Security Level**: 256 bits (128-bit collision resistance)
+//! - **Output Size**: Variable (unlimited in XOF mode)
+//! - **Key Size**: 256 bits (32 bytes) for keyed variants
+//!
+//! # Features
+//!
+//! This implementation provides three modes of operation:
+//!
+//! 1. **Standard XOF**: Variable-length output from input data
+//! 2. **Keyed XOF**: HMAC-like keyed hashing with variable output
+//! 3. **Key Derivation**: Derive keys from a context string and input data
+//!
+//! # Implementation Notes
+//!
+//! This implementation prioritizes correctness and security over performance:
+//! - Uses secure memory handling with `SecretBuffer` for sensitive data
+//! - Implements proper zeroization of sensitive values
+//! - Based directly on the BLAKE3 reference implementation
+//! - Does not include SIMD optimizations
+//!
+//! # Example Usage
+//!
+//! ```rust,ignore
+//! use dcrypt_algorithms::xof::{Blake3Xof, ExtendableOutputFunction};
+//!
+//! // Standard hashing with variable output
+//! let data = b"Hello, BLAKE3!";
+//! let output = Blake3Xof::generate(data, 64)?; // 64 bytes output
+//!
+//! // Incremental hashing
+//! let mut xof = Blake3Xof::new();
+//! xof.update(b"Hello, ")?;
+//! xof.update(b"BLAKE3!")?;
+//! let mut output = vec![0u8; 64];
+//! xof.squeeze(&mut output)?;
+//!
+//! // Keyed hashing
+//! let key = b"this is a 32-byte key for BLAKE3";
+//! let output = Blake3Xof::keyed_generate(key, data, 32)?;
+//!
+//! // Key derivation
+//! let context = b"MyApp v1.0.0 session key";
+//! let output = Blake3Xof::derive_key(context, data, 32)?;
+//! ```
+//!
+//! # References
+//!
+//! - [BLAKE3 Specification](https://github.com/BLAKE3-team/BLAKE3-specs)
+//! - [BLAKE3 Paper](https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf)
+//! - [Reference Implementation](https://github.com/BLAKE3-team/BLAKE3)
 
 use super::{ExtendableOutputFunction, KeyedXof, DeriveKeyXof, Blake3Algorithm};
 use crate::error::{Error, Result, validate};
@@ -11,27 +76,30 @@ use zeroize::Zeroize;
 use alloc::vec::Vec;
 
 // BLAKE3 constants
-const OUT_LEN: usize = 32;
-const KEY_LEN: usize = 32;
-const BLOCK_LEN: usize = 64;
-const CHUNK_LEN: usize = 1024;
+const OUT_LEN: usize = 32;      // Standard output length (256 bits)
+const KEY_LEN: usize = 32;      // Key length for keyed hashing (256 bits)
+const BLOCK_LEN: usize = 64;    // Input block size (512 bits)
+const CHUNK_LEN: usize = 1024;  // Chunk size (16 blocks)
 
-// Flags
-const CHUNK_START: u32 = 1 << 0;
-const CHUNK_END: u32 = 1 << 1;
-const PARENT: u32 = 1 << 2;
-const ROOT: u32 = 1 << 3;
-const KEYED_HASH: u32 = 1 << 4;
-const DERIVE_KEY_CONTEXT: u32 = 1 << 5;
-const DERIVE_KEY_MATERIAL: u32 = 1 << 6;
+// Flags for domain separation and tree structure
+const CHUNK_START: u32 = 1 << 0;         // First block of a chunk
+const CHUNK_END: u32 = 1 << 1;           // Last block of a chunk
+const PARENT: u32 = 1 << 2;              // Parent node in the tree
+const ROOT: u32 = 1 << 3;                // Root node (final output)
+const KEYED_HASH: u32 = 1 << 4;          // Keyed hashing mode
+const DERIVE_KEY_CONTEXT: u32 = 1 << 5;  // Key derivation context
+const DERIVE_KEY_MATERIAL: u32 = 1 << 6; // Key derivation material
 
 // IV is the initialization vector for BLAKE3
+// These are the first 32 bits of the fractional parts of the square roots
+// of the first 8 primes: 2, 3, 5, 7, 11, 13, 17, 19
 const IV: [u32; 8] = [
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A,
     0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
 ];
 
 // Message word permutation for each round
+// This permutation is applied to the message words between rounds
 const MSG_PERMUTATION: [usize; 16] = [
     2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8,
 ];
@@ -59,6 +127,8 @@ fn words_to_little_endian_bytes(words: &[u32], bytes: &mut [u8]) {
 }
 
 // G function for mixing
+/// The G function is the core mixing operation in BLAKE3, derived from ChaCha.
+/// It performs a series of additions, XORs, and rotations to mix the state.
 #[inline(always)]
 fn g(state: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize, mx: u32, my: u32) {
     state[a] = state[a].wrapping_add(state[b]).wrapping_add(mx);
@@ -97,6 +167,16 @@ fn permute(m: &mut [u32; 16]) {
 }
 
 // Compression function for BLAKE3
+/// The compression function is the heart of BLAKE3. It takes:
+/// - A 256-bit chaining value from the previous block
+/// - A 512-bit block of message data
+/// - A 64-bit counter for the block position
+/// - The block length (normally 64, may be less for the final block)
+/// - Flags for domain separation and tree structure
+///
+/// It produces a 512-bit output that can be used as:
+/// - The chaining value for the next block (first 256 bits)
+/// - Extended output in XOF mode (all 512 bits)
 fn compress(
     chaining_value: &[u32; 8],
     block_words: &[u32; 16],
@@ -173,13 +253,11 @@ impl Output {
     }
     
     fn root_output_bytes(&self, out_slice: &mut [u8]) {
-        let mut output_block_counter = 0;
-        
-        for out_block in out_slice.chunks_mut(2 * OUT_LEN) {
+        for (output_block_counter, out_block) in out_slice.chunks_mut(2 * OUT_LEN).enumerate() {
             let words = compress(
                 &self.input_chaining_value,
                 &self.block_words,
-                output_block_counter,
+                output_block_counter as u64,
                 self.block_len,
                 self.flags | ROOT
             );
@@ -194,8 +272,6 @@ impl Output {
                 let end = core::cmp::min((i + 1) * 4, out_block.len());
                 out_block[start..end].copy_from_slice(&word_bytes[..(end - start)]);
             }
-            
-            output_block_counter += 1;
         }
     }
 }
@@ -278,6 +354,7 @@ impl ChunkState {
     }
     
     // Public update method to maintain compatibility with tests
+    #[cfg(test)]
     pub fn update(&mut self, input: &[u8]) -> Result<()> {
         self.update_internal(input)
     }
@@ -330,6 +407,30 @@ fn parent_cv(
 }
 
 /// BLAKE3 extendable output function
+///
+/// This struct implements the BLAKE3 algorithm as an XOF, capable of producing
+/// outputs of arbitrary length. It maintains the internal state required for
+/// incremental hashing and supports all three BLAKE3 modes of operation.
+///
+/// # Internal Structure
+///
+/// The implementation uses:
+/// - A chunk state for processing input data in 1024-byte chunks
+/// - A stack of chaining values for the tree structure
+/// - Secure key storage using `SecretBuffer`
+/// - Flags to indicate the current mode of operation
+///
+/// # Security
+///
+/// All sensitive data (keys and intermediate values) are:
+/// - Stored in secure memory containers
+/// - Properly zeroized on drop
+/// - Protected against timing attacks
+///
+/// # Thread Safety
+///
+/// `Blake3Xof` is not thread-safe for concurrent access. Each thread should
+/// use its own instance.
 #[derive(Clone)]
 pub struct Blake3Xof {
     chunk_state: ChunkState,
@@ -374,7 +475,7 @@ impl Blake3Xof {
     }
     
     fn pop_stack(&mut self) -> Result<[u32; 8]> {
-        self.cv_stack.pop().ok_or_else(|| Error::Processing {
+        self.cv_stack.pop().ok_or(Error::Processing {
             operation: "BLAKE3",
             details: "Stack underflow",
         })
@@ -408,6 +509,25 @@ impl Blake3Xof {
     }
 
     /// Utility function for digest generation
+    /// 
+    /// This is a convenience function that creates a BLAKE3 XOF instance,
+    /// processes the input data, and returns the requested number of output bytes.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `data` - The input data to hash
+    /// * `len` - The desired output length in bytes
+    /// 
+    /// # Returns
+    /// 
+    /// A vector containing `len` bytes of output, or an error if the length is invalid.
+    /// 
+    /// # Example
+    /// 
+    /// ```rust,ignore
+    /// let hash = Blake3Xof::generate(b"hello world", 32)?;
+    /// assert_eq!(hash.len(), 32);
+    /// ```
     pub fn generate(data: &[u8], len: usize) -> Result<Vec<u8>> {
         Blake3Algorithm::validate_output_length(len)?;
         
@@ -420,6 +540,10 @@ impl Blake3Xof {
 }
 
 impl ExtendableOutputFunction for Blake3Xof {
+    /// Creates a new BLAKE3 XOF instance in standard hashing mode.
+    /// 
+    /// The instance is initialized with the standard BLAKE3 IV and is ready
+    /// to accept input data via the `update` method.
     fn new() -> Self {
         // Convert IV to bytes for SecretBuffer storage
         let mut key_bytes = [0u8; 32];
@@ -478,6 +602,18 @@ impl ExtendableOutputFunction for Blake3Xof {
 }
 
 impl KeyedXof for Blake3Xof {
+    /// Creates a new BLAKE3 XOF instance in keyed hashing mode.
+    /// 
+    /// This mode uses a 256-bit key to create a MAC (Message Authentication Code).
+    /// The key is mixed into the initial state, providing authentication.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `key` - A 32-byte (256-bit) key
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if the key length is not exactly 32 bytes.
     fn with_key(key: &[u8]) -> Result<Self> {
         validate::length("BLAKE3 key", key.len(), KEY_LEN)?;
         
@@ -492,7 +628,7 @@ impl KeyedXof for Blake3Xof {
         let mut key_words = [0u32; 8];
         words_from_little_endian_bytes(key, &mut key_words);
         
-        let mut instance = Self {
+        let instance = Self {
             chunk_state: ChunkState::new(key_words, 0, KEYED_HASH),
             key_words: key_buf,
             cv_stack: Vec::new(),
@@ -507,6 +643,20 @@ impl KeyedXof for Blake3Xof {
 }
 
 impl DeriveKeyXof for Blake3Xof {
+    /// Creates a new BLAKE3 XOF instance in key derivation mode.
+    /// 
+    /// This mode is designed for deriving keys from input key material.
+    /// It first hashes the context string to create a context-specific key,
+    /// then uses that key to process the actual key material.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `context` - A context string that domain-separates different uses
+    /// 
+    /// # Security Note
+    /// 
+    /// The context string should be unique for each application to ensure
+    /// that keys derived for one purpose cannot be used for another.
     fn for_derive_key(context: &[u8]) -> Result<Self> {
         let mut context_hasher = Self::new();
         context_hasher.update(context)?;
@@ -527,7 +677,7 @@ impl DeriveKeyXof for Blake3Xof {
         let mut key_words = [0u32; 8];
         words_from_little_endian_bytes(context_key.as_ref(), &mut key_words);
         
-        let mut instance = Self {
+        let instance = Self {
             chunk_state: ChunkState::new(key_words, 0, DERIVE_KEY_MATERIAL),
             key_words: key_buf,
             cv_stack: Vec::new(),

@@ -156,7 +156,7 @@ impl Zeroize for ShakeXof256 {
 /// Performs a full Keccak-f[1600] permutation on the state
 fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
     // Use EphemeralSecret for temporary arrays
-    for round in 0..KECCAK_ROUNDS {
+    for (_round, &rc) in RC.iter().enumerate().take(KECCAK_ROUNDS) {
         // Theta step with secure temporary storage
         let mut c = EphemeralSecret::new([0u64; 5]);
         for x in 0..5 {
@@ -203,7 +203,7 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
         }
 
         // Iota step
-        state[0] ^= RC[round];
+        state[0] ^= rc;
     }
     
     // Insert memory barrier after permutation
@@ -219,11 +219,11 @@ fn keccak_absorb(
     // Get state as u64 array for processing
     let mut state_array = state.to_u64_array();
     
-    for i in 0..data.len() {
+    for (i, &byte) in data.iter().enumerate() {
         let pos = i % rate;
         let byte_idx = pos % 8;
         let word_idx = pos / 8;
-        state_array[word_idx] ^= (data[i] as u64) << (8 * byte_idx);
+        state_array[word_idx] ^= (byte as u64) << (8 * byte_idx);
     }
     
     if !data.is_empty() && data.len() % rate == 0 {
@@ -314,7 +314,7 @@ impl ExtendableOutputFunction for ShakeXof128 {
 
     fn squeeze(&mut self, output: &mut [u8]) -> Result<()> {
         validate::parameter(
-            output.len() > 0,
+            !output.is_empty(),
             "output_length",
             "Output buffer must not be empty"
         )?;
@@ -467,7 +467,7 @@ impl ExtendableOutputFunction for ShakeXof256 {
 
     fn squeeze(&mut self, output: &mut [u8]) -> Result<()> {
         validate::parameter(
-            output.len() > 0,
+            !output.is_empty(),
             "output_length",
             "Output buffer must not be empty"
         )?;

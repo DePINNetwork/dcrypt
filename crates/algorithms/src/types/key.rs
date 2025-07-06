@@ -107,15 +107,6 @@ where
         }
     }
     
-    /// Unchecked constructor for internal use
-    #[doc(hidden)]
-    pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
-        Self {
-            data: SecretBuffer::new(data),
-            _algorithm: PhantomData,
-        }
-    }
-    
     /// Get the algorithm name
     pub fn algorithm_name() -> String {
         A::name()
@@ -188,7 +179,10 @@ impl<A: SymmetricAlgorithm, const N: usize> RandomGeneration for SymmetricKey<A,
 
 impl<A: SymmetricAlgorithm + Clone, const N: usize> SecureZeroingType for SymmetricKey<A, N> {
     fn zeroed() -> Self {
-        Self::zeroed() // Calls the struct's zeroed method
+        Self {
+            data: SecretBuffer::zeroed(),
+            _algorithm: PhantomData,
+        }
     }
     
     fn secure_clone(&self) -> Self {
@@ -296,15 +290,6 @@ where
         }
     }
     
-    /// Unchecked constructor for internal use
-    #[doc(hidden)]
-    pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
-        Self {
-            data: SecretBuffer::new(data),
-            _algorithm: PhantomData,
-        }
-    }
-    
     /// Get the algorithm name
     pub fn algorithm_name() -> String {
         A::name()
@@ -359,7 +344,10 @@ impl<A: AsymmetricAlgorithm, const N: usize> fmt::Debug for AsymmetricSecretKey<
 
 impl<A: AsymmetricAlgorithm + Clone, const N: usize> SecureZeroingType for AsymmetricSecretKey<A, N> {
     fn zeroed() -> Self {
-        Self::zeroed() // Calls the struct's zeroed method
+        Self {
+            data: SecretBuffer::zeroed(),
+            _algorithm: PhantomData,
+        }
     }
     
     fn secure_clone(&self) -> Self {
@@ -472,15 +460,6 @@ where
             data,
             _algorithm: PhantomData,
         })
-    }
-    
-    /// Unchecked constructor for internal use
-    #[doc(hidden)]
-    pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
-        Self {
-            data,
-            _algorithm: PhantomData,
-        }
     }
     
     /// Get the algorithm name

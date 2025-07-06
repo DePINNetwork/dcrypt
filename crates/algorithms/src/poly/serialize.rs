@@ -37,19 +37,20 @@ impl<M: Modulus> CoefficientPacker<M> for DefaultCoefficientSerde {
         
         let n = M::N;
         let total_bits = n * bits_per_coeff;
-        let num_bytes = (total_bits + 7) / 8;
+        let num_bytes = total_bits.div_ceil(8);  // FIXED: Use div_ceil
         let mut packed = vec![0u8; num_bytes];
         
         let coeffs = poly.as_coeffs_slice();
         let mask = (1u32 << bits_per_coeff) - 1;
         
         let mut bit_pos = 0;
-        for i in 0..n {
-            let coeff = coeffs[i] & mask;
+        // FIXED: Use iterator instead of indexing
+        for &coeff in coeffs.iter().take(n) {
+            let masked_coeff = coeff & mask;
             
             // Pack coefficient into byte array
             for bit in 0..bits_per_coeff {
-                if (coeff >> bit) & 1 == 1 {
+                if (masked_coeff >> bit) & 1 == 1 {
                     let byte_idx = bit_pos / 8;
                     let bit_idx = bit_pos % 8;
                     packed[byte_idx] |= 1 << bit_idx;
@@ -73,7 +74,7 @@ impl<M: Modulus> CoefficientUnpacker<M> for DefaultCoefficientSerde {
         
         let n = M::N;
         let total_bits = n * bits_per_coeff;
-        let required_bytes = (total_bits + 7) / 8;
+        let required_bytes = total_bits.div_ceil(8);  // FIXED: Use div_ceil
         
         if bytes.len() < required_bytes {
             return Err(Error::Parameter {
@@ -87,8 +88,9 @@ impl<M: Modulus> CoefficientUnpacker<M> for DefaultCoefficientSerde {
         let mask = (1u32 << bits_per_coeff) - 1;
         
         let mut bit_pos = 0;
-        for i in 0..n {
-            let mut coeff = 0u32;
+        // FIXED: Use iterator instead of indexing
+        for coeff in coeffs.iter_mut().take(n) {
+            let mut coeff_value = 0u32;
             
             // Unpack coefficient from byte array
             for bit in 0..bits_per_coeff {
@@ -96,12 +98,12 @@ impl<M: Modulus> CoefficientUnpacker<M> for DefaultCoefficientSerde {
                 let bit_idx = bit_pos % 8;
                 
                 if (bytes[byte_idx] >> bit_idx) & 1 == 1 {
-                    coeff |= 1 << bit;
+                    coeff_value |= 1 << bit;
                 }
                 bit_pos += 1;
             }
             
-            coeffs[i] = coeff & mask;
+            *coeff = coeff_value & mask;
         }
         
         Ok(poly)
@@ -109,7 +111,10 @@ impl<M: Modulus> CoefficientUnpacker<M> for DefaultCoefficientSerde {
 }
 
 /// Helper function to calculate the number of bytes required for packing
+#[allow(clippy::manual_div_ceil)]
 pub const fn bytes_required(bits_per_coeff: usize, n: usize) -> usize {
+    // Note: div_ceil is not const-stable yet, so we use manual implementation
+    // This is required for const functions
     (n * bits_per_coeff + 7) / 8
 }
 

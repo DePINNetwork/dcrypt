@@ -66,9 +66,9 @@ impl FieldElement {
         // Convert from big-endian bytes to little-endian limbs
         // limbs[0] = least-significant 4 bytes (bytes[24..28])
         // limbs[6] = most-significant 4 bytes (bytes[0..4])
-        for i in 0..7 {
+        for (i, limb) in limbs.iter_mut().enumerate() {
             let offset = (6 - i) * 4; // Byte offset: 24, 20, 16, ..., 0
-            limbs[i] = u32::from_be_bytes([
+            *limb = u32::from_be_bytes([
                 bytes[offset],
                 bytes[offset + 1],
                 bytes[offset + 2],
@@ -373,8 +373,8 @@ impl FieldElement {
     /// Used for branchless operations to maintain constant-time guarantees.
     fn conditional_select(a: &[u32;7], b: &[u32;7], flag: Choice) -> Self {
         let mut out = [0u32;7];
-        for i in 0..7 {
-            out[i] = u32::conditional_select(&a[i], &b[i], flag);
+        for (i, out_elem) in out.iter_mut().enumerate() {
+            *out_elem = u32::conditional_select(&a[i], &b[i], flag);
         }
         FieldElement(out)
     }
@@ -388,12 +388,12 @@ impl FieldElement {
         let mut r = [0u32; 7];
         let mut carry = 0;
 
-        for i in 0..7 {
+        for (i, r_elem) in r.iter_mut().enumerate() {
             // Add corresponding limbs plus carry from previous iteration
             let (sum1, carry1) = a[i].overflowing_add(b[i]);
             let (sum2, carry2) = sum1.overflowing_add(carry);
 
-            r[i] = sum2;
+            *r_elem = sum2;
             carry = (carry1 as u32) | (carry2 as u32);
         }
 
@@ -409,12 +409,12 @@ impl FieldElement {
         let mut r = [0u32;7];
         let mut borrow = 0;
         
-        for i in 0..7 {
+        for (i, r_elem) in r.iter_mut().enumerate() {
             // Subtract corresponding limbs minus borrow from previous iteration
             let (diff1, borrow1) = a[i].overflowing_sub(b[i]);
             let (diff2, borrow2) = diff1.overflowing_sub(borrow);
             
-            r[i] = diff2;
+            *r_elem = diff2;
             borrow = (borrow1 as u32) | (borrow2 as u32);
         }
         (r, borrow)
@@ -438,46 +438,11 @@ impl FieldElement {
         let (diff, _) = Self::sbb7(limbs, Self::MOD_LIMBS);
 
         // Constant-time select between original limbs and difference
-        for i in 0..7 {
-            result[i] = u32::conditional_select(&limbs[i], &diff[i], condition);
+        for (i, result_elem) in result.iter_mut().enumerate() {
+            *result_elem = u32::conditional_select(&limbs[i], &diff[i], condition);
         }
 
         Self(result)
-    }
-
-    /// Helper function for reduce_wide: fold a high limb using modular relations
-    /// For P-224: 2^(224+32i) ≡ 2^(96+32i) - 2^(32i) (mod p)
-    #[inline(always)]
-    fn fold(limbs: &mut [u32; 7], idx: usize, k: u32) {
-        if k == 0 { return; }
-
-        /* ---------- subtract k from limb[idx] (borrow up to idx+2) ---------- */
-        let (lo, mut borrow) = limbs[idx].overflowing_sub(k);
-        limbs[idx] = lo;
-
-        let mut j = idx + 1;
-        while borrow && j < idx + 3 {            // *only* up to idx+2
-            let (v, b) = limbs[j].overflowing_sub(1);
-            limbs[j] = v;
-            borrow = b;
-            j += 1;
-        }
-        let borrow_u32 = borrow as u32;          // 0 or 1, still outstanding
-
-        /* ---------- add k - borrow to limb[idx+3] ------------------------- */
-        // (if we still owe a borrow, we really have to add k-1)
-        let addend = k.wrapping_sub(borrow_u32);
-
-        let (hi, mut carry) = limbs[idx + 3].overflowing_add(addend);
-        limbs[idx + 3] = hi;
-
-        j = idx + 4;
-        while carry && j < 7 {
-            let (v, c) = limbs[j].overflowing_add(1);
-            limbs[j] = v;
-            carry = c;
-            j += 1;
-        }
     }
 
     /// Reduce a 448-bit value (14 little-endian `u32` limbs) modulo  
@@ -485,10 +450,10 @@ impl FieldElement {
     ///
     /// Strategy (constant-time Solinas):
     /// 1.  Fold limbs 7‥13 back into 0‥6 with
-    ///        2²²⁴ ≡ 2⁹⁶ − 1   (mod p)
+    ///     2²²⁴ ≡ 2⁹⁶ − 1   (mod p)
     ///     → `s[i-4] += v` and `s[i-7] -= v`.
-    ///    A single top-down pass is enough because we process the new "middle"
-    ///    limbs (indices 7-9) later in the same loop.
+    ///     A single top-down pass is enough because we process the new "middle"
+    ///     limbs (indices 7-9) later in the same loop.
     /// 2.  Signed carry-propagate over the 7 low limbs.
     /// 3.  Whatever carry leaked beyond bit 224 is one more "2²²⁴"; fold it
     ///     again with the *same* relation (add to limb 3, subtract from limb 0).
@@ -498,7 +463,7 @@ impl FieldElement {
     pub(crate) fn reduce_wide(t: [u32; 14]) -> FieldElement {
         /* ── 1. load into signed 128-bit ─────────────────────────────────── */
         let mut s = [0i128; 14];
-        for i in 0..14 { s[i] = t[i] as i128; }
+        for (i, s_elem) in s.iter_mut().enumerate().take(14) { *s_elem = t[i] as i128; }
 
         /* ── 2. main folding pass (7‥13 → 0‥6) ──────────────────────────── */
         for i in (7..14).rev() {
@@ -511,9 +476,9 @@ impl FieldElement {
 
         /* ── 3. first signed carry sweep over the 7 low limbs ────────────── */
         let mut carry: i128 = 0;
-        for i in 0..7 {
-            let tmp = s[i] + carry;
-            s[i]   = tmp & 0xffff_ffff;
+        for elem in s.iter_mut().take(7) {
+            let tmp = *elem + carry;
+            *elem  = tmp & 0xffff_ffff;
             carry  = tmp >> 32;                    // arithmetic shift
         }
 
@@ -525,9 +490,9 @@ impl FieldElement {
 
         /* ── 5. second signed carry sweep ────────────────────────────────── */
         carry = 0;
-        for i in 0..7 {
-            let tmp = s[i] + carry;
-            s[i]   = tmp & 0xffff_ffff;
+        for elem in s.iter_mut().take(7) {
+            let tmp = *elem + carry;
+            *elem  = tmp & 0xffff_ffff;
             carry  = tmp >> 32;
         }
 
@@ -540,9 +505,9 @@ impl FieldElement {
         /* ── 7. final carry sweep into ordinary u32 limbs ────────────────── */
         let mut out = [0u32; 7];
         carry = 0;
-        for i in 0..7 {
+        for (i, out_elem) in out.iter_mut().enumerate() {
             let tmp = s[i] + carry;
-            out[i]  = (tmp & 0xffff_ffff) as u32;
+            *out_elem  = (tmp & 0xffff_ffff) as u32;
             carry   = tmp >> 32;
         }
         debug_assert!(carry == 0);                 // everything folded
@@ -553,26 +518,10 @@ impl FieldElement {
         Self::conditional_select(&out, &sub, need_sub)
     }
 
-
-
-
     /// Get the field modulus p as a FieldElement
     /// 
     /// Returns the NIST P-224 prime modulus for use in reduction operations.
     pub(crate) fn get_modulus() -> Self {
         FieldElement(Self::MOD_LIMBS)
-    }
-
-    /// Reduce the field element modulo p if needed
-    /// 
-    /// Repeatedly subtracts p until the value is in canonical form.
-    /// Note: This is a simple implementation - production code would
-    /// use more efficient reduction methods.
-    fn reduce(&self) -> Self {
-        let mut result = self.clone();
-        while !result.is_valid() {
-            result = result.sub(&FieldElement::get_modulus());
-        }
-        result
     }
 }

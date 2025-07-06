@@ -311,7 +311,7 @@ fn run_sha3_monte_tests<H: HashFunction>(filepath: &str, name: &str) {
         let mut md = seed_bytes.clone();
         
         // Perform the specified number of iterations (typically 100 for SHA-3)
-        for j in 0..=test.count {
+        for _j in 0..=test.count {
             // Create a new hash instance
             let mut hasher = H::new();
             

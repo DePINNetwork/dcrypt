@@ -71,7 +71,7 @@ impl Sha1 {
         let mut d = self.h[3];
         let mut e = self.h[4];
         // Main loop
-        for i in 0..80 {
+        for (i, &word) in w.iter().enumerate().take(80) {
             let (f, k) = if i < 20 {
                 ((b & c) | ((!b) & d), 0x5A827999)
             } else if i < 40 {
@@ -86,7 +86,7 @@ impl Sha1 {
                 .wrapping_add(f)
                 .wrapping_add(e)
                 .wrapping_add(k)
-                .wrapping_add(w[i]);
+                .wrapping_add(word);
             e = d;
             d = c;
             c = b.rotate_left(30);
@@ -108,7 +108,7 @@ impl Sha1 {
         // Check for overflow in total_len calculation
         let new_bits = (data.len() as u64).wrapping_mul(8);
         self.total_len = self.total_len.checked_add(new_bits)
-            .ok_or_else(|| Error::Processing {
+            .ok_or(Error::Processing {
                 operation: "SHA-1",
                 details: "Message length overflow"
             })?;

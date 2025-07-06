@@ -21,32 +21,6 @@ use super::polynomial::Polynomial;
 use super::params::{Modulus, NttModulus, PostInvNtt};
 use crate::error::{Result, Error};
 
-/// Reverse the bits of an index
-#[inline]
-fn bit_reverse(mut x: usize, log_n: u32) -> usize {
-    let mut r = 0;
-    for _ in 0..log_n {
-        r = (r << 1) | (x & 1);
-        x >>= 1;
-    }
-    r
-}
-
-/// Bit-reversal permutation for NTT output ordering
-#[inline]
-fn bit_reverse_copy<M: NttModulus>(coeffs: &mut [u32]) {
-    let n = coeffs.len();
-    let log_n = n.trailing_zeros();
-    
-    let mut temp = vec![0u32; n];
-    for i in 0..n {
-        let rev = bit_reverse(i, log_n);
-        temp[rev] = coeffs[i];
-    }
-    
-    coeffs.copy_from_slice(&temp);
-}
-
 /// Modular exponentiation in standard domain
 #[inline(always)]
 fn pow_mod<M: Modulus>(mut base: u32, mut exp: u32) -> u32 {
@@ -131,9 +105,9 @@ fn reduce_to_q<M: Modulus>(x: u32) -> u32 {
         (M::BARRETT_MU, M::BARRETT_K)
     } else {
         // Dynamic computation for moduli without precomputed constants
-        let log_q = 64 - (M::Q as u64).leading_zeros() as u32;
+        let log_q = 64 - (M::Q as u64).leading_zeros();  // FIXED: Removed unnecessary cast
         let k = log_q + 32;
-        let mu = ((1u128 << k) / M::Q as u128) as u128;
+        let mu = (1u128 << k) / M::Q as u128;  // FIXED: Removed unnecessary cast
         (mu, k)
     };
     
@@ -166,25 +140,12 @@ fn add_mod_fast<M: Modulus>(a: u32, b: u32) -> u32 {
     s - (M::Q & mask)
 }
 
-/// Modular subtraction with full reduction
-#[inline(always)]
-fn sub_mod<M: Modulus>(a: u32, b: u32) -> u32 {
-    ((a as u64 + M::Q as u64 - b as u64) % M::Q as u64) as u32
-}
-
 /// Fast modular subtraction for inputs < Q
 #[inline(always)]
 fn sub_mod_fast<M: Modulus>(a: u32, b: u32) -> u32 {
     let t = a.wrapping_add(M::Q).wrapping_sub(b);
     let mask = ((t >= M::Q) as u32).wrapping_neg();
     t - (M::Q & mask)
-}
-
-/// Modular subtraction returning [0, Q)
-#[inline(always)]
-fn sub_mod_pos<M: Modulus>(a: u32, b: u32) -> u32 {
-    let (result, borrow) = a.overflowing_sub(b);
-    result.wrapping_add((borrow as u32) * M::Q)
 }
 
 /// Modular subtraction returning [0, 2Q)
@@ -211,7 +172,7 @@ impl<M: NttModulus> NttOperator<M> for CooleyTukeyNtt {
         }
 
         let coeffs = poly.as_mut_coeffs_slice();
-        let is_dilithium = M::ZETAS.len() != 0;
+        let is_dilithium = !M::ZETAS.is_empty();  // FIXED: Use is_empty()
 
         if is_dilithium {
             // FIPS-204 Algorithm 41: Forward NTT
@@ -292,7 +253,7 @@ impl<M: NttModulus> InverseNttOperator<M> for CooleyTukeyNtt {
         }
 
         let coeffs = poly.as_mut_coeffs_slice();
-        let is_dilithium = M::ZETAS.len() != 0;
+        let is_dilithium = !M::ZETAS.is_empty();  // FIXED: Use is_empty()
         
         if is_dilithium {
             // FIPS-204 Algorithm 42: Inverse NTT
@@ -353,7 +314,7 @@ impl<M: NttModulus> InverseNttOperator<M> for CooleyTukeyNtt {
             }
         } else {
             // Kyber Inverse NTT
-            let root_inv_std = pow_mod::<M>(M::ZETA, (M::Q - 2) as u32);
+            let root_inv_std = pow_mod::<M>(M::ZETA, M::Q - 2);  // FIXED: Removed unnecessary cast
             
             let mut len = n >> 1;
             while len >= 1 {
@@ -413,7 +374,7 @@ impl<M: NttModulus> Polynomial<M> {
     pub fn ntt_mul(&self, other: &Self) -> Self {
         let mut result = Self::zero();
         let n = M::N;
-        let is_dilithium = M::ZETAS.len() != 0;
+        let is_dilithium = !M::ZETAS.is_empty();  // FIXED: Use is_empty()
         
         if is_dilithium {
             // Dilithium: coefficients are in standard domain after NTT

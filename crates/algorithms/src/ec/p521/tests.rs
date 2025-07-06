@@ -1,6 +1,5 @@
 //! P-521 elliptic curve tests
 
-use super::*;
 use crate::ec::p521::{self, Point, Scalar, FieldElement};
 use crate::error::Result;
 use rand::rngs::OsRng;

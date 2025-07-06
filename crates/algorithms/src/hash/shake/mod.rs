@@ -86,7 +86,7 @@ pub struct Shake256 {
 
 // Helper function for the Keccak-f[1600] permutation
 fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
-    for round in 0..KECCAK_ROUNDS {
+    for &rc in RC.iter().take(KECCAK_ROUNDS) {
         // Theta step
         let mut c = [0u64; 5];
         for x in 0..5 {
@@ -124,7 +124,7 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
         }
 
         // Iota step
-        state[0] ^= RC[round];
+        state[0] ^= rc;
     }
 }
 

@@ -62,6 +62,7 @@ impl FieldElement {
         // Convert from big-endian bytes to little-endian limbs
         // limbs[0] = least-significant 4 bytes (bytes[28..32])
         // limbs[7] = most-significant 4 bytes (bytes[0..4])
+        #[allow(clippy::needless_range_loop)]  // Index used for offset calculation
         for i in 0..8 {
             let offset = (7 - i) * 4; // Byte offset: 28, 24, 20, ..., 0
             limbs[i] = u32::from_be_bytes([
@@ -318,6 +319,7 @@ impl FieldElement {
         let mut r = [0u32; 8];
         let mut carry = 0;
 
+        #[allow(clippy::needless_range_loop)]  // Index used for multiple arrays
         for i in 0..8 {
             // Add corresponding limbs plus carry from previous iteration
             let (sum1, carry1) = a[i].overflowing_add(b[i]);
@@ -339,6 +341,7 @@ impl FieldElement {
         let mut r = [0u32;8];
         let mut borrow = 0;
         
+        #[allow(clippy::needless_range_loop)]  // Index used for multiple arrays
         for i in 0..8 {
             // Subtract corresponding limbs minus borrow from previous iteration
             let (diff1, borrow1) = a[i].overflowing_sub(b[i]);
@@ -380,8 +383,8 @@ impl FieldElement {
     pub(crate) fn reduce_wide(t: [u32; 16]) -> FieldElement {
         // 1) load into signed 128-bit
         let mut s = [0i128; 16];
-        for i in 0..16 {
-            s[i] = t[i] as i128;
+        for (i, &val) in t.iter().enumerate() {
+            s[i] = val as i128;
         }
 
         // 2) fold high limbs 8..15 into 0..7 via
@@ -397,9 +400,9 @@ impl FieldElement {
 
         // 3) first signed carry-propagate
         let mut carry1: i128 = 0;
-        for i in 0..8 {
-            let tmp = s[i] + carry1;
-            s[i] = tmp & 0xffff_ffff;
+        for val in s.iter_mut().take(8) {
+            let tmp = *val + carry1;
+            *val = tmp & 0xffff_ffff;
             carry1 = tmp >> 32;  // arithmetic shift
         }
 
@@ -412,9 +415,9 @@ impl FieldElement {
 
         // 5) second signed carry-propagate
         let mut carry2: i128 = 0;
-        for i in 0..8 {
-            let tmp = s[i] + carry2;
-            s[i] = tmp & 0xffff_ffff;
+        for val in s.iter_mut().take(8) {
+            let tmp = *val + carry2;
+            *val = tmp & 0xffff_ffff;
             carry2 = tmp >> 32;
         }
 
@@ -428,8 +431,8 @@ impl FieldElement {
         // 7) final signed carry-propagate into 32-bit limbs
         let mut out = [0u32; 8];
         let mut carry3: i128 = 0;
-        for i in 0..8 {
-            let tmp = s[i] + carry3;
+        for (i, val) in s.iter().take(8).enumerate() {
+            let tmp = *val + carry3;
             out[i]   = (tmp & 0xffff_ffff) as u32;
             carry3   = tmp >> 32;
         }
@@ -446,18 +449,5 @@ impl FieldElement {
     /// Returns the NIST P-256 prime modulus for use in reduction operations.
     pub(crate) fn get_modulus() -> Self {
         FieldElement(Self::MOD_LIMBS)
-    }
-
-    /// Reduce the field element modulo p if needed
-    /// 
-    /// Repeatedly subtracts p until the value is in canonical form.
-    /// Note: This is a simple implementation - production code would
-    /// use more efficient reduction methods.
-    fn reduce(&self) -> Self {
-        let mut result = self.clone();
-        while !result.is_valid() {
-            result = result.sub(&FieldElement::get_modulus());
-        }
-        result
     }
 }

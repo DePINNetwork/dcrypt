@@ -65,12 +65,6 @@ impl<const N: usize> Tag<N> {
         }
         result
     }
-    
-    /// Unchecked constructor for internal use
-    #[doc(hidden)]
-    pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
-        Self { data }
-    }
 }
 
 impl<const N: usize> AsRef<[u8]> for Tag<N> {
@@ -125,7 +119,7 @@ impl<const N: usize> fmt::Display for Tag<N> {
 
 impl<const N: usize> ConstantTimeEq for Tag<N> {
     fn ct_eq(&self, other: &Self) -> bool {
-        internal::constant_time::ct_eq(&self.data, &other.data)
+        internal::constant_time::ct_eq(self.data, other.data)
     }
 }
 

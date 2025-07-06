@@ -1,6 +1,6 @@
 //! AES-256 cipher implementations
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::aes::keys::Aes256Key;
 use super::types::{GcmNonce, AesCiphertextPackage};
 use super::Aes256Gcm;

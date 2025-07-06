@@ -20,7 +20,7 @@ use super::{
     AES256GCM_KEY_LEN,    // 32 bytes
     AES256GCM_NONCE_LEN,  // 12 bytes
 };
-use crate::error::{Result as PkeResult, Error as PkeError};
+use crate::error::Error as PkeError;
 
 
 /// Public key for ECIES P-521. Stores serialized uncompressed point (133 bytes).

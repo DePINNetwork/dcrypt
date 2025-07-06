@@ -132,10 +132,10 @@ pub trait AeadCipher {
     fn new(key: &Self::Key) -> Result<Self> where Self: Sized;
     
     /// Begin encryption operation with operation pattern
-    fn encrypt<'a>(&'a self) -> impl AeadEncryptOperation<'a, Self::Algorithm>;
+    fn encrypt(&self) -> impl AeadEncryptOperation<'_, Self::Algorithm>;
     
     /// Begin decryption operation with operation pattern
-    fn decrypt<'a>(&'a self) -> impl AeadDecryptOperation<'a, Self::Algorithm>;
+    fn decrypt(&self) -> impl AeadDecryptOperation<'_, Self::Algorithm>;
     
     /// Generate a random key
     fn generate_key<R: RngCore + CryptoRng>(rng: &mut R) -> Result<Self::Key>;
@@ -163,7 +163,6 @@ pub trait AeadCipher {
 #[cfg(feature = "alloc")]
 pub struct ChaCha20Poly1305Cipher {
     inner: chacha20poly1305::ChaCha20Poly1305,
-    key: SecretBytes<32>,
 }
 
 #[cfg(feature = "alloc")]
@@ -179,11 +178,10 @@ impl AeadCipher for ChaCha20Poly1305Cipher {
         
         Ok(Self {
             inner,
-            key: key.clone(),
         })
     }
     
-    fn encrypt<'a>(&'a self) -> impl AeadEncryptOperation<'a, Self::Algorithm> {
+    fn encrypt(&self) -> impl AeadEncryptOperation<'_, Self::Algorithm> {
         ChaCha20Poly1305EncryptOperation {
             cipher: self,
             nonce: None,
@@ -191,7 +189,7 @@ impl AeadCipher for ChaCha20Poly1305Cipher {
         }
     }
     
-    fn decrypt<'a>(&'a self) -> impl AeadDecryptOperation<'a, Self::Algorithm> {
+    fn decrypt(&self) -> impl AeadDecryptOperation<'_, Self::Algorithm> {
         ChaCha20Poly1305DecryptOperation {
             cipher: self,
             nonce: None,
@@ -221,7 +219,7 @@ pub struct ChaCha20Poly1305EncryptOperation<'a> {
 }
 
 #[cfg(feature = "alloc")]
-impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305EncryptOperation<'a> {
+impl Operation<Vec<u8>> for ChaCha20Poly1305EncryptOperation<'_> {
     fn execute(self) -> Result<Vec<u8>> {
         Err(Error::param("operation", "use encrypt method instead"))
     }
@@ -269,7 +267,7 @@ pub struct ChaCha20Poly1305DecryptOperation<'a> {
 }
 
 #[cfg(feature = "alloc")]
-impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305DecryptOperation<'a> {
+impl Operation<Vec<u8>> for ChaCha20Poly1305DecryptOperation<'_> {
     fn execute(self) -> Result<Vec<u8>> {
         Err(Error::param("operation", "use decrypt method instead"))
     }

@@ -55,12 +55,6 @@ impl<const N: usize> Nonce<N> {
     pub fn size() -> usize {
         N
     }
-    
-    /// Unchecked constructor for internal use
-    #[doc(hidden)]
-    pub(crate) fn new_unchecked(data: [u8; N]) -> Self {
-        Self { data }
-    }
 }
 
 impl<const N: usize> AsRef<[u8]> for Nonce<N> {

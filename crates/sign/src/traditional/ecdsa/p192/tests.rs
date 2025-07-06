@@ -86,8 +86,8 @@ fn test_ecdsa_p192_sign_verify_failure_tampered_signature() {
     }
 
 
-    // Verify with the tampered signature (should fail)
-    let verification_result = EcdsaP224::verify(message, &signature, &public_key);
+    // Verify with the tampered signature (should fail) - FIXED: Changed EcdsaP224 to EcdsaP192
+    let verification_result = EcdsaP192::verify(message, &signature, &public_key);
      match verification_result {
         Ok(_) => panic!("Verification should have failed with tampered signature"),
         Err(ApiError::InvalidSignature { .. }) => { /* Expected */ }

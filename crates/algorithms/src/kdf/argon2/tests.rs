@@ -289,7 +289,8 @@ fn h_prime_1024_matches_rfc_a1_block0() -> Result<()> {
     
     // Calculate true H0 using standard Blake2b-512 (as per RFC 9106 for H0 itself)
     use crate::hash::blake2::Blake2b; // Make sure Blake2b is in scope
-    let mut h0_hasher = Blake2b::with_output_size(ARGON2_PREHASH_DIGEST_LENGTH);
+    // H0 output size is 64 bytes as per RFC 9106
+    let mut h0_hasher = Blake2b::with_output_size(64);
     h0_hasher.update(&h0_buffer)?;
     let h0_digest = h0_hasher.finalize()?;
     let computed_h0 = Zeroizing::new(h0_digest.as_ref().to_vec());

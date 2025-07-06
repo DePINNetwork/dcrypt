@@ -82,9 +82,9 @@ impl FieldElement {
     pub fn from_bytes(bytes: &[u8; P192_FIELD_ELEMENT_SIZE]) -> Result<Self> {
         // Convert big‐endian → little‐endian limbs
         let mut limbs = [0u32; NLIMBS];
-        for i in 0..NLIMBS {
+        for (i, limb) in limbs.iter_mut().enumerate() {
             let offset = (NLIMBS - 1 - i) * 4;
-            limbs[i] = u32::from_be_bytes([
+            *limb = u32::from_be_bytes([
                 bytes[offset],
                 bytes[offset + 1],
                 bytes[offset + 2],
@@ -111,8 +111,8 @@ impl FieldElement {
     /// Convert this field element into big‐endian bytes.
     pub fn to_bytes(&self) -> [u8; P192_FIELD_ELEMENT_SIZE] {
         let mut out = [0u8; P192_FIELD_ELEMENT_SIZE];
-        for i in 0..NLIMBS {
-            let limb_bytes = self.0[i].to_be_bytes();
+        for (i, &limb) in self.0.iter().enumerate() {
+            let limb_bytes = limb.to_be_bytes();
             let offset = (NLIMBS - 1 - i) * 4;
             out[offset..offset + 4].copy_from_slice(&limb_bytes);
         }
@@ -271,9 +271,9 @@ impl FieldElement {
     fn adc6(a: [u32; 6], b: [u32; 6]) -> ([u32; 6], u32) {
         let mut r = [0u32; 6];
         let mut carry = 0u64;
-        for i in 0..6 {
-            let tmp = (a[i] as u64) + (b[i] as u64) + carry;
-            r[i] = (tmp & 0xFFFF_FFFF) as u32;
+        for ((&a_limb, &b_limb), r_limb) in a.iter().zip(b.iter()).zip(r.iter_mut()) {
+            let tmp = (a_limb as u64) + (b_limb as u64) + carry;
+            *r_limb = (tmp & 0xFFFF_FFFF) as u32;
             carry = tmp >> 32;
         }
         (r, carry as u32)
@@ -285,16 +285,16 @@ impl FieldElement {
         let mut r      = [0u32; 6];
         let mut borrow = 0u32;
 
-        for i in 0..6 {
+        for ((&a_limb, &b_limb), r_limb) in a.iter().zip(b.iter()).zip(r.iter_mut()) {
             //  Compute:  a[i] – b[i] – borrow
             //
             //  `sub` is done in u64 to avoid rust's 'add with borrow'
             //   undefined-behaviour rules, then truncated back to 32 bits.
-            let ai  = a[i] as u64;
-            let bi  = b[i] as u64;
+            let ai  = a_limb as u64;
+            let bi  = b_limb as u64;
             let tmp = ai.wrapping_sub(bi + borrow as u64);
 
-            r[i] = tmp as u32;
+            *r_limb = tmp as u32;
 
             // New borrow = 1  iff  ai < bi + old_borrow
             borrow = (ai < bi + borrow as u64) as u32;
@@ -306,8 +306,8 @@ impl FieldElement {
     /// Constant‐time select: if flag == 0 return a else return b
     fn conditional_select(a: &[u32; 6], b: &[u32; 6], flag: Choice) -> Self {
         let mut out = [0u32; 6];
-        for i in 0..6 {
-            out[i] = u32::conditional_select(&a[i], &b[i], flag);
+        for ((a_limb, b_limb), out_limb) in a.iter().zip(b.iter()).zip(out.iter_mut()) {
+            *out_limb = u32::conditional_select(a_limb, b_limb, flag);
         }
         FieldElement(out)
     }
@@ -324,8 +324,8 @@ impl FieldElement {
         let mut r = [0u64; 6];
 
         /* low  */
-        for i in 0..6 {
-            r[i] = t[i] as u64;
+        for (i, r_limb) in r.iter_mut().enumerate() {
+            *r_limb = t[i] as u64;
         }
 
         /* high + high << 64  */
@@ -358,7 +358,6 @@ impl FieldElement {
         //------------------------------------------------------------------
         while carry != 0 {
             let c = carry;            // c is 1 at most
-            carry = 0;
 
             let tmp0 = r[0] + c;
             r[0]  =  tmp0 & 0xFFFF_FFFF;
@@ -373,7 +372,9 @@ impl FieldElement {
         // step 4  –  at most two conditional subtractions of p
         //------------------------------------------------------------------
         let mut out = [0u32; 6];
-        for i in 0..6 { out[i] = r[i] as u32; }
+        for (i, out_limb) in out.iter_mut().enumerate() {
+            *out_limb = r[i] as u32;
+        }
 
         for _ in 0..2 {
             let (sub, borrow) = Self::sbb6(out, Self::MOD_LIMBS);

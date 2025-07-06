@@ -230,16 +230,16 @@ impl Sha256 {
         let mut h = guard[7];
         
         for i in 0..64 {
-            let S1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
+            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e & f) ^ ((!e) & g);
             let temp1 = h
-                .wrapping_add(S1)
+                .wrapping_add(s1)
                 .wrapping_add(ch)
                 .wrapping_add(K256[i])
                 .wrapping_add(w[i]);
-            let S0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
+            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let maj = (a & b) ^ (a & c) ^ (b & c);
-            let temp2 = S0.wrapping_add(maj);
+            let temp2 = s0.wrapping_add(maj);
             
             h = g;
             g = f;
@@ -408,16 +408,16 @@ impl Sha512 {
         let mut h = guard[7];
         
         for i in 0..80 {
-            let S1 = e.rotate_right(14) ^ e.rotate_right(18) ^ e.rotate_right(41);
+            let s1 = e.rotate_right(14) ^ e.rotate_right(18) ^ e.rotate_right(41);
             let ch = (e & f) ^ ((!e) & g);
             let temp1 = h
-                .wrapping_add(S1)
+                .wrapping_add(s1)
                 .wrapping_add(ch)
                 .wrapping_add(K512[i])
                 .wrapping_add(w[i]);
-            let S0 = a.rotate_right(28) ^ a.rotate_right(34) ^ a.rotate_right(39);
+            let s0 = a.rotate_right(28) ^ a.rotate_right(34) ^ a.rotate_right(39);
             let maj = (a & b) ^ (a & c) ^ (b & c);
-            let temp2 = S0.wrapping_add(maj);
+            let temp2 = s0.wrapping_add(maj);
             
             h = g;
             g = f;

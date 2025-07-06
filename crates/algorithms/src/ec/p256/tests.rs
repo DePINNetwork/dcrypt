@@ -258,9 +258,12 @@ fn test_scalar_validation() -> Result<()> {
     valid_scalar_bytes[31] = 0x11; // Set least significant byte to 0x11
     let valid_scalar = Scalar::new(valid_scalar_bytes)?;
     
+    // Verify the valid scalar was created successfully
+    assert_eq!(valid_scalar.serialize()[31], 0x11);
+    
     // Test scalar that's larger than the curve order
     // P-256 order is 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
-    let mut invalid_scalar_bytes = [0xFF; 32]; // All 0xFF is definitely larger than curve order
+    let invalid_scalar_bytes = [0xFF; 32]; // All 0xFF is definitely larger than curve order
     let result = Scalar::new(invalid_scalar_bytes);
     
     // Should succeed but reduce the scalar mod order

@@ -189,7 +189,7 @@ impl ChaCha20Poly1305 {
         // Create a burn buffer on success path to match the deallocation in failure path
         // This ensures both paths perform identical memory operations
         let mut burn = m.clone();
-        for b in &mut burn { *b = 0; }  // wipe
+        burn.fill(0);  // wipe
         drop(burn);
 
         if bool::from(tag_ok) {
@@ -283,7 +283,7 @@ impl SymmetricCipher for ChaCha20Poly1305 {
         "ChaCha20Poly1305"
     }
     
-    fn encrypt<'a>(&'a self) -> Self::EncryptOperation<'a> {
+    fn encrypt(&self) -> Self::EncryptOperation<'_> {
         ChaCha20Poly1305EncryptOperation {
             cipher: self,
             nonce: None,
@@ -291,7 +291,7 @@ impl SymmetricCipher for ChaCha20Poly1305 {
         }
     }
     
-    fn decrypt<'a>(&'a self) -> Self::DecryptOperation<'a> {
+    fn decrypt(&self) -> Self::DecryptOperation<'_> {
         ChaCha20Poly1305DecryptOperation {
             cipher: self,
             nonce: None,
@@ -327,7 +327,7 @@ impl SymmetricCipher for ChaCha20Poly1305 {
 }
 
 // Implement Operation for ChaCha20Poly1305EncryptOperation
-impl<'a> Operation<Ciphertext> for ChaCha20Poly1305EncryptOperation<'a> {
+impl Operation<Ciphertext> for ChaCha20Poly1305EncryptOperation<'_> {
     fn execute(self) -> std::result::Result<Ciphertext, CoreError> {
         let nonce = self.nonce.ok_or_else(|| CoreError::InvalidParameter {
             context: "ChaCha20Poly1305 encryption",
@@ -344,7 +344,7 @@ impl<'a> Operation<Ciphertext> for ChaCha20Poly1305EncryptOperation<'a> {
             &nonce_array,
             plaintext,
             self.aad,
-        ).map_err(|e| CoreError::from(e))?;
+        ).map_err(CoreError::from)?;
         
         Ok(Ciphertext::new(&ciphertext))
     }
@@ -375,14 +375,14 @@ impl<'a> EncryptOperation<'a, ChaCha20Poly1305> for ChaCha20Poly1305EncryptOpera
             &nonce_array,
             plaintext,
             self.aad,
-        ).map_err(|e| CoreError::from(e))?;
+        ).map_err(CoreError::from)?;
         
         Ok(Ciphertext::new(&ciphertext))
     }
 }
 
 // Implement Operation for ChaCha20Poly1305DecryptOperation
-impl<'a> Operation<Vec<u8>> for ChaCha20Poly1305DecryptOperation<'a> {
+impl Operation<Vec<u8>> for ChaCha20Poly1305DecryptOperation<'_> {
     fn execute(self) -> std::result::Result<Vec<u8>, CoreError> {
         Err(CoreError::InvalidParameter {
             context: "ChaCha20Poly1305 decryption",
@@ -417,7 +417,7 @@ impl<'a> DecryptOperation<'a, ChaCha20Poly1305> for ChaCha20Poly1305DecryptOpera
             &nonce_array,
             ciphertext.as_ref(),
             self.aad,
-        ).map_err(|e| CoreError::from(e))
+        ).map_err(CoreError::from)
     }
 }
 

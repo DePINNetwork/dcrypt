@@ -126,7 +126,7 @@ fn u32_to_bytes(word: u32) -> [u8; 4] {
 /// Rotates a word left by 8 bits (1 byte)
 #[inline(always)]
 fn rotate_word(word: u32) -> u32 {
-    (word << 8) | (word >> 24)
+    word.rotate_left(8)
 }
 
 /// Substitutes each byte in a word using the AES S-box, with bitsliced implementation

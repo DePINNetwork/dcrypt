@@ -6,11 +6,11 @@
 //! as recommended for P-192.
 
 use api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
 use algorithms::ec::p192 as ec; // Use P-192 algorithms
-use algorithms::hash::sha2::{Sha256, Sha256Algorithm}; // Use Sha256
-use algorithms::hash::{HashFunction, HashAlgorithm};
+use algorithms::hash::sha2::Sha256; // Use Sha256
+use algorithms::hash::HashFunction;
 use algorithms::mac::hmac::Hmac;
 use internal::constant_time::ct_eq;
 use crate::traditional::ecdsa::common::SignatureComponents;
@@ -304,6 +304,5 @@ fn reduce_bytes_to_scalar_p192(bytes: &[u8; ec::P192_SCALAR_SIZE]) -> ApiResult<
     })
 }
 
-// Create an empty tests.rs file for now
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;

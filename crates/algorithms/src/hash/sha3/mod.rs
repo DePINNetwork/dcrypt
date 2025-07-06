@@ -212,7 +212,7 @@ impl_sha3_variant!(Sha3_512, SHA3_512_RATE, SHA3_512_OUTPUT_SIZE, Sha3_512Algori
 // ───────────────────────────── permutation ────────────────────────────────
 
 fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
-    for r in 0..KECCAK_ROUNDS {
+    for &rc in RC.iter().take(KECCAK_ROUNDS) {
         // θ
         let mut c = [0u64; 5];
         for x in 0..5 { c[x] = state[x] ^ state[x+5] ^ state[x+10] ^ state[x+15] ^ state[x+20]; }
@@ -235,7 +235,7 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
             for x in 0..5 { state[x + 5*y] ^= (!row[(x+1)%5]) & row[(x+2)%5]; }
         }
         // ι
-        state[0] ^= RC[r];
+        state[0] ^= rc;
     }
 }
 
