@@ -794,23 +794,19 @@ fn test_p521_sigver_rsp_verify() {
                     i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex);
                 correct_hash_fail += 1;
             }
-        } else { 
-            if vector.expected_result == "P" {
-                assert!(verification_result.is_err(),
-                    "Vector {} ({}): Expected FAIL (due to hash mismatch with EcdsaP521 internal SHA512, original was P), but got PASS.\nMsg: {}\nR: {}\nS: {}",
-                    i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex);
-                mismatch_hash_correct_fail_originally_p += 1;
-            } else {
-                if verification_result.is_ok() {
-                    mismatch_hash_unexpected_pass += 1;
-                    panic!(
-                        "Vector {} ({}): Originally FAILED, but PASSED with EcdsaP521 internal SHA512. This is unexpected.\nMsg: {}\nR: {}\nS: {}",
-                        i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex
-                    );
-                } else {
-                    mismatch_hash_originally_fail_and_failed += 1;
-                }
-            }
+        } else if vector.expected_result == "P" {
+            assert!(verification_result.is_err(),
+                "Vector {} ({}): Expected FAIL (due to hash mismatch with EcdsaP521 internal SHA512, original was P), but got PASS.\nMsg: {}\nR: {}\nS: {}",
+                i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex);
+            mismatch_hash_correct_fail_originally_p += 1;
+        } else if verification_result.is_ok() {
+            mismatch_hash_unexpected_pass += 1;
+            panic!(
+                "Vector {} ({}): Originally FAILED, but PASSED with EcdsaP521 internal SHA512. This is unexpected.\nMsg: {}\nR: {}\nS: {}",
+                i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex
+            );
+        } else {
+            mismatch_hash_originally_fail_and_failed += 1;
         }
     }
     

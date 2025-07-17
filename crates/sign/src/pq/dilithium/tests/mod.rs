@@ -12,27 +12,23 @@
 
 use super::*;
 use super::arithmetic::{
-    power2round, decompose, highbits, lowbits, make_hint_coeff, use_hint_coeff,
-    check_norm_poly, w1_encode_coeff, w1_bits_needed, highbits_d,
-    challenge_poly_mul, schoolbook_mul_centered, schoolbook_mul_eta_centered,
+    power2round, decompose, highbits, lowbits, use_hint_coeff,
+    check_norm_poly, w1_encode_gamma, schoolbook_mul_generic,
+    challenge_poly_mul,  // Added this import
 };
-use super::polyvec::{PolyVecK, PolyVecL, expand_matrix_a, montgomery_reduce};
+use super::polyvec::{PolyVecK, PolyVecL, expand_matrix_a};
 use super::sampling::{sample_poly_cbd_eta, sample_challenge_c, sample_polyvecl_uniform_gamma1};
 use super::encoding::{
     pack_public_key, unpack_public_key, pack_secret_key, unpack_secret_key,
     pack_signature, unpack_signature,
 };
 use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::{DilithiumParams, Modulus, NttModulus};
+use algorithms::poly::params::{DilithiumParams, Modulus};  // Added Modulus trait import
+use algorithms::poly::ntt::montgomery_reduce;
 use params::pqc::dilithium::{
     DilithiumSchemeParams, Dilithium2Params, Dilithium3Params, Dilithium5Params,
     DILITHIUM_N, DILITHIUM_Q,
 };
-
-use crate::pq::dilithium::arithmetic::use_hint_polyveck;
-use crate::pq::dilithium::arithmetic::power2round_polyvec;
-use crate::pq::dilithium::arithmetic::mul_q;
-use std::hash::Hasher;
 
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -43,6 +39,52 @@ const TEST_MESSAGE: &[u8] = b"test message for dilithium signatures";
 const GAMMA2: u32 = ((DILITHIUM_Q - 1) / 88) as u32;
 const GAMMA2_MODE5: u32 = ((DILITHIUM_Q - 1) / 32) as u32;
 
+// ===== TEST HELPER FUNCTIONS =====
+// These functions were moved from the main modules since they're only used in tests
+
+// Test helper: multiply two values modulo q
+fn mul_q(a: u32, b: u32) -> u32 {
+    ((a as u64 * b as u64) % DILITHIUM_Q as u64) as u32
+}
+
+// Test helper: make hint for a single coefficient
+fn make_hint_coeff(z_coeff: i32, r_coeff: u32, alpha: u32) -> bool {
+    let (_, r1) = decompose(r_coeff, alpha);
+    
+    // Ensure r+z is in [0, q) before decompose
+    let r_plus_z = ((r_coeff as i64 + z_coeff as i64).rem_euclid(DILITHIUM_Q as i64)) as u32;
+    let (_, v1) = decompose(r_plus_z, alpha);
+    
+    r1 != v1
+}
+
+// Test helper: encode w1 coefficient
+fn w1_encode_coeff<P: DilithiumSchemeParams>(r_coeff: u32) -> u32 {
+    let (_, r1) = decompose(r_coeff, 2 * P::GAMMA2_PARAM);
+    w1_encode_gamma::<P>(r1)
+}
+
+// Test helper: centered schoolbook multiplication
+fn schoolbook_mul_centered(
+    c: &Polynomial<DilithiumParams>,
+    t0: &Polynomial<DilithiumParams>,
+) -> Polynomial<DilithiumParams> {
+    // Use generic function with both operands centered
+    schoolbook_mul_generic(c, t0, true, true)
+}
+
+// Test helper: centered multiplication for eta-bounded coefficients
+fn schoolbook_mul_eta_centered<P: DilithiumSchemeParams>(
+    c: &Polynomial<DilithiumParams>,
+    s_eta: &Polynomial<DilithiumParams>,
+) -> Polynomial<DilithiumParams> {
+    // Use generic function with both operands centered
+    schoolbook_mul_generic(c, s_eta, true, true)
+}
+
+// ===== END TEST HELPERS =====
+
+// Rest of the test file content remains the same...
 #[test]
 fn test_dilithium2_sign_verify() {
     use super::*;
@@ -50,9 +92,7 @@ fn test_dilithium2_sign_verify() {
     use super::arithmetic::{highbits_polyvec, use_hint_polyveck, make_hint_polyveck};
     use super::sampling::sample_challenge_c;
     use super::encoding::{unpack_signature, unpack_public_key, unpack_secret_key, pack_polyveck_w1};
-    use algorithms::hash::sha3::Sha3_256;
     use algorithms::xof::shake::ShakeXof256;
-    use algorithms::hash::HashFunction;
     use algorithms::xof::ExtendableOutputFunction;
     use algorithms::poly::params::Modulus;
     use rand::SeedableRng;
@@ -120,9 +160,9 @@ fn test_dilithium2_sign_verify() {
     let mut ct0_vec = PolyVecK::<Dilithium2Params>::zero();
     for i in 0..Dilithium2Params::K_DIM {
         // Use centered multiplication for s2 (coefficients in [-η, η])
-        cs2_vec.polys[i] = schoolbook_mul_eta_centered::<Dilithium2Params>(&c, &s2_vec.polys[i], Dilithium2Params::ETA_S1S2);
+        cs2_vec.polys[i] = schoolbook_mul_eta_centered::<Dilithium2Params>(&c, &s2_vec.polys[i]);
         // Use centered multiplication for t0 (coefficients in (-2^(d-1), 2^(d-1)])
-        ct0_vec.polys[i] = schoolbook_mul_centered(&c, &t0_vec.polys[i], Dilithium2Params::D_PARAM);
+        ct0_vec.polys[i] = schoolbook_mul_centered(&c, &t0_vec.polys[i]);
     }
     
     // The hint vector helps the verifier recover HighBits(w) from w' = w - cs2 + ct0
@@ -1056,7 +1096,7 @@ fn test_w1_encode_consistency() {
     let gamma2_5 = GAMMA2_MODE5;
     let test_r5 = 2345678u32;
     let (_, r1_5) = decompose(test_r5, 2 * gamma2_5);
-    let encoded5 = super::arithmetic::w1_encode_coeff::<Dilithium5Params>(test_r5);
+    let encoded5 = w1_encode_coeff::<Dilithium5Params>(test_r5);
     assert_eq!(encoded5, r1_5);
     assert!(encoded5 < 16);
 }

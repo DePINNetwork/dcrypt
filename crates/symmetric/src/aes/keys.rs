@@ -35,7 +35,7 @@ impl Aes128Key {
     
     /// Securely serializes the key for storage
     pub fn to_secure_string(&self) -> String {
-        let key_b64 = base64::encode(&self.0);
+        let key_b64 = base64::encode(self.0);
         format!("DCRYPT-AES128-KEY:{}", key_b64)
     }
     
@@ -95,7 +95,7 @@ impl Aes256Key {
     
     /// Securely serializes the key for storage
     pub fn to_secure_string(&self) -> String {
-        let key_b64 = base64::encode(&self.0);
+        let key_b64 = base64::encode(self.0);
         format!("DCRYPT-AES256-KEY:{}", key_b64)
     }
     

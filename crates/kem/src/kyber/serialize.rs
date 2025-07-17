@@ -10,11 +10,23 @@ use alloc::vec::Vec;
 
 use algorithms::error::{Result as AlgoResult, Error as AlgoError};
 use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::Modulus; // Add this import
+use algorithms::poly::params::Modulus;
 
 use super::params::{KyberParams, KyberPolyModParams, KYBER_RHO_SEED_BYTES};
 use super::polyvec::PolyVec;
 use super::cpa_pke::{CpaPublicKeyInner, CpaSecretKeyInner, CpaCiphertextInner};
+
+// Constants for compression bit sizes
+const KYBER_D4_VALS_PER_BYTE: usize = 2;
+const KYBER_D5_VALS_PER_CHUNK: usize = 8;
+const KYBER_D5_BYTES_PER_CHUNK: usize = 5;
+const KYBER_D10_VALS_PER_CHUNK: usize = 4;
+const KYBER_D10_BYTES_PER_CHUNK: usize = 5;
+const KYBER_D11_VALS_PER_CHUNK: usize = 8;
+const KYBER_D11_BYTES_PER_CHUNK: usize = 11;
+
+// Constants for packing
+const KYBER_POLYVEC_PACKED_BITS: usize = 12; // Bits per coefficient in packed form
 
 /// Pack a polynomial with compression
 fn compress_poly(poly: &Polynomial<KyberPolyModParams>, d: usize) -> Vec<u8> {
@@ -22,15 +34,15 @@ fn compress_poly(poly: &Polynomial<KyberPolyModParams>, d: usize) -> Vec<u8> {
     
     if d == 4 {
         // Pack 4-bit values, 2 per byte
-        for chunk in poly.as_coeffs_slice().chunks(2) {
+        for chunk in poly.as_coeffs_slice().chunks(KYBER_D4_VALS_PER_BYTE) {
             let c0 = compress_coeff(chunk[0], d) as u8;
             let c1 = if chunk.len() > 1 { compress_coeff(chunk[1], d) as u8 } else { 0 };
             result.push((c0 & 0x0F) | ((c1 & 0x0F) << 4));
         }
     } else if d == 5 {
         // Pack 5-bit values, 8 values in 5 bytes
-        for chunk in poly.as_coeffs_slice().chunks(8) {
-            let mut vals = [0u8; 8];
+        for chunk in poly.as_coeffs_slice().chunks(KYBER_D5_VALS_PER_CHUNK) {
+            let mut vals = [0u8; KYBER_D5_VALS_PER_CHUNK];
             for (i, &c) in chunk.iter().enumerate() {
                 vals[i] = compress_coeff(c, d) as u8;
             }
@@ -43,8 +55,8 @@ fn compress_poly(poly: &Polynomial<KyberPolyModParams>, d: usize) -> Vec<u8> {
         }
     } else if d == 10 {
         // Pack 10-bit values, 4 values in 5 bytes
-        for chunk in poly.as_coeffs_slice().chunks(4) {
-            let mut vals = [0u16; 4];
+        for chunk in poly.as_coeffs_slice().chunks(KYBER_D10_VALS_PER_CHUNK) {
+            let mut vals = [0u16; KYBER_D10_VALS_PER_CHUNK];
             for (i, &c) in chunk.iter().enumerate() {
                 vals[i] = compress_coeff(c, d) as u16;
             }
@@ -57,8 +69,8 @@ fn compress_poly(poly: &Polynomial<KyberPolyModParams>, d: usize) -> Vec<u8> {
         }
     } else if d == 11 {
         // Pack 11-bit values, 8 values in 11 bytes
-        for chunk in poly.as_coeffs_slice().chunks(8) {
-            let mut vals = [0u16; 8];
+        for chunk in poly.as_coeffs_slice().chunks(KYBER_D11_VALS_PER_CHUNK) {
+            let mut vals = [0u16; KYBER_D11_VALS_PER_CHUNK];
             for (i, &c) in chunk.iter().enumerate() {
                 vals[i] = compress_coeff(c, d) as u16;
             }
@@ -100,8 +112,8 @@ fn decompress_poly(data: &[u8], d: usize) -> AlgoResult<Polynomial<KyberPolyModP
         }
     } else if d == 5 {
         // Unpack 5-bit values, 8 values from 5 bytes
-        while coeff_idx < KyberPolyModParams::N && byte_idx + 4 < data.len() {
-            let b = &data[byte_idx..byte_idx + 5];
+        while coeff_idx < KyberPolyModParams::N && byte_idx + KYBER_D5_BYTES_PER_CHUNK <= data.len() {
+            let b = &data[byte_idx..byte_idx + KYBER_D5_BYTES_PER_CHUNK];
             poly.coeffs[coeff_idx] = decompress_coeff((b[0] & 0x1F) as u32, d);
             poly.coeffs[coeff_idx + 1] = decompress_coeff(((b[0] >> 5) | ((b[1] & 0x03) << 3)) as u32, d);
             poly.coeffs[coeff_idx + 2] = decompress_coeff(((b[1] >> 2) & 0x1F) as u32, d);
@@ -110,24 +122,24 @@ fn decompress_poly(data: &[u8], d: usize) -> AlgoResult<Polynomial<KyberPolyModP
             poly.coeffs[coeff_idx + 5] = decompress_coeff(((b[3] >> 1) & 0x1F) as u32, d);
             poly.coeffs[coeff_idx + 6] = decompress_coeff(((b[3] >> 6) | ((b[4] & 0x07) << 2)) as u32, d);
             poly.coeffs[coeff_idx + 7] = decompress_coeff((b[4] >> 3) as u32, d);
-            coeff_idx += 8;
-            byte_idx += 5;
+            coeff_idx += KYBER_D5_VALS_PER_CHUNK;
+            byte_idx += KYBER_D5_BYTES_PER_CHUNK;
         }
     } else if d == 10 {
         // Unpack 10-bit values, 4 values from 5 bytes
-        while coeff_idx < KyberPolyModParams::N && byte_idx + 4 < data.len() {
-            let b = &data[byte_idx..byte_idx + 5];
+        while coeff_idx < KyberPolyModParams::N && byte_idx + KYBER_D10_BYTES_PER_CHUNK <= data.len() {
+            let b = &data[byte_idx..byte_idx + KYBER_D10_BYTES_PER_CHUNK];
             poly.coeffs[coeff_idx] = decompress_coeff((b[0] as u32) | ((b[1] as u32 & 0x03) << 8), d);
             poly.coeffs[coeff_idx + 1] = decompress_coeff(((b[1] as u32) >> 2) | ((b[2] as u32 & 0x0F) << 6), d);
             poly.coeffs[coeff_idx + 2] = decompress_coeff(((b[2] as u32) >> 4) | ((b[3] as u32 & 0x3F) << 4), d);
             poly.coeffs[coeff_idx + 3] = decompress_coeff(((b[3] as u32) >> 6) | ((b[4] as u32) << 2), d);
-            coeff_idx += 4;
-            byte_idx += 5;
+            coeff_idx += KYBER_D10_VALS_PER_CHUNK;
+            byte_idx += KYBER_D10_BYTES_PER_CHUNK;
         }
     } else if d == 11 {
         // Unpack 11-bit values, 8 values from 11 bytes
-        while coeff_idx < KyberPolyModParams::N && byte_idx + 10 < data.len() {
-            let b = &data[byte_idx..byte_idx + 11];
+        while coeff_idx < KyberPolyModParams::N && byte_idx + KYBER_D11_BYTES_PER_CHUNK <= data.len() {
+            let b = &data[byte_idx..byte_idx + KYBER_D11_BYTES_PER_CHUNK];
             poly.coeffs[coeff_idx] = decompress_coeff((b[0] as u32) | ((b[1] as u32 & 0x07) << 8), d);
             poly.coeffs[coeff_idx + 1] = decompress_coeff(((b[1] as u32) >> 3) | ((b[2] as u32 & 0x3F) << 5), d);
             poly.coeffs[coeff_idx + 2] = decompress_coeff(((b[2] as u32) >> 6) | ((b[3] as u32) << 2) | ((b[4] as u32 & 0x01) << 10), d);
@@ -136,8 +148,8 @@ fn decompress_poly(data: &[u8], d: usize) -> AlgoResult<Polynomial<KyberPolyModP
             poly.coeffs[coeff_idx + 5] = decompress_coeff(((b[6] as u32) >> 7) | ((b[7] as u32) << 1) | ((b[8] as u32 & 0x03) << 9), d);
             poly.coeffs[coeff_idx + 6] = decompress_coeff(((b[8] as u32) >> 2) | ((b[9] as u32 & 0x1F) << 6), d);
             poly.coeffs[coeff_idx + 7] = decompress_coeff(((b[9] as u32) >> 5) | ((b[10] as u32) << 3), d);
-            coeff_idx += 8;
-            byte_idx += 11;
+            coeff_idx += KYBER_D11_VALS_PER_CHUNK;
+            byte_idx += KYBER_D11_BYTES_PER_CHUNK;
         }
     }
     
@@ -168,7 +180,7 @@ fn compress_polyvec<P: KyberParams>(pv: &PolyVec<P>, d: usize) -> Vec<u8> {
 /// Decompress polynomial vector
 fn decompress_polyvec<P: KyberParams>(data: &[u8], d: usize) -> AlgoResult<PolyVec<P>> {
     let mut pv = PolyVec::<P>::zero();
-    let bytes_per_poly = (KyberPolyModParams::N * d + 7) / 8;
+    let bytes_per_poly = (KyberPolyModParams::N * d).div_ceil(8);
     
     for i in 0..P::K {
         let start = i * bytes_per_poly;
@@ -183,6 +195,11 @@ fn decompress_polyvec<P: KyberParams>(data: &[u8], d: usize) -> AlgoResult<PolyV
     }
     
     Ok(pv)
+}
+
+/// Calculate packed polynomial vector size in bytes
+fn packed_polyvec_bytes(k: usize) -> usize {
+    (k * KyberPolyModParams::N * KYBER_POLYVEC_PACKED_BITS).div_ceil(8)
 }
 
 /// Pack public key
@@ -201,7 +218,7 @@ pub fn pack_pk<P: KyberParams>(pk: &CpaPublicKeyInner<P>) -> AlgoResult<Vec<u8>>
 
 /// Unpack public key
 pub fn unpack_pk<P: KyberParams>(bytes: &[u8]) -> AlgoResult<CpaPublicKeyInner<P>> {
-    let polyvec_bytes = (P::K * KyberPolyModParams::N * 12 + 7) / 8;
+    let polyvec_bytes = packed_polyvec_bytes(P::K);
     
     if bytes.len() < polyvec_bytes + KYBER_RHO_SEED_BYTES {
         return Err(AlgoError::Processing {
@@ -246,8 +263,8 @@ pub fn pack_ciphertext<P: KyberParams>(ct: &CpaCiphertextInner<P>) -> AlgoResult
 
 /// Unpack ciphertext
 pub fn unpack_ciphertext<P: KyberParams>(bytes: &[u8]) -> AlgoResult<CpaCiphertextInner<P>> {
-    let u_compressed_bytes = (P::K * KyberPolyModParams::N * P::DU + 7) / 8;
-    let v_compressed_bytes = (KyberPolyModParams::N * P::DV + 7) / 8;
+    let u_compressed_bytes = (P::K * KyberPolyModParams::N * P::DU).div_ceil(8);
+    let v_compressed_bytes = (KyberPolyModParams::N * P::DV).div_ceil(8);
     
     if bytes.len() < u_compressed_bytes + v_compressed_bytes {
         return Err(AlgoError::Processing {

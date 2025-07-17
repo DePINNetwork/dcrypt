@@ -2,7 +2,6 @@
 use super::*;
 use rand::rngs::OsRng;
 use api::error::Error as ApiError; // Alias for clarity
-use crate::error::Error as PkeError; // Alias for clarity
 
 #[test]
 fn test_ecies_p521_keypair_generation() {
@@ -134,7 +133,7 @@ fn test_ecies_p521_invalid_public_key_for_encryption() {
     assert!(result.is_err(), "Encryption with invalid public key should fail");
     
     match result.err().unwrap() {
-        ApiError::Other { context, .. } if context == "ECIES Encryption" => {} 
+        ApiError::Other { context: "ECIES Encryption", .. } => {} 
         ApiError::InvalidKey { .. } => {} 
         e => panic!("Expected EncryptionFailed or InvalidKey, got {:?}", e),
     }

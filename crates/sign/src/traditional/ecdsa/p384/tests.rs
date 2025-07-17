@@ -830,26 +830,22 @@ fn test_p384_sigver_rsp_verify() {
                     i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex);
                 correct_hash_fail += 1;
             }
-        } else { 
-            // Hashes MISMATCH: test vector used a different hash than our implementation.
-            if vector.expected_result == "P" {
-                // Signature is valid for its *original* hash (from RSP), but should FAIL with our implementation's hash.
-                assert!(verification_result.is_err(),
-                    "Vector {} ({}): Expected FAIL (due to hash mismatch with EcdsaP384 internal SHA384, original was P), but got PASS.\nMsg: {}\nR: {}\nS: {}",
-                    i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex);
-                mismatch_hash_correct_fail_originally_p += 1;
-            } else { // vector.expected_result == "F"
-                 // Signature was ALREADY INVALID for its original hash. It should still be invalid with our hash.
-                if verification_result.is_ok() {
-                    mismatch_hash_unexpected_pass += 1;
-                     panic!(
-                        "Vector {} ({}): Originally FAILED, but PASSED with EcdsaP384 internal SHA384. This is unexpected.\nMsg: {}\nR: {}\nS: {}",
-                        i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex
-                    );
-                } else {
-                    mismatch_hash_originally_fail_and_failed +=1;
-                }
-            }
+        } else if vector.expected_result == "P" {
+            // Signature is valid for its *original* hash (from RSP), but should FAIL with our implementation's hash.
+            assert!(verification_result.is_err(),
+                "Vector {} ({}): Expected FAIL (due to hash mismatch with EcdsaP384 internal SHA384, original was P), but got PASS.\nMsg: {}\nR: {}\nS: {}",
+                i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex);
+            mismatch_hash_correct_fail_originally_p += 1;
+        } else if verification_result.is_ok() {
+            // vector.expected_result == "F"
+            // Signature was ALREADY INVALID for its original hash. It should still be invalid with our hash.
+            mismatch_hash_unexpected_pass += 1;
+             panic!(
+                "Vector {} ({}): Originally FAILED, but PASSED with EcdsaP384 internal SHA384. This is unexpected.\nMsg: {}\nR: {}\nS: {}",
+                i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex
+            );
+        } else {
+            mismatch_hash_originally_fail_and_failed +=1;
         }
     }
     println!("\n--- P-384 SigVer.rsp Test Summary ---");

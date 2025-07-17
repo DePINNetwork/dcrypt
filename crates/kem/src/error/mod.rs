@@ -2,11 +2,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "std")]
-use std::string::String;
-
 use core::fmt;
-use api::error::{Error as CoreError, Result as CoreResult};
+use api::error::Error as CoreError;
 use algorithms::error::Error as PrimitiveError;
 
 /// Error type for KEM operations
@@ -60,28 +57,28 @@ impl Clone for Error {
         match self {
             Error::Primitive(e) => Error::Primitive(e.clone()),
             Error::KeyGeneration { algorithm, details } => Error::KeyGeneration { 
-                algorithm: *algorithm, 
-                details: *details 
+                algorithm, 
+                details 
             },
             Error::Encapsulation { algorithm, details } => Error::Encapsulation { 
-                algorithm: *algorithm, 
-                details: *details 
+                algorithm, 
+                details 
             },
             Error::Decapsulation { algorithm, details } => Error::Decapsulation { 
-                algorithm: *algorithm, 
-                details: *details 
+                algorithm, 
+                details 
             },
             Error::InvalidKey { key_type, reason } => Error::InvalidKey { 
-                key_type: *key_type, 
-                reason: *reason 
+                key_type, 
+                reason 
             },
             Error::InvalidCiphertext { algorithm, reason } => Error::InvalidCiphertext { 
-                algorithm: *algorithm, 
-                reason: *reason 
+                algorithm, 
+                reason 
             },
             Error::Serialization { context, details } => Error::Serialization { 
-                context: *context, 
-                details: *details 
+                context, 
+                details 
             },
             #[cfg(feature = "std")]
             Error::Io(e) => Error::Io(std::io::Error::new(e.kind(), e.to_string())),
@@ -147,7 +144,7 @@ impl From<std::io::Error> for Error {
     }
 }
 
-// From Error to CoreError
+// FIXED: From Error to CoreError - removed incorrect generic parameter
 impl From<Error> for CoreError {
     fn from(err: Error) -> Self {
         match err {

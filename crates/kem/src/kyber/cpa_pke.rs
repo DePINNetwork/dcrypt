@@ -137,7 +137,7 @@ fn encode_message(msg: &[u8; KYBER_SYMKEY_SEED_BYTES]) -> Polynomial<KyberPolyMo
         let byte_idx = i / 8;
         let bit_idx = i % 8;
         let bit = (msg[byte_idx] >> bit_idx) & 1;
-        poly.coeffs[i] = (bit as u32) * ((KyberPolyModParams::Q + 1) / 2);
+        poly.coeffs[i] = (bit as u32) * KyberPolyModParams::Q.div_ceil(2);
     }
     
     poly
@@ -181,10 +181,10 @@ pub(crate) fn keypair_cpa<P: KyberParams, R: RngCore + CryptoRng>(
     
     // Compute t = A*s + e in NTT domain
     let mut t = PolyVec::<P>::zero();
-    for i in 0..P::K {
+    for (i, row) in a.iter().enumerate().take(P::K) {
         let mut sum = Polynomial::<KyberPolyModParams>::zero();
         for j in 0..P::K {
-            let mut a_ij = a[i].polys[j].clone();
+            let mut a_ij = row.polys[j].clone();
             a_ij.ntt_inplace()?;
             let prod = a_ij.ntt_mul(&s.polys[j]);
             sum = sum.add(&prod);
@@ -224,8 +224,8 @@ pub(crate) fn encrypt_cpa<P: KyberParams, R: RngCore + CryptoRng>(
     let mut u = PolyVec::<P>::zero();
     for i in 0..P::K {
         let mut sum = Polynomial::<KyberPolyModParams>::zero();
-        for j in 0..P::K {
-            let mut a_ji = a_transpose[j].polys[i].clone();
+        for (j, row) in a_transpose.iter().enumerate().take(P::K) {
+            let mut a_ji = row.polys[i].clone();
             a_ji.ntt_inplace()?;
             let prod = a_ji.ntt_mul(&r_hat.polys[j]);
             sum = sum.add(&prod);

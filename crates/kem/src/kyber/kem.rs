@@ -7,8 +7,6 @@
 extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-#[cfg(feature = "alloc")]
-use alloc::boxed::Box;
 
 use api::{Kem as KemTrait, Result as ApiResult, error::Error as ApiError, Key as ApiKey};
 use algorithms::error::Error as AlgoError;
@@ -17,7 +15,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use rand::{CryptoRng, RngCore};
 use core::marker::PhantomData;
 
-use super::params::{KyberParams, KYBER_SS_BYTES};
+use super::params::KyberParams;
 use super::ind_cca::{kem_keygen, kem_encaps, kem_decaps}; // IND-CCA2 scheme components
 
 /// Kyber Public Key (byte representation).
@@ -117,7 +115,7 @@ impl<P: KyberParams> KemTrait for KyberKem<P> {
             return Err(ApiError::InvalidKey { 
                 context: "Kyber public key", 
                 #[cfg(feature = "std")] 
-                message: format!("Incorrect length: expected {}, got {}", P::PUBLIC_KEY_BYTES, public_key.as_ref().len()).into() 
+                message: format!("Incorrect length: expected {}, got {}", P::PUBLIC_KEY_BYTES, public_key.as_ref().len())
             });
         }
         
@@ -139,14 +137,14 @@ impl<P: KyberParams> KemTrait for KyberKem<P> {
             return Err(ApiError::InvalidKey { 
                 context: "Kyber secret key", 
                 #[cfg(feature = "std")] 
-                message: format!("Incorrect length: expected {}, got {}", P::SECRET_KEY_BYTES, secret_key.as_ref().len()).into() 
+                message: format!("Incorrect length: expected {}, got {}", P::SECRET_KEY_BYTES, secret_key.as_ref().len())
             });
         }
         if ciphertext.as_ref().len() != P::CIPHERTEXT_BYTES {
             return Err(ApiError::InvalidCiphertext { 
                 context: "Kyber ciphertext", 
                 #[cfg(feature = "std")] 
-                message: format!("Incorrect length: expected {}, got {}", P::CIPHERTEXT_BYTES, ciphertext.as_ref().len()).into() 
+                message: format!("Incorrect length: expected {}, got {}", P::CIPHERTEXT_BYTES, ciphertext.as_ref().len())
             });
         }
 

@@ -2,16 +2,16 @@
 //! ECDH-KEM implementations for NIST curves
 //!
 //! This module provides constant-time implementations of ECDH-KEM
-//! using the NIST P-192, P-224, P-256, P-384, and P-521 curves, // Added P-192
+//! using the NIST P-192, P-224, P-256, P-384, and P-521 curves,
 //! following standard practices for key encapsulation mechanisms.
 
-pub mod p192; // Added P-192 module
+pub mod p192;
 pub mod p224;
 pub mod p256;
 pub mod p384;
 pub mod p521; 
 
-// Re-export the P-192 types // Added P-192 exports
+// Re-export the P-192 types
 pub use p192::{
     EcdhP192,
     EcdhP192PublicKey,

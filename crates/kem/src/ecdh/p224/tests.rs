@@ -60,7 +60,7 @@ fn test_ecdh_p224_kem_decapsulate_tampered_ciphertext() {
 
 #[test]
 fn test_ecdh_p224_kem_ciphertext_structure() {
-    let (pk_r, sk_r) = EcdhP224::keypair(&mut OsRng).expect("Recipient keygen failed");
+    let (pk_r, _sk_r) = EcdhP224::keypair(&mut OsRng).expect("Recipient keygen failed");
     let (ciphertext, _shared_secret) = EcdhP224::encapsulate(&mut OsRng, &pk_r)
         .expect("Encapsulation failed");
 

@@ -2,10 +2,9 @@
 
 use api::Key;
 use zeroize::Zeroize;
-use rand::{CryptoRng, RngCore};
 
-/// Base key size in bytes
-const BASE_KEY_SIZE: usize = 32;
+/// Base key size in bytes for shared secrets
+pub const BASE_KEY_SIZE: usize = 32;
 
 /// Common RSA-KEM implementation that can be parametrized with different modulus sizes
 pub struct RsaKemBase<const MODULUS_SIZE: usize>;

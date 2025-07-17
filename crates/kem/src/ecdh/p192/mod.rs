@@ -11,7 +11,7 @@ use api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
 use common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use rand::{CryptoRng, RngCore};
-use crate::error::{Error as KemError, Result as KemResult, validate as kem_validate};
+use crate::error::Error as KemError;
 use algorithms::ec::p192 as ec;
 use super::KEM_KDF_VERSION;
 

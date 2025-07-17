@@ -1,7 +1,6 @@
 // File: crates/kem/src/ecdh/p521/tests.rs
 use super::*;
 use api::Kem;
-use algorithms::SecretBuffer;
 use algorithms::ec::p521;
 use rand::rngs::OsRng;
 
@@ -336,7 +335,7 @@ mod p521_specific {
             .collect();
         
         // Test all combinations
-        for (i, (pk_i, sk_i)) in keypairs.iter().enumerate() {
+        for (i, _) in keypairs.iter().enumerate() {
             for (j, (pk_j, sk_j)) in keypairs.iter().enumerate() {
                 if i != j {
                     let (ct, ss_enc) = EcdhP521::encapsulate(&mut rng, pk_j).unwrap();
@@ -396,39 +395,4 @@ fn test_p521_kem_cross_consistency() {
     // Decapsulation
     let ss_dec = EcdhP521::decapsulate(&sk521, &ct).unwrap();
     assert_eq!(ss.as_ref(), ss_dec.as_ref());
-}
-
-#[cfg(feature = "benchmark")]
-mod benchmarks {
-    use super::*;
-    use test::Bencher;
-    
-    #[bench]
-    fn bench_p521_kem_keypair(b: &mut Bencher) {
-        let mut rng = OsRng;
-        b.iter(|| {
-            let _ = EcdhP521::keypair(&mut rng).unwrap();
-        });
-    }
-    
-    #[bench]
-    fn bench_p521_kem_encapsulate(b: &mut Bencher) {
-        let mut rng = OsRng;
-        let (pk, _) = EcdhP521::keypair(&mut rng).unwrap();
-        
-        b.iter(|| {
-            let _ = EcdhP521::encapsulate(&mut rng, &pk).unwrap();
-        });
-    }
-    
-    #[bench]
-    fn bench_p521_kem_decapsulate(b: &mut Bencher) {
-        let mut rng = OsRng;
-        let (pk, sk) = EcdhP521::keypair(&mut rng).unwrap();
-        let (ct, _) = EcdhP521::encapsulate(&mut rng, &pk).unwrap();
-        
-        b.iter(|| {
-            let _ = EcdhP521::decapsulate(&sk, &ct).unwrap();
-        });
-    }
 }

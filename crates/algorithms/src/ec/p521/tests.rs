@@ -203,7 +203,7 @@ fn test_scalar_validation() -> Result<()> {
     assert!(!valid_scalar.is_zero());
     
     // Test scalar that's larger than the curve order
-    let mut invalid_scalar_bytes = [0xFF; 66]; // All 0xFF is definitely > n
+    let invalid_scalar_bytes = [0xFF; 66]; // All 0xFF is definitely > n
     let result = Scalar::new(invalid_scalar_bytes);
     
     // Should succeed but reduce the scalar mod order

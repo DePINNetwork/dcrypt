@@ -1,7 +1,6 @@
 // File: crates/kem/src/ecdh/p256/tests.rs
 use super::*;
 use api::Kem;
-use algorithms::SecretBuffer;
 use algorithms::ec::p256 as ec_p256;
 use rand::rngs::OsRng;
 
@@ -297,40 +296,5 @@ fn test_p256_kem_invalid_compressed_prefix() {
         let result = EcdhP256::encapsulate(&mut rng, &invalid_pk);
         
         assert!(result.is_err(), "Prefix {:02x} should be rejected", prefix);
-    }
-}
-
-#[cfg(feature = "benchmark")]
-mod benchmarks {
-    use super::*;
-    use test::Bencher;
-    
-    #[bench]
-    fn bench_p256_kem_keypair(b: &mut Bencher) {
-        let mut rng = OsRng;
-        b.iter(|| {
-            let _ = EcdhP256::keypair(&mut rng).unwrap();
-        });
-    }
-    
-    #[bench]
-    fn bench_p256_kem_encapsulate(b: &mut Bencher) {
-        let mut rng = OsRng;
-        let (pk, _) = EcdhP256::keypair(&mut rng).unwrap();
-        
-        b.iter(|| {
-            let _ = EcdhP256::encapsulate(&mut rng, &pk).unwrap();
-        });
-    }
-    
-    #[bench]
-    fn bench_p256_kem_decapsulate(b: &mut Bencher) {
-        let mut rng = OsRng;
-        let (pk, sk) = EcdhP256::keypair(&mut rng).unwrap();
-        let (ct, _) = EcdhP256::encapsulate(&mut rng, &pk).unwrap();
-        
-        b.iter(|| {
-            let _ = EcdhP256::decapsulate(&sk, &ct).unwrap();
-        });
     }
 }

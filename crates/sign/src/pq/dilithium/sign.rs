@@ -21,19 +21,13 @@
 //!
 //! Internal module - use public `Dilithium2/3/5` types instead.
 
-use super::polyvec::{PolyVecK, PolyVecL, expand_matrix_a, matrix_polyvecl_mul, montgomery_reduce};
+use super::polyvec::{PolyVecK, expand_matrix_a, matrix_polyvecl_mul};
 use super::arithmetic::{
-    power2round_polyvec, highbits_polyvec, lowbits_polyvec, highbits, highbits_d,
-    check_norm_polyvec_l, check_norm_polyvec_k, check_centered_diff_norm,
-    make_hint_polyveck, use_hint_polyveck, mul_q,
-    w1_encode_coeff, schoolbook_mul_centered, PolynomialExt,
+    power2round_polyvec, highbits_polyvec, lowbits_polyvec,
+    check_norm_polyvec_l, check_norm_polyvec_k,
+    make_hint_polyveck, use_hint_polyveck,
     challenge_poly_mul,
-    schoolbook_mul_eta_centered,
-    schoolbook_mul,
     schoolbook_mul_generic,
-    buckets,
-    to_centered,
-    decompose,
 };
 use super::sampling::{
     sample_polyvecl_cbd_eta, sample_polyveck_cbd_eta, 
@@ -48,10 +42,9 @@ use algorithms::hash::sha3::Sha3_256;
 use algorithms::xof::shake::ShakeXof256;
 use algorithms::hash::HashFunction;
 use algorithms::xof::ExtendableOutputFunction;
-use algorithms::poly::params::{DilithiumParams, NttModulus, Modulus}; 
-use algorithms::poly::polynomial::PolynomialNttExt;
+use algorithms::poly::params::{DilithiumParams, Modulus}; 
 use crate::error::{Error as SignError};
-use params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N, DILITHIUM_Q};
+use params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N};
 use rand::{CryptoRng, RngCore};
 use subtle::ConstantTimeEq;
 

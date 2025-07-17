@@ -5,23 +5,12 @@
 
 use algorithms::poly::polynomial::Polynomial;
 use algorithms::poly::params::{DilithiumParams, Modulus};
-use core::cmp;
 use super::polyvec::{PolyVecL, PolyVecK};
 use params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N, DILITHIUM_Q}; 
 use crate::error::{Error as SignError};
 
 /// Dilithium modulus Q
 const Q: i32 = 8_380_417;
-
-/// Gamma2 constants for different parameter sets
-const GAMMA2_MODE2_3: i32 = (Q - 1) / 88;  // 95_232
-const GAMMA2_MODE5: i32 = (Q - 1) / 32;    // 261_888
-
-/// Alpha is always 2 * gamma2
-#[inline]
-const fn alpha(gamma2: i32) -> i32 {
-    gamma2 * 2
-}
 
 /// Helper - number of high-bit buckets (m) for the given parameters
 /// This is the number of valid values for the high bits after decomposition
@@ -63,30 +52,6 @@ pub(crate) fn to_centered(v: u32) -> i32 {
     } else {
         v as i32                               // treat as positive
     }
-}
-
-/// Return (a - b) mod q in [0, q)
-/// 
-/// This is used when we need the canonical non-negative representative,
-/// particularly for highbits/decompose operations where the FIPS 204 spec
-/// requires working in Z_q with values in [0, q).
-#[inline]
-pub(crate) fn diff_mod_q(a: u32, b: u32) -> u32 {
-    // DilithiumParams::Q is ≤ 2³¹ so wrapping_add is fine
-    let q = DilithiumParams::Q;
-    let tmp = a.wrapping_add(q - b);
-    if tmp >= q { tmp - q } else { tmp }
-}
-
-/// Mask for use_hint result
-#[inline]
-const fn mask_alpha(gamma2: i32) -> i32 {
-    alpha(gamma2) / gamma2 - 1  // (α/γ2) - 1 = number of high-bit buckets - 1
-}
-
-/// Multiply two values modulo q
-pub(crate) fn mul_q(a: u32, b: u32) -> u32 {
-    ((a as u64 * b as u64) % DilithiumParams::Q as u64) as u32
 }
 
 /// Generic schoolbook multiplication that handles all coefficient interpretation cases.
@@ -143,22 +108,6 @@ pub fn schoolbook_mul_generic(
     result
 }
 
-/// Standard schoolbook multiplication of two polynomials modulo q.
-/// This is the standard polynomial multiplication in R_q = Z_q[X]/(X^n + 1).
-/// 
-/// Unlike the centered multiplication functions, this treats all coefficients
-/// as standard values in [0, q) without any centered interpretation.
-/// 
-/// This is the correct multiplication to use for c * t1*2^d in verification,
-/// where t1*2^d has standard (non-centered) coefficients.
-pub fn schoolbook_mul(
-    a: &Polynomial<DilithiumParams>,
-    b: &Polynomial<DilithiumParams>,
-) -> Polynomial<DilithiumParams> {
-    // Use generic function with both operands as standard (non-centered)
-    schoolbook_mul_generic(a, b, false, false)
-}
-
 /// Multiply a challenge polynomial by a standard polynomial.
 /// 
 /// This function correctly handles the special case where:
@@ -173,17 +122,6 @@ pub fn challenge_poly_mul(
 ) -> Polynomial<DilithiumParams> {
     // Use generic function with c centered, standard_poly non-centered
     schoolbook_mul_generic(c, standard_poly, true, false)
-}
-
-/// Extension trait to add schoolbook_mul as a method on Polynomial
-pub(crate) trait PolynomialExt {
-    fn schoolbook_mul(&self, other: &Self) -> Self;
-}
-
-impl PolynomialExt for Polynomial<DilithiumParams> {
-    fn schoolbook_mul(&self, other: &Self) -> Self {
-        schoolbook_mul(self, other)
-    }
 }
 
 /// Implements `Power2Round_q` from FIPS 204, Algorithm 29.
@@ -231,7 +169,7 @@ pub fn decompose(a: u32, alpha_param: u32) -> (i32, u32) {
     }
 
     // 2. high bits - Use i64 to prevent overflow
-    let mut r1 = (((a as i64) - (r0 as i64)) / (alpha as i64)) as u32;
+    let r1 = (((a as i64) - (r0 as i64)) / (alpha as i64)) as u32;
 
     // 3. Special case per FIPS 204 Algorithm 36
     // When a = q-1, set r1 = 0 and r0 = r0 - 1
@@ -255,19 +193,6 @@ pub fn lowbits(r_coeff: u32, alpha: u32) -> i32 {
     decompose(r_coeff, alpha).0
 }
 
-/// Computes high bits using the d-based decomposition for w1 encoding.
-/// This uses α₁ = 2^(d - W1_BITS) instead of α = 2·γ₂.
-/// 
-/// DEPRECATED: This function is kept for backwards compatibility but is no longer used.
-/// The final FIPS 204 spec uses gamma-based decomposition for w1 encoding.
-pub fn highbits_d<P: DilithiumSchemeParams>(r_coeff: u32) -> u32 {
-    // (r0, r1) = Power2Round_q(r, d = P::D_PARAM)
-    let (_, r1) = power2round(r_coeff, P::D_PARAM);
-    
-    // Return the full r1 value (no truncation)
-    r1
-}
-
 /// FIPS 204 final w1Encode (Algorithm 28).
 /// Returns the FULL gamma-bucket index r1 (no truncation).
 /// For Dilithium2: r1 ∈ [0,44] requires 6 bits
@@ -281,13 +206,6 @@ pub fn w1_encode_gamma<P: DilithiumSchemeParams>(r1_gamma: u32) -> u32 {
     r1_gamma
 }
 
-/// Convenience function - encode a coefficient directly by first decomposing it.
-#[inline]
-pub fn w1_encode_coeff<P: DilithiumSchemeParams>(r_coeff: u32) -> u32 {
-    let (_, r1) = decompose(r_coeff, 2 * P::GAMMA2_PARAM);
-    w1_encode_gamma::<P>(r1)
-}
-
 /// Compute the number of bits needed to represent w1 coefficients.
 /// This is b = bitlen((q-1)/(2γ₂) - 1) as per FIPS 204 Algorithm 28.
 #[inline]
@@ -299,22 +217,6 @@ pub fn w1_bits_needed<P: DilithiumSchemeParams>() -> u32 {
 // ---------------------------------------------------------------------------
 // Hint system – Algorithms 39 & 40 (FIPS 204 final)
 // ---------------------------------------------------------------------------
-
-/// FIPS 204 Algorithm 39 (MakeHint) - simplified final version
-/// Returns true iff HighBits(r+z) ≠ HighBits(r)
-/// 
-/// Ensure (r+z) is computed as a proper non-negative value in [0, q)
-/// before passing to decompose, which expects unsigned inputs.
-#[inline]
-pub fn make_hint_coeff(z_coeff: i32, r_coeff: u32, alpha: u32) -> bool {
-    let (_, r1) = decompose(r_coeff, alpha);
-    
-    // Ensure r+z is in [0, q) before decompose
-    let r_plus_z = ((r_coeff as i64 + z_coeff as i64).rem_euclid(DilithiumParams::Q as i64)) as u32;
-    let (_, v1) = decompose(r_plus_z, alpha);
-    
-    r1 != v1
-}
 
 /// FIPS 204 Algorithm 40 (UseHint) - FINAL SPECIFICATION COMPLIANT
 /// 
@@ -448,43 +350,6 @@ pub fn lowbits_polyvec<P: DilithiumSchemeParams>(
     res
 }
 
-/// Computes centered difference between two PolyVecK vectors and checks norm.
-/// Returns Ok(difference) if ||difference||∞ ≤ bound, Err(max_norm) otherwise.
-/// 
-/// This function properly handles large negative differences by computing
-/// the true centered values rather than wrapping around to small positive values.
-/// 
-/// The returned PolyVecK contains the difference in wrapped u32 form suitable
-/// for hint generation, but the norm check is performed on the true centered values.
-pub fn check_centered_diff_norm<P: DilithiumSchemeParams>(
-    a: &PolyVecK<P>,
-    b: &PolyVecK<P>,
-    bound: u32
-) -> Result<PolyVecK<P>, i32> {
-    let mut result = PolyVecK::<P>::zero();
-    let mut max_norm = 0i32;
-    
-    for i in 0..P::K_DIM {
-        for j in 0..DILITHIUM_N {
-            // Compute the true centered difference
-            let diff = centered_sub(a.polys[i].coeffs[j], b.polys[i].coeffs[j]);
-            
-            // Track maximum absolute value for norm check
-            max_norm = max_norm.max(diff.abs());
-            
-            // Store in polynomial (wrapped form for hint generation)
-            result.polys[i].coeffs[j] = 
-                ((diff as i64).rem_euclid(DILITHIUM_Q as i64)) as u32;
-        }
-    }
-    
-    if max_norm > bound as i32 {
-        Err(max_norm)  // Return the violating norm
-    } else {
-        Ok(result)     // Return the difference vector
-    }
-}
-
 /// FIPS 204 Algorithm 39 applied to polynomial vectors
 /// 
 /// The MakeHint/UseHint identity from FIPS 204 is:
@@ -511,7 +376,6 @@ pub fn make_hint_polyveck<P: DilithiumSchemeParams>(
     let mut hint_count = 0;
     
     let alpha = 2 * P::GAMMA2_PARAM;
-    let m = buckets(alpha, P::GAMMA2_PARAM);
     
     for i in 0..P::K_DIM {
         for j in 0..DILITHIUM_N {
@@ -574,36 +438,4 @@ pub fn use_hint_polyveck<P: DilithiumSchemeParams>(
     }
     
     Ok(corrected_pv)
-}
-
-/// Helper function to multiply a polynomial by a coefficient polynomial where the 
-/// coefficients are in centered representation.
-/// 
-/// This is needed because:
-/// - t0 coefficients are stored in [0, q) but represent centered values in (-2^(d-1), 2^(d-1)]
-/// - Challenge polynomial c has coefficients in {-1, 0, 1} where -1 is stored as q-1
-/// When multiplying c * t0, we need to interpret both sets of coefficients correctly.
-pub fn schoolbook_mul_centered(
-    c: &Polynomial<DilithiumParams>,
-    t0: &Polynomial<DilithiumParams>,
-    d_param: u32,
-) -> Polynomial<DilithiumParams> {
-    // Use generic function with both operands centered
-    schoolbook_mul_generic(c, t0, true, true)
-}
-
-/// Generic helper function for challenge polynomial multiplication with eta-bounded coefficients
-/// Works for both s1 and s2 polynomials which have coefficients in range [-η, η]
-/// 
-/// Parameters:
-/// - c: Challenge polynomial with coefficients {-1, 0, 1} where -1 is stored as q-1
-/// - s_eta: Secret polynomial with coefficients in [-η, η] 
-/// - eta: The bound value (P::ETA_S1S2, typically 2 or 4)
-pub fn schoolbook_mul_eta_centered<P: DilithiumSchemeParams>(
-    c: &algorithms::poly::polynomial::Polynomial<algorithms::poly::params::DilithiumParams>,
-    s_eta: &algorithms::poly::polynomial::Polynomial<algorithms::poly::params::DilithiumParams>,
-    eta: u32,
-) -> algorithms::poly::polynomial::Polynomial<algorithms::poly::params::DilithiumParams> {
-    // Use generic function with both operands centered
-    schoolbook_mul_generic(c, s_eta, true, true)
 }

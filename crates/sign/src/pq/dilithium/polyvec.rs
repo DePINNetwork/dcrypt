@@ -7,7 +7,7 @@
 //! The polynomial type MUST use the algorithms version to get correct NTT scaling factors!
 
 use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::{DilithiumParams, Modulus, NttModulus};
+use algorithms::poly::params::{DilithiumParams, Modulus};
 use algorithms::xof::shake::ShakeXof128;
 use algorithms::xof::ExtendableOutputFunction;
 use algorithms::error::Result as AlgoResult;
@@ -16,8 +16,7 @@ use params::pqc::dilithium::DilithiumSchemeParams;
 use core::marker::PhantomData;
 use zeroize::Zeroize;
 
-// Use the canonical implementation in algorithms::poly::ntt
-pub use algorithms::poly::ntt::montgomery_reduce;
+// Montgomery reduce is available from algorithms::poly::ntt when needed
 
 // Import centered_sub from arithmetic module
 use super::arithmetic::centered_sub;
@@ -86,34 +85,6 @@ impl<P: DilithiumSchemeParams> PolyVecL<P> {
         Ok(())
     }
 
-    /// Apply inverse NTT in‐place.
-    pub fn inv_ntt_inplace(&mut self) -> AlgoResult<()> {
-        for p in self.polys.iter_mut() {
-            // p.from_ntt_inplace() from algorithms/poly/ntt.rs implements InvNTT_R_logN (FIPS 204 Alg 27),
-            // which results in coefficients in standard domain per FIPS 204
-            p.from_ntt_inplace()?;
-        }
-        Ok(())
-    }
-
-    /// Element-wise addition: self + other.
-    pub fn add(&self, other: &Self) -> Self {
-        let mut res = Self::zero();
-        for i in 0..P::L_DIM {
-            res.polys[i] = self.polys[i].add(&other.polys[i]);
-        }
-        res
-    }
-
-    /// Element-wise subtraction: self – other.
-    pub fn sub(&self, other: &Self) -> Self {
-        let mut res = Self::zero();
-        for i in 0..P::L_DIM {
-            res.polys[i] = self.polys[i].sub(&other.polys[i]);
-        }
-        res
-    }
-
     /// Point-wise product and accumulate into one Polynomial (all in NTT domain).
     pub fn pointwise_dot_product(&self, other: &PolyVecL<P>) -> Polynomial<DilithiumParams> {
         let mut acc = Polynomial::<DilithiumParams>::zero();
@@ -122,15 +93,6 @@ impl<P: DilithiumSchemeParams> PolyVecL<P> {
             acc = acc.add(&prod);
         }
         acc
-    }
-
-    /// Multiply each polynomial by a single polynomial (all in NTT domain).
-    pub fn poly_mul_elementwise(&self, poly_scalar_ntt: &Polynomial<DilithiumParams>) -> Self {
-        let mut res = Self::zero();
-        for i in 0..P::L_DIM {
-            res.polys[i] = self.polys[i].ntt_mul(poly_scalar_ntt);
-        }
-        res
     }
 }
 

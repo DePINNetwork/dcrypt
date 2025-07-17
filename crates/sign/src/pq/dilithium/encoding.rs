@@ -505,7 +505,7 @@ pub fn unpack_signature<P: DilithiumSchemeParams>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use params::pqc::dilithium::{Dilithium2Params, Dilithium3Params, Dilithium5Params};
+    use params::pqc::dilithium::Dilithium2Params;
     
     #[test]
     fn test_roundtrip_hints_basic() {

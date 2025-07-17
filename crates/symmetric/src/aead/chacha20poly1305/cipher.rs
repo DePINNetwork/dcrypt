@@ -12,6 +12,7 @@ use algorithms::error::Error as PrimitiveError;
 use rand::RngCore;
 use super::common::{ChaCha20Poly1305Key, ChaCha20Poly1305Nonce, ChaCha20Poly1305CiphertextPackage};
 use crate::cipher::{SymmetricCipher, Aead};
+use std::fmt;
 
 /// ChaCha20Poly1305 authenticated encryption
 pub struct ChaCha20Poly1305Cipher {
@@ -123,7 +124,6 @@ impl ChaCha20Poly1305Cipher {
 /// XChaCha20Poly1305 authenticated encryption with extended 24-byte nonce
 pub struct XChaCha20Poly1305Cipher {
     cipher: XChaCha20Poly1305,
-    pub(crate) key: ChaCha20Poly1305Key,
 }
 
 impl SymmetricCipher for XChaCha20Poly1305Cipher {
@@ -136,7 +136,6 @@ impl SymmetricCipher for XChaCha20Poly1305Cipher {
         let cipher = XChaCha20Poly1305::new(key.as_bytes());
         Ok(Self { 
             cipher,
-            key: key.clone(),
         })
     }
     
@@ -167,11 +166,6 @@ impl XChaCha20Poly1305Nonce {
         &self.0
     }
     
-    /// Serializes the nonce to a base64 string
-    pub fn to_string(&self) -> String {
-        base64::encode(&self.0)
-    }
-    
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
         let bytes = base64::decode(s)
@@ -187,6 +181,12 @@ impl XChaCha20Poly1305Nonce {
         nonce.copy_from_slice(&bytes);
         
         Ok(Self(nonce))
+    }
+}
+
+impl fmt::Display for XChaCha20Poly1305Nonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", base64::encode(self.0))
     }
 }
 

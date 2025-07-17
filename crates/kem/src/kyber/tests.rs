@@ -2,8 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::kyber::{Kyber512, Kyber768, Kyber1024};
+    use crate::kyber::params::KYBER_SS_BYTES;
     use api::Kem;
     use rand::SeedableRng;
     use rand_chacha::ChaChaRng;
@@ -51,11 +51,11 @@ mod tests {
         // Encapsulate
         let (ct, ss1) = Kyber512::encapsulate(&mut rng, &pk).unwrap();
         assert_eq!(ct.as_ref().len(), 768); // Kyber512 ciphertext size
-        assert_eq!(ss1.as_ref().len(), 32);  // Shared secret size
+        assert_eq!(ss1.as_ref().len(), KYBER_SS_BYTES);  // Shared secret size
         
         // Decapsulate
         let ss2 = Kyber512::decapsulate(&sk, &ct).unwrap();
-        assert_eq!(ss2.as_ref().len(), 32);
+        assert_eq!(ss2.as_ref().len(), KYBER_SS_BYTES);
         
         // Shared secrets should match
         assert_eq!(ss1.as_ref(), ss2.as_ref());
@@ -71,11 +71,11 @@ mod tests {
         // Encapsulate
         let (ct, ss1) = Kyber768::encapsulate(&mut rng, &pk).unwrap();
         assert_eq!(ct.as_ref().len(), 1088); // Kyber768 ciphertext size
-        assert_eq!(ss1.as_ref().len(), 32);   // Shared secret size
+        assert_eq!(ss1.as_ref().len(), KYBER_SS_BYTES);   // Shared secret size
         
         // Decapsulate
         let ss2 = Kyber768::decapsulate(&sk, &ct).unwrap();
-        assert_eq!(ss2.as_ref().len(), 32);
+        assert_eq!(ss2.as_ref().len(), KYBER_SS_BYTES);
         
         // Shared secrets should match
         assert_eq!(ss1.as_ref(), ss2.as_ref());
@@ -91,11 +91,11 @@ mod tests {
         // Encapsulate
         let (ct, ss1) = Kyber1024::encapsulate(&mut rng, &pk).unwrap();
         assert_eq!(ct.as_ref().len(), 1568); // Kyber1024 ciphertext size
-        assert_eq!(ss1.as_ref().len(), 32);   // Shared secret size
+        assert_eq!(ss1.as_ref().len(), KYBER_SS_BYTES);   // Shared secret size
         
         // Decapsulate
         let ss2 = Kyber1024::decapsulate(&sk, &ct).unwrap();
-        assert_eq!(ss2.as_ref().len(), 32);
+        assert_eq!(ss2.as_ref().len(), KYBER_SS_BYTES);
         
         // Shared secrets should match
         assert_eq!(ss1.as_ref(), ss2.as_ref());

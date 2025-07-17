@@ -3,6 +3,7 @@
 use crate::error::{Result, validate, validate_format};
 use rand::{RngCore, rngs::OsRng};
 use base64;
+use std::fmt;
 
 /// GCM nonce type (96 bits/12 bytes is the recommended size for GCM)
 #[derive(Clone, Debug)]
@@ -26,11 +27,6 @@ impl GcmNonce {
         &self.0
     }
     
-    /// Serializes the nonce to a base64 string
-    pub fn to_string(&self) -> String {
-        base64::encode(&self.0)
-    }
-    
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
         let bytes = base64::decode(s)
@@ -49,6 +45,12 @@ impl GcmNonce {
     }
 }
 
+impl fmt::Display for GcmNonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", base64::encode(self.0))
+    }
+}
+
 /// Format for storing both ciphertext and nonce together
 #[derive(Clone, Debug)]
 pub struct AesCiphertextPackage {
@@ -62,14 +64,6 @@ impl AesCiphertextPackage {
     /// Creates a new package containing nonce and ciphertext
     pub fn new(nonce: GcmNonce, ciphertext: Vec<u8>) -> Self {
         Self { nonce, ciphertext }
-    }
-    
-    /// Serializes the package to a base64 string with format:
-    /// DCRYPT-AES-GCM:{nonce_b64}:{ciphertext_b64}
-    pub fn to_string(&self) -> String {
-        let nonce_b64 = base64::encode(self.nonce.as_bytes());
-        let ciphertext_b64 = base64::encode(&self.ciphertext);
-        format!("DCRYPT-AES-GCM:{}:{}", nonce_b64, ciphertext_b64)
     }
     
     /// Parses a serialized package
@@ -110,5 +104,13 @@ impl AesCiphertextPackage {
             nonce: GcmNonce(nonce),
             ciphertext,
         })
+    }
+}
+
+impl fmt::Display for AesCiphertextPackage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let nonce_b64 = base64::encode(self.nonce.as_bytes());
+        let ciphertext_b64 = base64::encode(&self.ciphertext);
+        write!(f, "DCRYPT-AES-GCM:{}:{}", nonce_b64, ciphertext_b64)
     }
 }

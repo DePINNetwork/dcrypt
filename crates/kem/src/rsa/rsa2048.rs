@@ -1,11 +1,11 @@
 //! RSA-2048 KEM
 
 use super::common::{
-    RsaKemBase, RsaPublicKey, RsaSecretKey, RsaSharedSecret, RsaCiphertext,
+    RsaKemBase, RsaPublicKey, RsaSecretKey, RsaSharedSecret, RsaCiphertext, BASE_KEY_SIZE,
 };
 use api::{Kem, Key};
 use rand::{CryptoRng, RngCore};
-use crate::error::{Error, Result, validate};
+use crate::error::validate;
 
 /// RSA-2048 KEM with 2048-bit modulus
 pub type RsaKem2048 = RsaKemBase<2048>;
@@ -96,7 +96,7 @@ impl Kem for RsaKem2048 {
         
         // Generate random message for encapsulation
         let mut ciphertext_data = vec![0u8; modulus_bytes];
-        let mut shared_secret_data = vec![0u8; 32]; // Standard shared secret size
+        let mut shared_secret_data = vec![0u8; BASE_KEY_SIZE]; // Use constant instead of hardcoding 32
 
         rng.fill_bytes(&mut ciphertext_data);
         rng.fill_bytes(&mut shared_secret_data);
@@ -156,7 +156,7 @@ impl Kem for RsaKem2048 {
         
         // In a real implementation, this would perform RSA decryption
         // and KDF to derive the shared secret
-        let shared_secret_data = vec![0u8; 32];
+        let shared_secret_data = vec![0u8; BASE_KEY_SIZE]; // Use constant instead of hardcoding 32
         
         Ok(RsaSharedSecret(
             Key::new(&shared_secret_data)

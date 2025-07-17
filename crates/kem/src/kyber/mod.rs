@@ -28,5 +28,8 @@ pub use self::kyber1024::Kyber1024;
 // via the associated types of Kyber512, Kyber768, Kyber1024.
 pub use self::kem::{KyberPublicKey, KyberSecretKey, KyberCiphertext, KyberSharedSecret};
 
+// Re-export important constants that external modules might need
+pub use self::params::KYBER_SS_BYTES;
+
 #[cfg(test)]
 mod tests;

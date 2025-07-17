@@ -5,7 +5,7 @@
 //! Using Discrete Logarithm Cryptography
 
 use api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
 use algorithms::ec::p384 as ec;
 use algorithms::hash::sha2::Sha384;

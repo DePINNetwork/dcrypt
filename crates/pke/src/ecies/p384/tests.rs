@@ -2,7 +2,6 @@
 use super::*;
 use rand::rngs::OsRng;
 use api::error::Error as ApiError; // Alias for clarity
-use crate::error::Error as PkeError; // Alias for clarity
 
 #[test]
 fn test_ecies_p384_keypair_generation() {

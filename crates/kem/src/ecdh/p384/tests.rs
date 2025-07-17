@@ -1,7 +1,6 @@
 // File: crates/kem/src/ecdh/p384/tests.rs
 use super::*;
 use api::Kem;
-use common::security::SecretBuffer;
 use algorithms::ec::p384;
 use rand::rngs::OsRng;
 
@@ -347,40 +346,5 @@ fn test_p384_kem_invalid_compressed_prefix() {
         let result = EcdhP384::encapsulate(&mut rng, &invalid_pk);
         
         assert!(result.is_err(), "Prefix {:02x} should be rejected", prefix);
-    }
-}
-
-#[cfg(feature = "benchmark")]
-mod benchmarks {
-    use super::*;
-    use test::Bencher;
-    
-    #[bench]
-    fn bench_p384_kem_keypair(b: &mut Bencher) {
-        let mut rng = OsRng;
-        b.iter(|| {
-            let _ = EcdhP384::keypair(&mut rng).unwrap();
-        });
-    }
-    
-    #[bench]
-    fn bench_p384_kem_encapsulate(b: &mut Bencher) {
-        let mut rng = OsRng;
-        let (pk, _) = EcdhP384::keypair(&mut rng).unwrap();
-        
-        b.iter(|| {
-            let _ = EcdhP384::encapsulate(&mut rng, &pk).unwrap();
-        });
-    }
-    
-    #[bench]
-    fn bench_p384_kem_decapsulate(b: &mut Bencher) {
-        let mut rng = OsRng;
-        let (pk, sk) = EcdhP384::keypair(&mut rng).unwrap();
-        let (ct, _) = EcdhP384::encapsulate(&mut rng, &pk).unwrap();
-        
-        b.iter(|| {
-            let _ = EcdhP384::decapsulate(&sk, &ct).unwrap();
-        });
     }
 }

@@ -10,12 +10,10 @@ use api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
 use common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use rand::{CryptoRng, RngCore};
-use crate::error::{Error as KemError, Result as KemResult, validate as kem_validate};
+use crate::error::Error as KemError;
 use algorithms::ec::p224 as ec; // Use P-224 algorithms
 use algorithms::mac::hmac::Hmac;
 use algorithms::hash::sha2::Sha256;
-use algorithms::mac::MacAlgorithm;
-use algorithms::hash::HashAlgorithm;
 use super::KEM_KDF_VERSION; // KDF version from parent ecdh module
 
 /// ECDH KEM with P-224 curve
@@ -54,14 +52,15 @@ impl AsMut<[u8]> for EcdhP224Ciphertext { fn as_mut(&mut self) -> &mut [u8] { &m
 fn calc_auth_tag(shared_secret: &[u8]) -> Result<[u8; ec::P224_TAG_SIZE], KemError> {
     // Create HMAC-SHA256 instance with fixed key
     let mut hmac = Hmac::<Sha256>::new(b"ECDH-P224-KEM tag")
-        .map_err(|e| KemError::from(e))?;
+        .map_err(KemError::from)?;
     
     // Update with shared secret
-    hmac.update(shared_secret);
+    hmac.update(shared_secret)
+        .map_err(KemError::from)?;
     
     // Finalize and get tag (SHA256 produces 32-byte tags)
     let tag_vec: Vec<u8> = hmac.finalize()
-        .map_err(|e| KemError::from(e))?;
+        .map_err(KemError::from)?;
     
     // Truncate to P224_TAG_SIZE bytes
     let mut truncated = [0u8; ec::P224_TAG_SIZE];
@@ -135,7 +134,7 @@ impl Kem for EcdhP224 {
         let mut ct_bytes = [0u8; ec::P224_CIPHERTEXT_SIZE];
         ct_bytes[..ec::P224_POINT_COMPRESSED_SIZE].copy_from_slice(&ephemeral_pk_compressed);
         let tag = calc_auth_tag(&ss_bytes)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         ct_bytes[ec::P224_POINT_COMPRESSED_SIZE..].copy_from_slice(&tag);
         let ciphertext = EcdhP224Ciphertext(ct_bytes);
 
@@ -193,7 +192,7 @@ impl Kem for EcdhP224 {
 
         // Verify authentication tag
         let expected_tag = calc_auth_tag(&ss_bytes)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         // Constant-time comparison of tags (array to array)
         use common::security::SecureCompare;
@@ -210,4 +209,4 @@ impl Kem for EcdhP224 {
 }
 
 #[cfg(test)]
-mod tests; // Assume tests will be adapted
+mod tests; 

@@ -38,7 +38,7 @@ impl ChaCha20Poly1305Key {
     
     /// Securely serializes the key for storage
     pub fn to_secure_string(&self) -> String {
-        let key_b64 = base64::encode(&self.0);
+        let key_b64 = base64::encode(self.0);
         format!("DCRYPT-CHACHA20POLY1305-KEY:{}", key_b64)
     }
     
@@ -95,11 +95,6 @@ impl ChaCha20Poly1305Nonce {
         &self.0
     }
     
-    /// Serializes the nonce to a base64 string
-    pub fn to_string(&self) -> String {
-        base64::encode(&self.0)
-    }
-    
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
         let bytes = base64::decode(s)
@@ -118,6 +113,12 @@ impl ChaCha20Poly1305Nonce {
     }
 }
 
+impl fmt::Display for ChaCha20Poly1305Nonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", base64::encode(self.0))
+    }
+}
+
 /// Format for storing both ciphertext and nonce together
 #[derive(Clone, Debug)]
 pub struct ChaCha20Poly1305CiphertextPackage {
@@ -131,14 +132,6 @@ impl ChaCha20Poly1305CiphertextPackage {
     /// Creates a new package containing nonce and ciphertext
     pub fn new(nonce: ChaCha20Poly1305Nonce, ciphertext: Vec<u8>) -> Self {
         Self { nonce, ciphertext }
-    }
-    
-    /// Serializes the package to a base64 string with format:
-    /// DCRYPT-CHACHA20POLY1305:{nonce_b64}:{ciphertext_b64}
-    pub fn to_string(&self) -> String {
-        let nonce_b64 = base64::encode(self.nonce.as_bytes());
-        let ciphertext_b64 = base64::encode(&self.ciphertext);
-        format!("DCRYPT-CHACHA20POLY1305:{}:{}", nonce_b64, ciphertext_b64)
     }
     
     /// Parses a serialized package
@@ -179,6 +172,14 @@ impl ChaCha20Poly1305CiphertextPackage {
             nonce: ChaCha20Poly1305Nonce(nonce),
             ciphertext,
         })
+    }
+}
+
+impl fmt::Display for ChaCha20Poly1305CiphertextPackage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let nonce_b64 = base64::encode(self.nonce.as_bytes());
+        let ciphertext_b64 = base64::encode(&self.ciphertext);
+        write!(f, "DCRYPT-CHACHA20POLY1305:{}:{}", nonce_b64, ciphertext_b64)
     }
 }
 

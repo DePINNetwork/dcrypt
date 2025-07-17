@@ -9,9 +9,8 @@ extern crate alloc;
 use alloc::vec::Vec;
 
 use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::Modulus; // Add this import
+use algorithms::poly::params::Modulus;
 use algorithms::error::Result as AlgoResult;
-use rand::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
 use super::params::{KyberParams, KyberPolyModParams};
@@ -41,24 +40,11 @@ impl<P: KyberParams> PolyVec<P> {
             _params: core::marker::PhantomData,
         }
     }
-    
-    /// Returns the dimension K of this PolyVec.
-    pub fn dimension() -> usize {
-        P::K
-    }
 
     /// Applies NTT to each polynomial in the vector.
     pub fn ntt_inplace(&mut self) -> AlgoResult<()> {
         for p in self.polys.iter_mut() {
             p.ntt_inplace()?;
-        }
-        Ok(())
-    }
-
-    /// Applies inverse NTT to each polynomial in the vector.
-    pub fn inv_ntt_inplace(&mut self) -> AlgoResult<()> {
-        for p in self.polys.iter_mut() {
-            p.from_ntt_inplace()?;
         }
         Ok(())
     }
@@ -74,60 +60,6 @@ impl<P: KyberParams> PolyVec<P> {
             acc = acc.add(&prod);      // Accumulate in NTT domain
         }
         acc // Result is in NTT domain
-    }
-
-    /// Adds another PolyVec to this one, coefficient-wise.
-    pub fn add_assign(&mut self, other: &Self) {
-        for (p1, p2) in self.polys.iter_mut().zip(other.polys.iter()) {
-            *p1 = p1.add(p2);
-        }
-    }
-
-    /// Subtracts another PolyVec from this one, coefficient-wise.
-    pub fn sub_assign(&mut self, other: &Self) {
-        for (p1, p2) in self.polys.iter_mut().zip(other.polys.iter()) {
-            *p1 = p1.sub(p2);
-        }
-    }
-    
-    /// Compress polynomial vector
-    pub fn compress(&self, du: usize) -> Vec<u8> {
-        let mut result = Vec::new();
-        let mask = (1u32 << du) - 1;
-        
-        for poly in &self.polys {
-            for &coeff in poly.as_coeffs_slice() {
-                // Compress: round(2^du / q * coeff) mod 2^du
-                let t = (((coeff as u64) << du) + (KyberPolyModParams::Q as u64 / 2)) / (KyberPolyModParams::Q as u64);
-                result.push((t & mask as u64) as u8);
-            }
-        }
-        
-        result
-    }
-    
-    /// Decompress polynomial vector
-    pub fn decompress(data: &[u8], du: usize, k: usize) -> AlgoResult<Self> {
-        let mut polyvec = Self::zero();
-        let mut idx = 0;
-        
-        for i in 0..k {
-            for j in 0..KyberPolyModParams::N {
-                if idx >= data.len() {
-                    return Err(algorithms::error::Error::Processing {
-                        operation: "decompress",
-                        details: "insufficient data",
-                    });
-                }
-                
-                // Decompress: round(q / 2^du * x)
-                let x = data[idx] as u32;
-                polyvec.polys[i].coeffs[j] = (x * KyberPolyModParams::Q + (1 << (du - 1))) >> du;
-                idx += 1;
-            }
-        }
-        
-        Ok(polyvec)
     }
     
     /// Pack polynomial vector to bytes

@@ -216,7 +216,6 @@ fn deterministic_k_hedged_p224<R: RngCore + CryptoRng>(
 ) -> ec::Scalar {
     use zeroize::Zeroize;
     let hash_len = Sha224Algorithm::OUTPUT_SIZE; // 28 bytes
-    let hmac_block_len = Sha224Algorithm::BLOCK_SIZE; // 64 bytes for SHA-224
 
     let mut rbuf = [0u8; ec::P224_SCALAR_SIZE];
     rng.fill_bytes(&mut rbuf[..hash_len]); 
