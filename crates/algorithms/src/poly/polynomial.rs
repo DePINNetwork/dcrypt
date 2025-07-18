@@ -316,7 +316,8 @@ mod tests {
     fn test_polynomial_addition() {
         let a = Polynomial::<TestModulus>::from_coeffs(&[1, 2, 3, 4]).unwrap();
         let b = Polynomial::<TestModulus>::from_coeffs(&[5, 6, 7, 8]).unwrap();
-        let c = (&a).add(&b);
+        // Use the + operator directly to avoid explicit borrows
+        let c = a + b;
         assert_eq!(c.as_coeffs_slice(), &[6, 8, 10, 12]);
     }
     
@@ -324,14 +325,16 @@ mod tests {
     fn test_polynomial_subtraction() {
         let a = Polynomial::<TestModulus>::from_coeffs(&[10, 20, 30, 40]).unwrap();
         let b = Polynomial::<TestModulus>::from_coeffs(&[5, 6, 7, 8]).unwrap();
-        let c = (&a).sub(&b);
+        // Use the - operator directly to avoid explicit borrows
+        let c = a - b;
         assert_eq!(c.as_coeffs_slice(), &[5, 14, 23, 32]);
     }
     
     #[test]
     fn test_polynomial_negation() {
         let a = Polynomial::<TestModulus>::from_coeffs(&[1, 2, 0, 4]).unwrap();
-        let neg_a = (&a).neg();
+        // Use the - operator directly to avoid explicit borrows
+        let neg_a = -a;
         assert_eq!(neg_a.as_coeffs_slice(), &[3328, 3327, 0, 3325]);
     }
     
@@ -436,7 +439,7 @@ mod tests {
         sparse.coeffs[0] = 1; // +1
         sparse.coeffs[2] = DilithiumTestModulus::Q - 1; // -1
         
-        let mut dense = Polynomial::<DilithiumTestModulus>::from_coeffs(&[100, 200, 300, 400]).unwrap();
+        let dense = Polynomial::<DilithiumTestModulus>::from_coeffs(&[100, 200, 300, 400]).unwrap();
         let result = sparse.schoolbook_mul(&dense);
         
         // (1 - x^2) * (100 + 200x + 300x^2 + 400x^3)

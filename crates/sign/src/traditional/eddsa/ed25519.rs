@@ -95,9 +95,9 @@ impl SignatureTrait for Ed25519 {
         // Step 2: Expand seed using SHA-512
         let mut hasher = Sha512::new();
         hasher.update(&seed)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         let hash = hasher.finalize()
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         let mut expanded = [0u8; 64];
         expanded.copy_from_slice(hash.as_ref());
@@ -146,11 +146,11 @@ impl SignatureTrait for Ed25519 {
         // Step 1: Compute r = SHA-512(prefix || message) mod L
         let mut hasher = Sha512::new();
         hasher.update(prefix)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         hasher.update(message)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         let r_hash = hasher.finalize()
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         let mut r = [0u8; 32];
         operations::reduce_512_to_scalar(r_hash.as_ref(), &mut r);
@@ -170,13 +170,13 @@ impl SignatureTrait for Ed25519 {
         // Step 4: Compute k = SHA-512(R || A || message) mod L
         let mut hasher = Sha512::new();
         hasher.update(&r_point)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         hasher.update(&public_key)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         hasher.update(message)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         let k_hash = hasher.finalize()
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         let mut k = [0u8; 32];
         operations::reduce_512_to_scalar(k_hash.as_ref(), &mut k);
@@ -232,13 +232,13 @@ impl SignatureTrait for Ed25519 {
         // Compute k = SHA-512(R || A || message) mod L
         let mut hasher = Sha512::new();
         hasher.update(r_bytes)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         hasher.update(&public_key.0)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         hasher.update(message)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         let k_hash = hasher.finalize()
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         let mut k = [0u8; 32];
         operations::reduce_512_to_scalar(k_hash.as_ref(), &mut k);
@@ -253,7 +253,7 @@ impl SignatureTrait for Ed25519 {
             })?;
         
         // Check result using constant-time comparison
-        if !ct_eq(&check, &[1u8; 32]) {
+        if !ct_eq(check, [1u8; 32]) {
             return Err(ApiError::InvalidSignature {
                 context: "Ed25519 verify",
                 #[cfg(feature = "std")]

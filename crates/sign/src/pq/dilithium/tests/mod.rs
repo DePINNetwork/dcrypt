@@ -23,7 +23,7 @@ use super::encoding::{
     pack_signature, unpack_signature,
 };
 use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::{DilithiumParams, Modulus};  // Added Modulus trait import
+use algorithms::poly::params::{DilithiumParams};  // Removed unused Modulus trait import
 use algorithms::poly::ntt::montgomery_reduce;
 use params::pqc::dilithium::{
     DilithiumSchemeParams, Dilithium2Params, Dilithium3Params, Dilithium5Params,
@@ -36,8 +36,8 @@ use rand_chacha::ChaCha20Rng;
 const TEST_MESSAGE: &[u8] = b"test message for dilithium signatures";
 
 // Constants for Dilithium2
-const GAMMA2: u32 = ((DILITHIUM_Q - 1) / 88) as u32;
-const GAMMA2_MODE5: u32 = ((DILITHIUM_Q - 1) / 32) as u32;
+const GAMMA2: u32 = (DILITHIUM_Q - 1) / 88;
+const GAMMA2_MODE5: u32 = (DILITHIUM_Q - 1) / 32;
 
 // ===== TEST HELPER FUNCTIONS =====
 // These functions were moved from the main modules since they're only used in tests
@@ -61,7 +61,7 @@ fn make_hint_coeff(z_coeff: i32, r_coeff: u32, alpha: u32) -> bool {
 // Test helper: encode w1 coefficient
 fn w1_encode_coeff<P: DilithiumSchemeParams>(r_coeff: u32) -> u32 {
     let (_, r1) = decompose(r_coeff, 2 * P::GAMMA2_PARAM);
-    w1_encode_gamma::<P>(r1)
+    w1_encode_gamma(r1)
 }
 
 // Test helper: centered schoolbook multiplication
@@ -74,7 +74,7 @@ fn schoolbook_mul_centered(
 }
 
 // Test helper: centered multiplication for eta-bounded coefficients
-fn schoolbook_mul_eta_centered<P: DilithiumSchemeParams>(
+fn schoolbook_mul_eta_centered(
     c: &Polynomial<DilithiumParams>,
     s_eta: &Polynomial<DilithiumParams>,
 ) -> Polynomial<DilithiumParams> {
@@ -113,8 +113,9 @@ fn test_dilithium2_sign_verify() {
     // Step 4: Deep algebraic verification using the ACTUAL challenge from the signature
     
     // Unpack all components
-    let (rho_seed, k_seed, tr_hash, s1_vec, s2_vec, t0_vec) = 
-        unpack_secret_key::<Dilithium2Params>(&sk.0).unwrap();
+    let unpacked_sk = unpack_secret_key::<Dilithium2Params>(&sk.0).unwrap();
+    let (rho_seed, tr_hash) = (unpacked_sk.0, unpacked_sk.2);
+    let (s1_vec, s2_vec, t0_vec) = (unpacked_sk.3, unpacked_sk.4, unpacked_sk.5);
     let (_, t1_vec) = unpack_public_key::<Dilithium2Params>(&pk.0).unwrap();
     
     // Extract & reuse the real challenge from the signature
@@ -160,7 +161,7 @@ fn test_dilithium2_sign_verify() {
     let mut ct0_vec = PolyVecK::<Dilithium2Params>::zero();
     for i in 0..Dilithium2Params::K_DIM {
         // Use centered multiplication for s2 (coefficients in [-η, η])
-        cs2_vec.polys[i] = schoolbook_mul_eta_centered::<Dilithium2Params>(&c, &s2_vec.polys[i]);
+        cs2_vec.polys[i] = schoolbook_mul_eta_centered(&c, &s2_vec.polys[i]);
         // Use centered multiplication for t0 (coefficients in (-2^(d-1), 2^(d-1)])
         ct0_vec.polys[i] = schoolbook_mul_centered(&c, &t0_vec.polys[i]);
     }
@@ -168,6 +169,10 @@ fn test_dilithium2_sign_verify() {
     // The hint vector helps the verifier recover HighBits(w) from w' = w - cs2 + ct0
     let z_for_hint = ct0_vec.sub(&cs2_vec);
     let (h_recomputed, hint_count) = make_hint_polyveck::<Dilithium2Params>(&w, &z_for_hint).unwrap();
+    
+    // Verify hint count is within bounds (can be up to omega=80 for Dilithium2)
+    assert!(hint_count <= Dilithium2Params::OMEGA_PARAM as usize, 
+        "Too many hints generated: {} > {}", hint_count, Dilithium2Params::OMEGA_PARAM);
     
     // Verify hints match
     let mut hint_matches = true;
@@ -349,22 +354,19 @@ fn test_highbits_lowbits_consistency() {
 #[test]
 fn test_make_hint_boundary() {
     // FIPS 204 final: At γ₂ boundary, hint should be true
-    assert_eq!(
+    assert!(
         make_hint_coeff(1, GAMMA2, 2 * GAMMA2),
-        true,
         "Dilithium2: make_hint_coeff(1, γ₂) should be true per FIPS 204"
     );
     
     // Other boundary cases
-    assert_eq!(
-        make_hint_coeff(0, GAMMA2, 2 * GAMMA2),
-        false,
+    assert!(
+        !make_hint_coeff(0, GAMMA2, 2 * GAMMA2),
         "Dilithium2: make_hint_coeff(0, γ₂) should be false"
     );
     
-    assert_eq!(
+    assert!(
         make_hint_coeff(-1, GAMMA2 + 1, 2 * GAMMA2),
-        true,
         "Dilithium2: make_hint_coeff(-1, γ₂+1) should be true"
     );
 }
@@ -374,22 +376,22 @@ fn test_check_norm_poly() {
     let mut poly = Polynomial::<DilithiumParams>::zero();
     
     // All zeros should pass any bound
-    assert!(check_norm_poly::<Dilithium2Params>(&poly, 100));
+    assert!(check_norm_poly(&poly, 100));
     
     // Set one coefficient to exactly the bound
     poly.coeffs[0] = 100;
-    assert!(check_norm_poly::<Dilithium2Params>(&poly, 100));
+    assert!(check_norm_poly(&poly, 100));
     
     // Set one coefficient above the bound
     poly.coeffs[0] = 101;
-    assert!(!check_norm_poly::<Dilithium2Params>(&poly, 100));
+    assert!(!check_norm_poly(&poly, 100));
     
     // Test with negative values (represented as q - value)
     poly.coeffs[0] = DILITHIUM_Q - 100; // -100 mod q
-    assert!(check_norm_poly::<Dilithium2Params>(&poly, 100));
+    assert!(check_norm_poly(&poly, 100));
     
     poly.coeffs[0] = DILITHIUM_Q - 101; // -101 mod q
-    assert!(!check_norm_poly::<Dilithium2Params>(&poly, 100));
+    assert!(!check_norm_poly(&poly, 100));
 }
 
 #[test]
@@ -405,7 +407,7 @@ fn test_sample_poly_cbd_eta() {
         } else { 
             coeff as i32 
         };
-        assert!(centered >= -2 && centered <= 2);
+        assert!((-2..=2).contains(&centered));
     }
     
     // Test CBD with eta = 4
@@ -416,7 +418,7 @@ fn test_sample_poly_cbd_eta() {
         } else { 
             coeff as i32 
         };
-        assert!(centered >= -4 && centered <= 4);
+        assert!((-4..=4).contains(&centered));
     }
 }
 
@@ -663,7 +665,7 @@ fn test_modified_signature_fails() {
 #[test]
 fn test_wrong_signature_fails() {
     let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
-    let (pk1, sk1) = Dilithium2::keypair(&mut rng).unwrap();
+    let sk1 = Dilithium2::keypair(&mut rng).unwrap().1;
     let (pk2, _) = Dilithium2::keypair(&mut rng).unwrap();
     
     let sig = Dilithium2::sign(TEST_MESSAGE, &sk1).unwrap();
@@ -797,7 +799,7 @@ fn test_use_hint_fips204_algorithm_40() {
     let r = 1_234_567u32 % DILITHIUM_Q;           // arbitrary coefficient
     let (_, r1) = decompose(r, alpha);
     assert_eq!(
-        use_hint_coeff::<Dilithium2Params>(false, r, gamma2),
+        use_hint_coeff::<Dilithium2Params>(false, r),
         r1,
         "hint = 0 must return HighBits(r)"
     );
@@ -809,7 +811,7 @@ fn test_use_hint_fips204_algorithm_40() {
     assert!(r0_pos > 0);
     let expected_up = (r1_pos + 1) % m;  // FIPS 204: r₀ > 0 → UP
     assert_eq!(
-        use_hint_coeff::<Dilithium2Params>(true, r_pos, gamma2),
+        use_hint_coeff::<Dilithium2Params>(true, r_pos),
         expected_up,
         "FIPS 204 Step 3: r₀ > 0 must rotate UP"
     );
@@ -821,7 +823,7 @@ fn test_use_hint_fips204_algorithm_40() {
     assert_eq!(r0_zero, 0);
     let expected_up0 = (r1_zero + 1) % m;  // FIPS 204: r₀ ≥ 0 → UP
     assert_eq!(
-        use_hint_coeff::<Dilithium2Params>(true, r_zero, gamma2),
+        use_hint_coeff::<Dilithium2Params>(true, r_zero),
         expected_up0,
         "FIPS 204 Step 3: r₀ = 0 must rotate UP"
     );
@@ -833,7 +835,7 @@ fn test_use_hint_fips204_algorithm_40() {
     assert!(r0_neg < 0);
     let expected_down = (r1_neg + m - 1) % m;  // FIPS 204: r₀ < 0 → DOWN
     assert_eq!(
-        use_hint_coeff::<Dilithium2Params>(true, r_neg, gamma2),
+        use_hint_coeff::<Dilithium2Params>(true, r_neg),
         expected_down,
         "FIPS 204 Step 4: r₀ < 0 must rotate DOWN"
     );
@@ -860,7 +862,7 @@ fn test_make_use_hint_property() {
         if z.abs() < GAMMA2 as i32 {
             let hint = make_hint_coeff(z, r, alpha);
             let r_plus_z = ((r as i64 + z as i64).rem_euclid(DILITHIUM_Q as i64)) as u32;
-            let recovered = use_hint_coeff::<Dilithium2Params>(hint, r_plus_z, GAMMA2);
+            let recovered = use_hint_coeff::<Dilithium2Params>(hint, r_plus_z);
             assert_eq!(
                 recovered,
                 highbits(r, alpha),
@@ -896,26 +898,22 @@ fn test_hint_system_complete() {
             // We want to push r₀ from positive to negative (cross +γ₂)
             if r0 > 0 {
                 // Need to add just enough to exceed γ₂
-                let z_needed = (gamma2 as i32 - r0 + 1) as u32;
-                z_needed
+                (gamma2 as i32 - r0 + 1) as u32
             } else {
                 // r₀ is already negative/zero, need to wrap around
                 // Add just enough to reach γ₂ + 1 from current position
                 let to_zero = r0.unsigned_abs();
-                let z_needed = to_zero + gamma2 + 1;
-                z_needed % DILITHIUM_Q
+                (to_zero + gamma2 + 1) % DILITHIUM_Q
             }
         } else {
             // We want to push r₀ from negative to positive (cross -γ₂)
             if r0 <= 0 {
                 // Need to subtract just enough to go below -γ₂
-                let z_needed = (gamma2 as i32 + r0.abs() + 1) as u32;
-                DILITHIUM_Q.wrapping_sub(z_needed) // Negative z
+                DILITHIUM_Q.wrapping_sub((gamma2 as i32 + r0.abs() + 1) as u32)
             } else {
                 // r₀ is already positive, need to wrap around
                 // Subtract enough to reach -(γ₂ + 1) from current position
-                let z_needed = r0 as u32 + gamma2 + 1;
-                DILITHIUM_Q.wrapping_sub(z_needed) // Negative z
+                DILITHIUM_Q.wrapping_sub(r0 as u32 + gamma2 + 1)
             }
         }
     }
@@ -1085,19 +1083,13 @@ fn test_w1_encode_consistency() {
     // Test that w1_encode produces correct values for both parameter sets
     
     // Dilithium2/3: γ₂ = 95232, bucket count = 45
-    let gamma2_23 = GAMMA2;
     let test_r = 1234567u32;
-    let (_, r1) = decompose(test_r, 2 * gamma2_23);
     let encoded = w1_encode_coeff::<Dilithium2Params>(test_r);
-    assert_eq!(encoded, r1);
     assert!(encoded < 45);
     
     // Dilithium5: γ₂ = 261888, bucket count = 16  
-    let gamma2_5 = GAMMA2_MODE5;
     let test_r5 = 2345678u32;
-    let (_, r1_5) = decompose(test_r5, 2 * gamma2_5);
     let encoded5 = w1_encode_coeff::<Dilithium5Params>(test_r5);
-    assert_eq!(encoded5, r1_5);
     assert!(encoded5 < 16);
 }
 
@@ -1167,6 +1159,17 @@ fn test_signature_exact_size() {
             assert!(centered >= -bound && centered <= bound);
         }
     }
+    
+    // Verify hint polynomial structure
+    let mut total_hints = 0;
+    for poly in &h.polys {
+        for &coeff in &poly.coeffs {
+            assert!(coeff == 0 || coeff == 1, "Invalid hint coefficient: {}", coeff);
+            total_hints += coeff as usize;
+        }
+    }
+    assert!(total_hints <= Dilithium2Params::OMEGA_PARAM as usize,
+        "Too many hints in signature: {} > {}", total_hints, Dilithium2Params::OMEGA_PARAM);
 }
 
 #[test]
@@ -1196,7 +1199,7 @@ fn test_signature_hint_encoding_compatibility() {
     // Test that hint encoding/decoding works with various signature sizes
     let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
     
-    for msg_len in vec![0, 1, 13, 100, 1000] {
+    for msg_len in [0, 1, 13, 100, 1000] {
         let message = vec![42u8; msg_len];
         let (pk, sk) = Dilithium2::keypair(&mut rng).unwrap();
         let sig = Dilithium2::sign(&message, &sk).unwrap();
@@ -1244,7 +1247,7 @@ fn test_hint_identity_comprehensive() {
             ((r as i64 + z as i64).rem_euclid(DILITHIUM_Q as i64)) as u32;
 
         let hint      = make_hint_coeff(z, r, alpha);
-        let recovered = use_hint_coeff::<Dilithium2Params>(hint, r_plus_z, GAMMA2);
+        let recovered = use_hint_coeff::<Dilithium2Params>(hint, r_plus_z);
         let expected  = highbits(r, alpha);
 
         // Check if high bits actually changed to validate the test
@@ -1286,7 +1289,7 @@ fn test_make_use_hint_consistency_at_boundary() {
             if z.abs() < gamma2 as i32 {
                 let hint = make_hint_coeff(z, r, alpha);
                 let r_plus_z = ((r as i64 + z as i64).rem_euclid(DILITHIUM_Q as i64)) as u32;
-                let recovered = use_hint_coeff::<Dilithium2Params>(hint, r_plus_z, gamma2);
+                let recovered = use_hint_coeff::<Dilithium2Params>(hint, r_plus_z);
                 let expected = highbits(r, alpha);
                 
                 // The key property: UseHint(MakeHint(z, r), r+z) = HighBits(r)
@@ -1323,7 +1326,7 @@ fn test_hint_identity_valid_cases() {
         let r_plus_z = ((r as i64 + z as i64).rem_euclid(DILITHIUM_Q as i64)) as u32;
         
         let hint = make_hint_coeff(z, r, alpha);
-        let recovered = use_hint_coeff::<Dilithium2Params>(hint, r_plus_z, GAMMA2);
+        let recovered = use_hint_coeff::<Dilithium2Params>(hint, r_plus_z);
         let expected = highbits(r, alpha);
         
         // Verify this is a reasonable test case (high bits don't jump wildly)

@@ -352,8 +352,8 @@ fn h_prime_final_32_matches_rfc_a1_tag() -> Result<()> {
     // Create a sample 1KB block
     let mut final_block_xor = vec![0u8; ARGON2_BLOCK_SIZE];
     // Fill with a pattern
-    for i in 0..ARGON2_BLOCK_SIZE {
-        final_block_xor[i] = (i % 256) as u8;
+    for (i, byte) in final_block_xor.iter_mut().enumerate() {
+        *byte = (i % 256) as u8;
     }
     
     // Apply h_prime_variable_output

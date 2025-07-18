@@ -133,7 +133,7 @@ pub fn power2round(r: u32, d: u32) -> (i32, u32) {
     let half = 1 << (d - 1);
 
     // round-to-nearest, **ties to negative**
-    let mut r1 = ((r_plus + half) >> d) as u32;
+    let mut r1 = (r_plus + half) >> d;
     let mut r0 = r_plus as i32 - (r1 as i32) * (1 << d);
 
     // canonical representation of q-1
@@ -201,7 +201,7 @@ pub fn lowbits(r_coeff: u32, alpha: u32) -> i32 {
 /// Note: Earlier drafts truncated/shifted these values, but FIPS 204 final
 /// specifies that w1 encoding returns r1 directly (identity function).
 #[inline]
-pub fn w1_encode_gamma<P: DilithiumSchemeParams>(r1_gamma: u32) -> u32 {
+pub fn w1_encode_gamma(r1_gamma: u32) -> u32 {
     // FIPS 204 final: return the full r1 value
     r1_gamma
 }
@@ -233,8 +233,8 @@ pub fn w1_bits_needed<P: DilithiumSchemeParams>() -> u32 {
 pub fn use_hint_coeff<P: DilithiumSchemeParams>(
     hint_bit: bool,
     r_coeff: u32,
-    gamma2: u32,
 ) -> u32 {
+    let gamma2 = P::GAMMA2_PARAM;
     let alpha = 2 * gamma2;
     let m = buckets(alpha, gamma2);
     
@@ -260,7 +260,7 @@ pub fn use_hint_coeff<P: DilithiumSchemeParams>(
 
 /// Checks if the infinity norm of a polynomial is at most `bound`.
 /// Coefficients are centered in (-Q/2, Q/2]
-pub fn check_norm_poly<P: DilithiumSchemeParams>(
+pub fn check_norm_poly(
     poly: &Polynomial<DilithiumParams>, 
     bound: u32
 ) -> bool {
@@ -285,7 +285,7 @@ pub fn check_norm_polyvec_l<P: DilithiumSchemeParams>(
     pv: &PolyVecL<P>, 
     bound: u32
 ) -> bool {
-    pv.polys.iter().all(|p| check_norm_poly::<P>(p, bound))
+    pv.polys.iter().all(|p| check_norm_poly(p, bound))
 }
 
 /// Checks if the infinity norm of all polynomials in a PolyVecK is at most `bound`.
@@ -293,7 +293,7 @@ pub fn check_norm_polyvec_k<P: DilithiumSchemeParams>(
     pv: &PolyVecK<P>, 
     bound: u32
 ) -> bool {
-    pv.polys.iter().all(|p| check_norm_poly::<P>(p, bound))
+    pv.polys.iter().all(|p| check_norm_poly(p, bound))
 }
 
 /// Applies `Power2Round` element-wise to a PolyVecK.
@@ -430,10 +430,10 @@ pub fn use_hint_polyveck<P: DilithiumSchemeParams>(
             let w_prime_coeff = w_prime_polyvec.polys[i].coeffs[j];
             
             // Apply UseHint to get the corrected γ-bucket index
-            let r1_prime = use_hint_coeff::<P>(hint_bit, w_prime_coeff, P::GAMMA2_PARAM);
+            let r1_prime = use_hint_coeff::<P>(hint_bit, w_prime_coeff);
             
             // FIPS 204 final: store the full gamma-bucket index
-            corrected_pv.polys[i].coeffs[j] = w1_encode_gamma::<P>(r1_prime);
+            corrected_pv.polys[i].coeffs[j] = w1_encode_gamma(r1_prime);
         }
     }
     

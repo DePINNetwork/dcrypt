@@ -50,7 +50,7 @@ use params::pqc::dilithium::{Dilithium2Params, Dilithium3Params, Dilithium5Param
 /// Stores the packed representation of `(rho, t1)`.
 /// - `rho`: A 32-byte seed used to deterministically generate the matrix A.
 /// - `t1`: A vector of K polynomials, where each coefficient is the high-order bits
-///         of `t_i = (A*s1)_i + (s2)_i`. Packed according to `P::D_PARAM` bits.
+///   of `t_i = (A*s1)_i + (s2)_i`. Packed according to `P::D_PARAM` bits.
 #[derive(Clone, Debug, Zeroize)]
 pub struct DilithiumPublicKey(pub(crate) Vec<u8>);
 
@@ -59,12 +59,12 @@ pub struct DilithiumPublicKey(pub(crate) Vec<u8>);
 /// Stores the packed representation of `(rho, K, tr, s1, s2, t0)`.
 /// - `rho`: Seed for matrix A (same as in public key).
 /// - `K`: A 32-byte seed used for sampling the masking vector `y` and as part of the
-///        PRF input for generating the challenge `c`.
+///   PRF input for generating the challenge `c`.
 /// - `tr`: A 32-byte hash of the packed public key, used for domain separation in challenge generation.
 /// - `s1`, `s2`: Secret polynomial vectors with small coefficients (norm bounded by `eta`).
-///               Packed according to `P::ETA_S1S2` bits.
+///   Packed according to `P::ETA_S1S2` bits.
 /// - `t0`: A vector of K polynomials representing the low-order bits of `t = A*s1 + s2`.
-///         Coefficients are in `(-2^(d-1), 2^(d-1)]` and packed accordingly.
+///   Coefficients are in `(-2^(d-1), 2^(d-1)]` and packed accordingly.
 #[derive(Clone, Debug, Zeroize, ZeroizeOnDrop)]
 pub struct DilithiumSecretKey(pub(crate) Vec<u8>);
 
@@ -72,11 +72,11 @@ pub struct DilithiumSecretKey(pub(crate) Vec<u8>);
 ///
 /// Stores the packed representation of `(c_tilde, z, h)`.
 /// - `c_tilde`: A short (32-byte) seed from which the challenge polynomial `c` (with `tau` non-zero
-///              coefficients) is derived.
+///   coefficients) is derived.
 /// - `z`: A vector of L polynomials, `z = y + c*s1`. Its coefficients must be within
-///        `[-gamma1 + beta, gamma1 - beta]`. Packed based on this range.
+///   `[-gamma1 + beta, gamma1 - beta]`. Packed based on this range.
 /// - `h`: A hint vector (PolyVecK of 0s/1s) indicating which coefficients of `w1_prime - c*t0`
-///        required correction during verification using `UseHint`. Packed efficiently.
+///   required correction during verification using `UseHint`. Packed efficiently.
 #[derive(Clone, Debug)]
 pub struct DilithiumSignatureData(pub(crate) Vec<u8>);
 
@@ -108,7 +108,7 @@ impl<P: DilithiumSchemeParams + Send + Sync + 'static> SignatureTrait for Dilith
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> ApiResult<Self::KeyPair> {
         let (pk_bytes, sk_bytes) = sign::keypair_internal::<P, R>(rng)
-            .map_err(|e| api::Error::from(e))?;
+            .map_err(api::Error::from)?;
         Ok((DilithiumPublicKey(pk_bytes), DilithiumSecretKey(sk_bytes)))
     }
 
@@ -126,13 +126,13 @@ impl<P: DilithiumSchemeParams + Send + Sync + 'static> SignatureTrait for Dilith
         // or if a future variant required it, but standard Dilithium does not.
         let mut rng = rand::rngs::OsRng;
         let sig_bytes = sign::sign_internal::<P, _>(message, &secret_key.0, &mut rng)
-            .map_err(|e| api::Error::from(e))?;
+            .map_err(api::Error::from)?;
         Ok(DilithiumSignatureData(sig_bytes))
     }
 
     fn verify(message: &[u8], signature: &Self::SignatureData, public_key: &Self::PublicKey) -> ApiResult<()> {
         sign::verify_internal::<P>(message, &signature.0, &public_key.0)
-            .map_err(|e| api::Error::from(e))
+            .map_err(api::Error::from)
     }
 }
 

@@ -50,6 +50,7 @@ fn test_shake_reset() {
     assert!(!xof.squeezing);
 }
 
+#[test]
 fn test_shake128_xof_variable_length() {
     // NIST test vectors for SHAKE-128
     let empty_32_expected = "7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26";
@@ -237,7 +238,7 @@ fn run_shake_xof_tests<X: ExtendableOutputFunction>(filepath: &str, name: &str) 
 
     for (i, test) in test_vectors.iter().enumerate() {
         let bit_len = test.output_len;
-        let output_bytes = (bit_len + 7) / 8;
+        let output_bytes = bit_len.div_ceil(8);
 
         // Skip zero-length outputs
         if bit_len == 0 || test.output.is_empty() {
@@ -378,14 +379,14 @@ fn parse_shake_test_file(filepath: &str) -> Vec<ShakeTestVector> {
         }
         
         // Only parse lines that start with specific keys
-        if line.starts_with("Len = ") {
+        if let Some(stripped) = line.strip_prefix("Len = ") {
             // Start of a new test case
             if let Some(vector) = current_vector.take() {
                 test_vectors.push(vector);
             }
             
             // Extract bit length
-            let len = match line[6..].trim().parse::<usize>() {
+            let len = match stripped.trim().parse::<usize>() {
                 Ok(val) => val,
                 Err(_) => {
                     println!("Warning: Invalid length format in line: {}", line);
@@ -399,10 +400,10 @@ fn parse_shake_test_file(filepath: &str) -> Vec<ShakeTestVector> {
                 output_len: 0,  // Will be set later
                 output: String::new(),
             });
-        } else if line.starts_with("OutLen = ") {
+        } else if let Some(stripped) = line.strip_prefix("OutLen = ") {
             // Extract output length in bits
             if let Some(ref mut vector) = current_vector {
-                vector.output_len = match line[9..].trim().parse::<usize>() {
+                vector.output_len = match stripped.trim().parse::<usize>() {
                     Ok(val) => val,
                     Err(_) => {
                         println!("Warning: Invalid output length format in line: {}", line);
@@ -412,10 +413,10 @@ fn parse_shake_test_file(filepath: &str) -> Vec<ShakeTestVector> {
             }
         } else if let Some(ref mut vector) = current_vector {
             // Parse test vector data
-            if line.starts_with("Msg = ") {
-                vector.msg = line[6..].trim().to_string();
-            } else if line.starts_with("Output = ") {
-                vector.output = line[9..].trim().to_string();
+            if let Some(stripped) = line.strip_prefix("Msg = ") {
+                vector.msg = stripped.trim().to_string();
+            } else if let Some(stripped) = line.strip_prefix("Output = ") {
+                vector.output = stripped.trim().to_string();
                 
                 // If OutLen wasn't specified, derive it from the output hex length
                 if vector.output_len == 0 && !vector.output.is_empty() {

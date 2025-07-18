@@ -69,7 +69,7 @@ fn test_chacha20poly1305_encrypt_decrypt() {
     
     // Verify that tampering with ciphertext results in authentication failure
     let mut tampered = ciphertext.clone();
-    if tampered.len() > 0 {
+    if !tampered.is_empty() {
         tampered[0] ^= 1; // Flip a bit
     }
     

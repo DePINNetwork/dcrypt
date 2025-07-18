@@ -30,18 +30,6 @@ const P_MINUS_2: [u8; 32] = [
 ];
 
 impl FieldElement {
-    /// Check if field element is in canonical form
-    #[inline]
-    pub fn canonical(&self) -> bool {
-        for (i, &limb) in self.v.iter().enumerate() {
-            let max = if i & 1 == 0 { 0x3ffffff } else { 0x1ffffff };
-            if limb < 0 || limb > max {
-                return false;
-            }
-        }
-        true
-    }
-    
     /// Check limb bounds (debug builds only)
     #[cfg(debug_assertions)]
     fn check_bounds(&self) {
@@ -104,7 +92,7 @@ impl FieldElement {
     }
     
     /// Convert to bytes (little-endian)
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(self) -> [u8; 32] {
         let mut h = self.v;
         
         // Reduce to canonical form
@@ -115,7 +103,7 @@ impl FieldElement {
         // Now pack the limbs into bytes
         let mut s = [0u8; 32];
         
-        s[0] = (h[0] >> 0 & 0xff) as u8;
+        s[0] = (h[0] & 0xff) as u8;
         s[1] = (h[0] >> 8 & 0xff) as u8;
         s[2] = (h[0] >> 16 & 0xff) as u8;
         s[3] = ((h[0] >> 24 | h[1] << 2) & 0xff) as u8;
@@ -131,7 +119,7 @@ impl FieldElement {
         s[13] = (h[4] >> 2 & 0xff) as u8;
         s[14] = (h[4] >> 10 & 0xff) as u8;
         s[15] = (h[4] >> 18 & 0xff) as u8;
-        s[16] = (h[5] >> 0 & 0xff) as u8;
+        s[16] = (h[5] & 0xff) as u8;
         s[17] = (h[5] >> 8 & 0xff) as u8;
         s[18] = (h[5] >> 16 & 0xff) as u8;
         s[19] = ((h[5] >> 24 | h[6] << 1) & 0xff) as u8;
@@ -161,26 +149,6 @@ impl FieldElement {
         FieldElement { v: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
     }
     
-    /// Minus one element
-    pub fn minus_one() -> Self {
-        // -1 mod p = p - 1
-        FieldElement { 
-            v: [0x3ffffec, 0x1ffffff, 0x3ffffff, 0x1ffffff, 
-                0x3ffffff, 0x1ffffff, 0x3ffffff, 0x1ffffff, 
-                0x3ffffff, 0x1ffffff] 
-        }
-    }
-    
-    /// Two element
-    pub fn two() -> Self {
-        FieldElement { v: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
-    }
-    
-    /// Five element
-    pub fn five() -> Self {
-        FieldElement { v: [5, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
-    }
-    
     /// Double a field element
     pub fn double(&self) -> FieldElement {
         self.add(self)
@@ -189,8 +157,8 @@ impl FieldElement {
     /// Add two field elements
     pub fn add(&self, other: &FieldElement) -> FieldElement {
         let mut v = [0i32; 10];
-        for i in 0..10 {
-            v[i] = self.v[i].wrapping_add(other.v[i]);
+        for (i, item) in v.iter_mut().enumerate() {
+            *item = self.v[i].wrapping_add(other.v[i]);
         }
         // Fold carries to normalize limbs into [0, max_limb]
         carry(&mut v);
@@ -207,8 +175,8 @@ impl FieldElement {
     pub fn sub(&self, other: &FieldElement) -> FieldElement {
         let mut v = [0i32; 10];
 
-        for i in 0..10 {
-            v[i] = self.v[i] - other.v[i];
+        for (i, item) in v.iter_mut().enumerate() {
+            *item = self.v[i] - other.v[i];
         }
 
         let mut fe = FieldElement { v };
@@ -295,7 +263,9 @@ impl FieldElement {
 
         // ---- store back to FieldElement -----------------------------------
         let mut out = [0i32; 10];
-        for i in 0..10 { out[i] = v[i] as i32; }
+        for (i, &limb) in v.iter().enumerate() {
+            out[i] = limb as i32;
+        }
 
         let mut fe = FieldElement { v: out };
         fe.reduce_once();          // final canonical reduction
@@ -391,7 +361,7 @@ fn sub_p_if_necessary(v: &mut [i32; 10]) {
     
     // When borrow == 0  →  v >= p  →  select diff (v - p)
     // When borrow == 1  →  v < p   →  keep v
-    let mask = (borrow.wrapping_sub(1)) as i32;  // -1 if v >= p, else 0
+    let mask = borrow.wrapping_sub(1);  // -1 if v >= p, else 0
     
     for i in 0..10 {
         v[i] = (v[i] & !mask) | (diff[i] & mask);
@@ -403,13 +373,13 @@ pub fn sqrt(a: &FieldElement) -> Option<FieldElement> {
     let exp = pow_p38(a);
     let check = exp.square();
     
-    if ct_eq(&check.to_bytes(), &a.to_bytes()) {
+    if ct_eq(check.to_bytes(), a.to_bytes()) {
         Some(exp)
     } else {
         let sqrt_m1 = FieldElement::from_bytes(&SQRT_M1);
         let result = exp.mul(&sqrt_m1);
         let check2 = result.square();
-        if ct_eq(&check2.to_bytes(), &a.to_bytes()) {
+        if ct_eq(check2.to_bytes(), a.to_bytes()) {
             Some(result)
         } else {
             None
@@ -421,7 +391,7 @@ pub fn sqrt(a: &FieldElement) -> Option<FieldElement> {
 ///
 /// This compact ladder follows the proof in RFC 8032 §5.1.3.
 fn pow_p38(a: &FieldElement) -> FieldElement {
-    let mut r = a.clone();
+    let mut r = *a;
 
     // After n iterations: r = a^(2^(n+1) - 1)
     for _ in 0..250 {
@@ -437,6 +407,40 @@ fn pow_p38(a: &FieldElement) -> FieldElement {
 mod tests {
     use super::*;
     use rand::{RngCore, rngs::OsRng};
+    
+    // Test-only helper functions
+    impl FieldElement {
+        /// Check if field element is in canonical form (test only)
+        fn canonical(&self) -> bool {
+            for (i, &limb) in self.v.iter().enumerate() {
+                let max = if i & 1 == 0 { 0x3ffffff } else { 0x1ffffff };
+                if limb < 0 || limb > max {
+                    return false;
+                }
+            }
+            true
+        }
+        
+        /// Minus one element (test only)
+        fn minus_one() -> Self {
+            // -1 mod p = p - 1
+            FieldElement { 
+                v: [0x3ffffec, 0x1ffffff, 0x3ffffff, 0x1ffffff, 
+                    0x3ffffff, 0x1ffffff, 0x3ffffff, 0x1ffffff, 
+                    0x3ffffff, 0x1ffffff] 
+            }
+        }
+        
+        /// Two element (test only)
+        fn two() -> Self {
+            FieldElement { v: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+        }
+        
+        /// Five element (test only)
+        fn five() -> Self {
+            FieldElement { v: [5, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+        }
+    }
     
     #[test]
     fn test_field_element_arithmetic() {
@@ -942,7 +946,7 @@ mod tests {
         // Test that reduce_once properly handles values >= p
         
         // Test 1: Value = p should reduce to 0
-        let mut p = FieldElement::from_bytes(&[0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        let p = FieldElement::from_bytes(&[0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
                                                0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f]);
@@ -959,8 +963,8 @@ mod tests {
         
         // Test 3: Value = 2p - 1 should reduce to p - 1
         let mut two_p_minus_1 = FieldElement { v: [0; 10] };
-        for i in 0..10 {
-            two_p_minus_1.v[i] = 2 * PRIME_LIMBS[i];
+        for (i, &prime_limb) in PRIME_LIMBS.iter().enumerate() {
+            two_p_minus_1.v[i] = 2 * prime_limb;
         }
         two_p_minus_1.v[0] -= 1;
         two_p_minus_1.reduce_once();

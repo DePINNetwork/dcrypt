@@ -61,6 +61,9 @@ fn test_official_test_vectors() {
     let vectors: TestVectors = serde_json::from_str(&contents)
         .expect("Failed to parse test vectors JSON");
     
+    // Print the comment for debugging purposes
+    println!("Test vectors: {}", vectors.comment);
+    
     // Get key and context string as bytes
     let key = vectors.key.as_bytes();
     let context = vectors.context_string.as_bytes();
@@ -74,7 +77,7 @@ fn test_official_test_vectors() {
         let default_len = 32;
         let result = Blake3Xof::generate(&input, default_len).unwrap();
         assert_eq!(
-            hex::encode(&result), 
+            hex::encode(result), 
             &case.hash[..default_len*2], 
             "Default length hash failed for input_len {}", 
             case.input_len
@@ -84,7 +87,7 @@ fn test_official_test_vectors() {
         let extended_len = case.hash.len() / 2;  // Convert hex chars to bytes
         let extended_result = Blake3Xof::generate(&input, extended_len).unwrap();
         assert_eq!(
-            hex::encode(&extended_result), 
+            hex::encode(extended_result), 
             case.hash, 
             "Extended length hash failed for input_len {}", 
             case.input_len
@@ -93,7 +96,7 @@ fn test_official_test_vectors() {
         // Test keyed hash with default and extended lengths
         let keyed_result = Blake3Xof::keyed_generate(key, &input, default_len).unwrap();
         assert_eq!(
-            hex::encode(&keyed_result), 
+            hex::encode(keyed_result), 
             &case.keyed_hash[..default_len*2], 
             "Default length keyed hash failed for input_len {}", 
             case.input_len
@@ -101,7 +104,7 @@ fn test_official_test_vectors() {
         
         let extended_keyed_result = Blake3Xof::keyed_generate(key, &input, extended_len).unwrap();
         assert_eq!(
-            hex::encode(&extended_keyed_result), 
+            hex::encode(extended_keyed_result), 
             case.keyed_hash, 
             "Extended length keyed hash failed for input_len {}", 
             case.input_len
@@ -110,7 +113,7 @@ fn test_official_test_vectors() {
         // Test derive key with default and extended lengths
         let derive_key_result = Blake3Xof::derive_key(context, &input, default_len).unwrap();
         assert_eq!(
-            hex::encode(&derive_key_result), 
+            hex::encode(derive_key_result), 
             &case.derive_key[..default_len*2], 
             "Default length derive key failed for input_len {}", 
             case.input_len
@@ -118,7 +121,7 @@ fn test_official_test_vectors() {
         
         let extended_derive_key_result = Blake3Xof::derive_key(context, &input, extended_len).unwrap();
         assert_eq!(
-            hex::encode(&extended_derive_key_result), 
+            hex::encode(extended_derive_key_result), 
             case.derive_key, 
             "Extended length derive key failed for input_len {}", 
             case.input_len
@@ -131,7 +134,7 @@ fn test_blake3_empty() {
     let expected = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262";
     
     let result = Blake3Xof::generate(&[], 32).unwrap();
-    assert_eq!(hex::encode(&result), expected);
+    assert_eq!(hex::encode(result), expected);
 }
 
 #[test]
@@ -139,7 +142,7 @@ fn test_blake3_abc() {
     let expected = "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85";
     
     let result = Blake3Xof::generate(b"abc", 32).unwrap();
-    assert_eq!(hex::encode(&result), expected);
+    assert_eq!(hex::encode(result), expected);
 }
     
 #[test]
@@ -152,7 +155,7 @@ fn test_blake3_incremental() {
     xof.update(b"c").unwrap();
     
     let result = xof.squeeze_into_vec(32).unwrap();
-    assert_eq!(hex::encode(&result), expected);
+    assert_eq!(hex::encode(result), expected);
 }
 
 #[test]
@@ -163,7 +166,7 @@ fn test_blake3_keyed() {
     let expected = "92b2b75604ed3c761f9d6f62392c8a9227ad0ea3f09573e783f1498a4ed60d26";
     
     let keyed_result = Blake3Xof::keyed_generate(key, input, 32).unwrap();
-    assert_eq!(hex::encode(&keyed_result), expected);
+    assert_eq!(hex::encode(keyed_result), expected);
 }
 
 #[test]
@@ -174,7 +177,7 @@ fn test_blake3_derive_key() {
     let expected = "2cc39783c223154fea8dfb7c1b1660f2ac2dcbd1c1de8277b0b0dd39b7e50d7d";
     
     let derive_key_result = Blake3Xof::derive_key(context, input, 32).unwrap();
-    assert_eq!(hex::encode(&derive_key_result), expected);
+    assert_eq!(hex::encode(derive_key_result), expected);
 }
 
 #[test]
@@ -214,5 +217,5 @@ fn debug_blake3_abc_step_by_step() {
     
     // Step 7: Verify against expected hash
     let expected = "6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85";
-    assert_eq!(hex::encode(&result), expected);
+    assert_eq!(hex::encode(result), expected);
 }

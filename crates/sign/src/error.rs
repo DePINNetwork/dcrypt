@@ -119,71 +119,71 @@ impl From<Error> for api::Error {
         match err {
             // Map Algorithm error to InvalidParameter with context
             Error::Algorithm(alg) => api::Error::InvalidParameter {
-                context: "algorithm".into(),
+                context: "algorithm",
                 message: format!("Unsupported algorithm: {}", alg),
             },
             Error::InvalidKeySize { expected, actual } => api::Error::InvalidKey {
-                context: "sign".into(),
+                context: "sign",
                 message: format!("Invalid key size: expected {}, got {}", expected, actual),
             },
             Error::InvalidSignatureSize { expected, actual } => api::Error::InvalidSignature {
-                context: "sign".into(),
+                context: "sign",
                 message: format!("Invalid signature size: expected {}, got {}", expected, actual),
             },
             Error::InvalidParameter(msg) => api::Error::InvalidParameter {
-                context: "sign".into(),
+                context: "sign",
                 message: msg,
             },
             Error::InvalidKey(msg) => api::Error::InvalidKey {
-                context: "sign".into(),
+                context: "sign",
                 message: msg,
             },
             // Map KeyGeneration to InvalidKey (key generation failures produce invalid keys)
             Error::KeyGeneration { algorithm, details } => api::Error::InvalidKey {
-                context: algorithm.into(),
+                context: algorithm,
                 message: format!("Key generation failed: {}", details),
             },
             // Map SignatureGeneration to InvalidSignature
             Error::SignatureGeneration { algorithm, details } => api::Error::InvalidSignature {
-                context: algorithm.into(),
+                context: algorithm,
                 message: format!("Signature generation failed: {}", details),
             },
             Error::Verification { algorithm, details } => api::Error::InvalidSignature {
-                context: algorithm.into(),
+                context: algorithm,
                 message: details,
             },
             Error::Encoding(s) => api::Error::InvalidParameter {
-                context: "encoding".into(),
+                context: "encoding",
                 message: s,
             },
             Error::Deserialization(s) => api::Error::InvalidParameter {
-                context: "deserialization".into(),
+                context: "deserialization",
                 message: s,
             },
             Error::Serialization(s) => api::Error::InvalidParameter {
-                context: "serialization".into(),
+                context: "serialization",
                 message: s,
             },
             Error::Nonce(s) => api::Error::InvalidParameter {
-                context: "nonce".into(),
+                context: "nonce",
                 message: s,
             },
             // Map internal errors (Hashing, Rng, Sampling, Internal) to InvalidParameter
             // This isn't ideal but without an Internal variant in api::Error, this is the best mapping
             Error::Hashing(s) => api::Error::InvalidParameter {
-                context: "hashing".into(),
+                context: "hashing",
                 message: s,
             },
             Error::Rng(s) => api::Error::InvalidParameter {
-                context: "rng".into(),
+                context: "rng",
                 message: s,
             },
             Error::Sampling(s) => api::Error::InvalidParameter {
-                context: "sampling".into(),
+                context: "sampling",
                 message: s,
             },
             Error::Internal(s) => api::Error::InvalidParameter {
-                context: "internal".into(),
+                context: "internal",
                 message: s,
             },
         }

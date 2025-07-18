@@ -23,8 +23,8 @@ use crate::error::{Error as SignError};
 /// Packs the hint vector *h* using the final FIPS‑204 "HintBitPack" layout:
 ///   * first ω bytes  — coefficient indices (0‑255), padded with zeros to exactly ω bytes
 ///   * then   K bytes — per‑polynomial counters (number of indices that belong
-///                      to each row).  The total number of 1‑bits MUST equal
-///                      the sum of the counters and be ≤ ω.
+///     to each row).  The total number of 1‑bits MUST equal
+///     the sum of the counters and be ≤ ω.
 /// 
 /// FIPS 204 §4.2 requires the output to be EXACTLY ω + K bytes, hence the padding.
 /// 
@@ -259,18 +259,21 @@ pub fn pack_secret_key<P: DilithiumSchemeParams>(
     Ok(sk_bytes)
 }
 
-/// Unpacks secret key from bytes according to Algorithm 16.
-/// NIST Round 3 includes 32 bytes of padding at the end.
-pub fn unpack_secret_key<P: DilithiumSchemeParams>(
-    sk_bytes: &[u8],
-) -> Result<(
+/// Type alias for the complex return type of unpack_secret_key
+pub type UnpackedSecretKey<P> = (
     [u8; 32], // rho
     [u8; 32], // k
     [u8; 32], // tr
     PolyVecL<P>,
     PolyVecK<P>,
     PolyVecK<P>,
-), SignError> {
+);
+
+/// Unpacks secret key from bytes according to Algorithm 16.
+/// NIST Round 3 includes 32 bytes of padding at the end.
+pub fn unpack_secret_key<P: DilithiumSchemeParams>(
+    sk_bytes: &[u8],
+) -> Result<UnpackedSecretKey<P>, SignError> {
     if sk_bytes.len() != P::SECRET_KEY_BYTES {
         return Err(SignError::Deserialization(format!(
             "Secret key size mismatch: expected {}, got {}", 
@@ -343,7 +346,7 @@ pub fn unpack_secret_key<P: DilithiumSchemeParams>(
         let mut temp_poly = DefaultCoefficientSerde::unpack_coeffs(poly_bytes, P::D_PARAM as usize)
             .map_err(SignError::from_algo)?;
         for c in temp_poly.coeffs.iter_mut() {
-            let signed = (*c as i32) - (t0_offset as i32);
+            let signed = (*c as i32) - t0_offset;
             // Keep t₀ centered using proper modular arithmetic
             *c = ((signed + DILITHIUM_Q as i32) % DILITHIUM_Q as i32) as u32;
         }
@@ -434,8 +437,8 @@ pub fn pack_polyveck_w1<P: DilithiumSchemeParams>(
     // - Dilithium2: 6 bits for r1 ∈ [0,44]
     // - Dilithium3/5: 5 bits for r1 ∈ [0,16]
     let bits_per_coeff = w1_bits_needed::<P>();
-    let total_bits = P::K_DIM as usize * DILITHIUM_N * bits_per_coeff as usize;
-    let total_bytes = (total_bits + 7) / 8;  // Round up to nearest byte
+    let total_bits = P::K_DIM * DILITHIUM_N * bits_per_coeff as usize;
+    let total_bytes = total_bits.div_ceil(8);
     let mut packed = vec![0u8; total_bytes];
     
     // Pack coefficients MSB-first as per FIPS 204 Algorithm 28
@@ -456,11 +459,14 @@ pub fn pack_polyveck_w1<P: DilithiumSchemeParams>(
     Ok(packed)
 }
 
+/// Type alias for the complex return type of unpack_signature
+pub type UnpackedSignature<P> = (Vec<u8>, PolyVecL<P>, PolyVecK<P>);
+
 /// Unpacks signature from bytes according to FIPS 204 Algorithm 18 with variable challenge size
 /// Uses Z_BITS instead of GAMMA1_BITS for unpacking z coefficients
 pub fn unpack_signature<P: DilithiumSchemeParams>(
     sig_bytes: &[u8],
-) -> Result<(Vec<u8>, PolyVecL<P>, PolyVecK<P>), SignError> {
+) -> Result<UnpackedSignature<P>, SignError> {
     if sig_bytes.len() != P::SIGNATURE_SIZE {
         return Err(SignError::Deserialization(format!(
             "Signature size mismatch: expected {}, got {}", 

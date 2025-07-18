@@ -28,7 +28,7 @@ pub(crate) type SharedSecretBytes = Zeroizing<[u8; KYBER_SS_BYTES]>;
 
 // H: SHA3-256
 // Output is 32 bytes (KYBER_SS_BYTES).
-fn H_func(data: &[u8]) -> AlgoResult<[u8; KYBER_SS_BYTES]> {
+fn h_func(data: &[u8]) -> AlgoResult<[u8; KYBER_SS_BYTES]> {
     let mut hasher = Sha3_256::new();
     hasher.update(data)?;
     let digest = hasher.finalize()?;
@@ -39,7 +39,7 @@ fn H_func(data: &[u8]) -> AlgoResult<[u8; KYBER_SS_BYTES]> {
 
 // G: SHA3-512
 // Output is 64 bytes, split into two 32-byte values (K, r).
-fn G_func(data: &[u8]) -> AlgoResult<([u8; KYBER_SS_BYTES], [u8; KYBER_SS_BYTES])> {
+fn g_func(data: &[u8]) -> AlgoResult<([u8; KYBER_SS_BYTES], [u8; KYBER_SS_BYTES])> {
     let mut hasher = Sha3_512::new();
     hasher.update(data)?;
     let digest = hasher.finalize()?;
@@ -68,7 +68,7 @@ pub(crate) fn kem_keygen<P: KyberParams, R: RngCore + CryptoRng>(
     rng.fill_bytes(&mut s_fo);
     
     // 5. H(pk)
-    let h_pk = H_func(&pk_cca_bytes)?;
+    let h_pk = h_func(&pk_cca_bytes)?;
     
     // 6. Construct CCA secret key: sk_cpa || pk || H(pk) || s_fo
     let mut sk_cca_bytes = Vec::with_capacity(P::SECRET_KEY_BYTES);
@@ -93,13 +93,13 @@ pub(crate) fn kem_encaps<P: KyberParams, R: RngCore + CryptoRng>(
     rng.fill_bytes(&mut m_bytes);
     
     // 2. H(pk)
-    let h_pk = H_func(pk_cca_bytes)?;
+    let h_pk = h_func(pk_cca_bytes)?;
     
     // 3. (K_bar, r) = G(m || H(pk))
     let mut g_input = Vec::with_capacity(KYBER_SYMKEY_SEED_BYTES + KYBER_SS_BYTES);
     g_input.extend_from_slice(&m_bytes);
     g_input.extend_from_slice(&h_pk);
-    let (k_bar, r_coins) = G_func(&g_input)?;
+    let (k_bar, r_coins) = g_func(&g_input)?;
     
     // 4. Unpack public key
     let pk_cpa = unpack_pk::<P>(pk_cca_bytes)?;
@@ -111,11 +111,11 @@ pub(crate) fn kem_encaps<P: KyberParams, R: RngCore + CryptoRng>(
     let ct_cca_bytes = pack_ciphertext::<P>(&ct_cpa)?;
     
     // 7. K = H(K_bar || H(ct))
-    let h_ct = H_func(&ct_cca_bytes)?;
+    let h_ct = h_func(&ct_cca_bytes)?;
     let mut k_input = Vec::with_capacity(2 * KYBER_SS_BYTES);
     k_input.extend_from_slice(&k_bar);
     k_input.extend_from_slice(&h_ct);
-    let k = H_func(&k_input)?;
+    let k = h_func(&k_input)?;
     
     // 8. Zeroize sensitive data
     m_bytes.zeroize();
@@ -164,7 +164,7 @@ pub(crate) fn kem_decaps<P: KyberParams>(
     let mut g_input = Vec::with_capacity(KYBER_SYMKEY_SEED_BYTES + KYBER_SS_BYTES);
     g_input.extend_from_slice(m_prime.as_ref());
     g_input.extend_from_slice(h_pk);
-    let (k_bar_prime, r_prime) = G_func(&g_input)?;
+    let (k_bar_prime, r_prime) = g_func(&g_input)?;
     
     // 5. Re-encrypt m' to get ct'
     let pk_cpa = unpack_pk::<P>(pk_bytes)?;
@@ -180,7 +180,7 @@ pub(crate) fn kem_decaps<P: KyberParams>(
     let ct_eq = ct_prime_bytes.ct_eq(ct_cca_bytes);
     
     // 7. H(ct)
-    let h_ct = H_func(ct_cca_bytes)?;
+    let h_ct = h_func(ct_cca_bytes)?;
     
     // 8. Constant-time selection of K_bar' or s_fo
     let mut k_input = Vec::with_capacity(2 * KYBER_SS_BYTES);
@@ -193,7 +193,7 @@ pub(crate) fn kem_decaps<P: KyberParams>(
     k_input.extend_from_slice(&h_ct);
     
     // 9. K = H(selected || H(ct))
-    let k = H_func(&k_input)?;
+    let k = h_func(&k_input)?;
     
     // 10. Zeroize sensitive data
     g_input.zeroize();

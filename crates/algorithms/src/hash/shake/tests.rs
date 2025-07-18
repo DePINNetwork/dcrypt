@@ -83,14 +83,14 @@ where
             continue;
         }
         
-        if line.starts_with("Len = ") {
+        if let Some(len_str) = line.strip_prefix("Len = ") {
             // Start of a new test case
             if let Some(vector) = current_vector.take() {
                 test_vectors.push(vector);
             }
             
             // Extract bit length
-            let len = line[6..].parse::<usize>().unwrap();
+            let len = len_str.parse::<usize>().unwrap();
             
             current_vector = Some(ShakeTestVector {
                 len,
@@ -98,17 +98,17 @@ where
                 output_len: 0,
                 output: String::new(),
             });
-        } else if line.starts_with("OutLen = ") {
+        } else if let Some(outlen_str) = line.strip_prefix("OutLen = ") {
             // Extract output length in bits
             if let Some(ref mut vector) = current_vector {
-                vector.output_len = line[9..].parse::<usize>().unwrap();
+                vector.output_len = outlen_str.parse::<usize>().unwrap();
             }
         } else if let Some(ref mut vector) = current_vector {
             // Parse test vector data
-            if line.starts_with("Msg = ") {
-                vector.msg = line[6..].to_string();
-            } else if line.starts_with("Output = ") {
-                vector.output = line[9..].to_string();
+            if let Some(msg) = line.strip_prefix("Msg = ") {
+                vector.msg = msg.to_string();
+            } else if let Some(output) = line.strip_prefix("Output = ") {
+                vector.output = output.to_string();
                 
                 // If OutLen wasn't specified, derive it from the output hex length
                 if vector.output_len == 0 && !vector.output.is_empty() {

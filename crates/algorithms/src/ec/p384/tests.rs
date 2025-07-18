@@ -104,8 +104,8 @@ fn test_compression_non_residue() {
     let mut invalid_x = [0u8; P384_POINT_COMPRESSED_SIZE];
     invalid_x[0] = 0x02;
     // Fill with a pattern that's unlikely to be on curve
-    for i in 1..P384_POINT_COMPRESSED_SIZE {
-        invalid_x[i] = 0xFF;
+    for byte in invalid_x.iter_mut().skip(1) {
+        *byte = 0xFF;
     }
     
     let result = Point::deserialize_compressed(&invalid_x);
@@ -877,7 +877,7 @@ fn step_2_verify_p384_field_one() -> Result<()> {
     
     let one = FieldElement::one();
     let one_bytes = one.to_bytes();
-    println!("P-384 FieldElement::one(): {}", hex::encode(&one_bytes));
+    println!("P-384 FieldElement::one(): {}", hex::encode(one_bytes));
     
     // Should be 0x00...01 (big-endian)
     let mut expected = [0u8; 48];

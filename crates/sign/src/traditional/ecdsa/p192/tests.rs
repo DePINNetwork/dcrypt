@@ -76,7 +76,7 @@ fn test_ecdsa_p192_sign_verify_failure_tampered_signature() {
         let mid_index = signature.0.len() / 2;
         if mid_index > 0 { // Ensure there's something to flip
              signature.0[mid_index] ^= 0xff;
-        } else if signature.0.len() > 0 {
+        } else if !signature.0.is_empty() {
             signature.0[0] ^= 0xff; // if very short, flip first byte
         }
     } else {

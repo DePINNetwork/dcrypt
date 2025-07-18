@@ -77,7 +77,7 @@ pub fn verify_equation(
     let sb_compressed = sb.compress().to_bytes();
     let r_plus_ka_compressed = r_plus_ka.compress().to_bytes();
     
-    if ct_eq(&sb_compressed, &r_plus_ka_compressed) {
+    if ct_eq(sb_compressed, r_plus_ka_compressed) {
         check.fill(1);
     } else {
         check.fill(0);

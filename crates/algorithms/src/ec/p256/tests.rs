@@ -54,8 +54,8 @@ fn test_compression_non_residue() {
     let mut invalid_x = [0u8; P256_POINT_COMPRESSED_SIZE];
     invalid_x[0] = 0x02;
     // Fill with a pattern that's unlikely to be on curve
-    for i in 1..P256_POINT_COMPRESSED_SIZE {
-        invalid_x[i] = 0xFF;
+    for byte in invalid_x.iter_mut().skip(1) {
+        *byte = 0xFF;
     }
     
     let result = Point::deserialize_compressed(&invalid_x);
@@ -491,7 +491,7 @@ fn test_subtraction_edge_cases() {
     let one = FieldElement::one();
     let zero_minus_one = FieldElement::zero().sub(&one);
     // p − 1 in big‐endian bytes:
-    let mut p_minus_one = NIST_P256.p.clone();
+    let mut p_minus_one = NIST_P256.p;
     // subtract 1 from the last byte:
     let last = p_minus_one[31];
     p_minus_one[31] = last.wrapping_sub(1);
@@ -833,7 +833,7 @@ fn step_2_verify_p256_field_one() -> Result<()> {
     
     let one = FieldElement::one();
     let one_bytes = one.to_bytes();
-    println!("P-256 FieldElement::one(): {}", hex::encode(&one_bytes));
+    println!("P-256 FieldElement::one(): {}", hex::encode(one_bytes));
     
     // Should be 0x00...01 (big-endian)
     let mut expected = [0u8; 32];

@@ -10,6 +10,7 @@ use crate::error::{Error as SignError};
 
 /// Samples a polynomial with coefficients from CBD_eta (Algorithm 22).
 /// Uses SHAKE256(seed || nonce) as randomness source.
+#[allow(clippy::extra_unused_type_parameters)]
 pub fn sample_poly_cbd_eta<P: DilithiumSchemeParams>(
     seed: &[u8; 32], // SEED_KEY_BYTES is always 32
     nonce: u8,
@@ -46,8 +47,8 @@ pub fn sample_poly_cbd_eta<P: DilithiumSchemeParams>(
         xof.squeeze(&mut buf).map_err(SignError::from_algo)?;
         
         let mut poly = Polynomial::<DilithiumParams>::zero();
-        for i in 0..DilithiumParams::N {
-            let t = buf[i] as u32;
+        for (i, &byte) in buf.iter().enumerate().take(DilithiumParams::N) {
+            let t = byte as u32;
             let a = (t & 0x0F).count_ones();
             let b = (t >> 4).count_ones();
             poly.coeffs[i] = ((a as i32 - b as i32) as i64).rem_euclid(DilithiumParams::Q as i64) as u32;
@@ -55,7 +56,7 @@ pub fn sample_poly_cbd_eta<P: DilithiumSchemeParams>(
         Ok(poly)
     } else {
         // General case for other eta values
-        let bytes_needed = (DilithiumParams::N * 2 * eta as usize + 7) / 8;
+        let bytes_needed = (DilithiumParams::N * 2 * eta as usize).div_ceil(8);
         let mut buf = vec![0u8; bytes_needed];
         xof.squeeze(&mut buf).map_err(SignError::from_algo)?;
 
@@ -216,6 +217,7 @@ pub fn sample_polyvecl_uniform_gamma1<P: DilithiumSchemeParams>(
 /// Samples challenge polynomial c with τ nonzero coefficients (Algorithm 8).
 /// Uses SHAKE256(c_tilde_seed) as randomness source.
 /// Accepts variable-sized challenge seeds (32/48/64 bytes)
+#[allow(clippy::extra_unused_type_parameters)]
 pub fn sample_challenge_c<P: DilithiumSchemeParams>(
     c_tilde_seed: &[u8], // Variable size: 32/48/64 bytes
     tau: u32,
@@ -232,7 +234,7 @@ pub fn sample_challenge_c<P: DilithiumSchemeParams>(
     xof.update(c_tilde_seed).map_err(SignError::from_algo)?;
     
     // First, squeeze sign bits (τ bits packed into bytes)
-    let sign_bytes = (tau + 7) / 8;
+    let sign_bytes = tau.div_ceil(8);
     let mut signs = vec![0u8; sign_bytes as usize];
     xof.squeeze(&mut signs).map_err(SignError::from_algo)?;
     

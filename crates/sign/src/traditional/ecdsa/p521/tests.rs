@@ -87,16 +87,6 @@ struct PkvTestVector {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct SigGenVector {
-    curve_sha_combo: String,
-    msg: String,
-    qx: String,
-    qy: String,
-    r_hex: String,
-    s_hex: String,
-}
-
-#[derive(Debug, PartialEq, Clone)]
 struct SigVerTestVector {
     curve_sha_combo: String,
     msg: String,
@@ -125,7 +115,6 @@ fn parse_key_pair_vectors(rsp_content: &str, curve_marker: &str) -> Vec<KeyPairT
             continue;
         }
         if in_section && line.starts_with('[') && line.ends_with(']') && line != curve_marker {
-            in_section = false;
             break;
         }
         if !in_section {
@@ -170,7 +159,6 @@ fn parse_pkv_vectors(rsp_content: &str, curve_marker: &str) -> Vec<PkvTestVector
             continue;
         }
         if in_section && line.starts_with('[') && line.ends_with(']') && line != curve_marker {
-            in_section = false;
             break;
         }
         if !in_section {
@@ -188,57 +176,6 @@ fn parse_pkv_vectors(rsp_content: &str, curve_marker: &str) -> Vec<PkvTestVector
                     qy: qy_val,
                     expected_result: result_str,
                 });
-            }
-        }
-    }
-    vectors
-}
-
-fn parse_sig_gen_truncated_sha_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigGenVector> {
-    let mut vectors = Vec::new();
-    let mut current_section_curve_sha: Option<String> = None;
-    let mut current_msg: Option<String> = None;
-    let mut current_qx: Option<String> = None;
-    let mut current_qy: Option<String> = None;
-    let mut current_r: Option<String> = None;
-    
-    for line in rsp_content.lines() {
-        let line_trimmed = line.trim();
-        if line_trimmed.starts_with('#') || line_trimmed.is_empty() {
-            continue;
-        }
-        if line_trimmed.starts_with('[') && line_trimmed.ends_with(']') {
-            let section_name = line_trimmed.trim_start_matches('[').trim_end_matches(']').to_string();
-            if section_name.starts_with(target_curve_name) {
-                current_section_curve_sha = Some(section_name);
-            } else {
-                current_section_curve_sha = None;
-            }
-            current_msg = None;
-            continue;
-        }
-        if let Some(ref section_name) = current_section_curve_sha {
-            if line_trimmed.starts_with("Msg = ") {
-                current_msg = Some(line_trimmed.trim_start_matches("Msg = ").to_string());
-            } else if line_trimmed.starts_with("Qx = ") {
-                current_qx = Some(line_trimmed.trim_start_matches("Qx = ").to_string());
-            } else if line_trimmed.starts_with("Qy = ") {
-                current_qy = Some(line_trimmed.trim_start_matches("Qy = ").to_string());
-            } else if line_trimmed.starts_with("R = ") {
-                current_r = Some(line_trimmed.trim_start_matches("R = ").to_string());
-            } else if line_trimmed.starts_with("S = ") {
-                if let (Some(msg), Some(qx), Some(qy), Some(r_hex)) =
-                    (current_msg.take(), current_qx.take(), current_qy.take(), current_r.take()) {
-                    let s_hex = line_trimmed.trim_start_matches("S = ").to_string();
-                    vectors.push(SigGenVector {
-                        curve_sha_combo: section_name.clone(),
-                        msg,
-                        qx,
-                        qy,
-                        r_hex,
-                        s_hex,
-                    });
-                }
             }
         }
     }
@@ -801,8 +738,8 @@ fn test_p521_sigver_rsp_verify() {
             mismatch_hash_correct_fail_originally_p += 1;
         } else if verification_result.is_ok() {
             mismatch_hash_unexpected_pass += 1;
-            panic!(
-                "Vector {} ({}): Originally FAILED, but PASSED with EcdsaP521 internal SHA512. This is unexpected.\nMsg: {}\nR: {}\nS: {}",
+            eprintln!(
+                "ERROR: Vector {} ({}): Originally FAILED, but PASSED with EcdsaP521 internal SHA512. This is unexpected.\nMsg: {}\nR: {}\nS: {}",
                 i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex
             );
         } else {
@@ -831,5 +768,8 @@ fn test_p521_sigver_rsp_verify() {
          }
     }
     
-    assert_eq!(mismatch_hash_unexpected_pass, 0, "There were unexpected passes with mismatched hashes for P-521.");
+    // Add assertion to fail the test if there were unexpected passes
+    assert_eq!(mismatch_hash_unexpected_pass, 0, 
+        "There were {} unexpected passes with mismatched hashes for P-521.", 
+        mismatch_hash_unexpected_pass);
 }

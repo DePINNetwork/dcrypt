@@ -621,7 +621,7 @@ mod property_tests {
                         // Then compute both sides of the equation
                         if let (Ok(left), Ok(right)) = (
                             scalar_mult_base_g(&product),
-                            scalar_mult(&a, &b_times_g)
+                            scalar_mult(a, &b_times_g)
                         ) {
                             assert_eq!(left, right);
                         }

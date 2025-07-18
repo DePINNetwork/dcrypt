@@ -102,7 +102,7 @@ impl SignatureTrait for EcdsaP521 {
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> ApiResult<Self::KeyPair> {
         // Generate EC keypair with private key in valid range [1, n-1]
         let (sk_scalar, pk_point) = ec::generate_keypair(rng)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         // Serialize the private key scalar
         let sk_bytes: [u8; ec::P521_SCALAR_SIZE] = sk_scalar.serialize();
@@ -154,9 +154,9 @@ impl SignatureTrait for EcdsaP521 {
         // Step 1: Hash the message using SHA-512 (FIPS 186-5 specifies SHA-512 for P-521)
         let mut hasher = Sha512::new();
         hasher.update(message)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         let hash_output = hasher.finalize()
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         // Step 2: Convert hash to integer z
         // For P-521, we use the leftmost min(521, 512) = 512 bits of the hash
@@ -178,7 +178,7 @@ impl SignatureTrait for EcdsaP521 {
             
             // Step 4: Compute (x₁, y₁) = k·G
             let kg = ec::scalar_mult_base_g(&k)
-                .map_err(|e| ApiError::from(e))?;
+                .map_err(ApiError::from)?;
             let r_bytes = kg.x_coordinate_bytes();
             
             // Step 5: Compute r = x₁ mod n
@@ -189,17 +189,17 @@ impl SignatureTrait for EcdsaP521 {
             
             // Compute k⁻¹ mod n
             let k_inv = k.inv_mod_n()
-                .map_err(|e| ApiError::from(e))?;
+                .map_err(ApiError::from)?;
             
             // Step 6: Compute s = k⁻¹(z + rd) mod n
             let rd = r.mul_mod_n(&d)
-                .map_err(|e| ApiError::from(e))?;
+                .map_err(ApiError::from)?;
             
             let z_plus_rd = z.add_mod_n(&rd)
-                .map_err(|e| ApiError::from(e))?;
+                .map_err(ApiError::from)?;
             
             let s = k_inv.mul_mod_n(&z_plus_rd)
-                .map_err(|e| ApiError::from(e))?;
+                .map_err(ApiError::from)?;
             
             // If s = 0, try again (extremely unlikely)
             if s.is_zero() {
@@ -270,9 +270,9 @@ impl SignatureTrait for EcdsaP521 {
         // Step 2: Hash the message using SHA-512
         let mut hasher = Sha512::new();
         hasher.update(message)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         let hash_output = hasher.finalize()
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         // Step 3: Convert hash to integer z
         let mut z_bytes = [0u8; ec::P521_SCALAR_SIZE];
@@ -281,24 +281,24 @@ impl SignatureTrait for EcdsaP521 {
         
         // Step 4: Compute w = s⁻¹ mod n
         let s_inv = s.inv_mod_n()
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         // Step 5: Compute u₁ = zw mod n and u₂ = rw mod n
         let u1 = z.mul_mod_n(&s_inv)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         let u2 = r.mul_mod_n(&s_inv)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         // Parse the public key point Q
         let q = ec::Point::deserialize_uncompressed(&public_key.0)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         // Step 6: Compute point (x₁, y₁) = u₁·G + u₂·Q
         let u1g = ec::scalar_mult_base_g(&u1)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         let u2q = ec::scalar_mult(&u2, &q)
-            .map_err(|e| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
         
         let point = u1g.add(&u2q);
         
@@ -316,7 +316,7 @@ impl SignatureTrait for EcdsaP521 {
         let x1 = reduce_bytes_to_scalar(&x1_bytes)?;
         
         // Step 9: Verify v = r using constant-time comparison
-        if !ct_eq(&r.serialize(), &x1.serialize()) {
+        if !ct_eq(r.serialize(), x1.serialize()) {
             return Err(ApiError::InvalidSignature {
                 context: "ECDSA-P521 verify",
                 #[cfg(feature = "std")]

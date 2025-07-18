@@ -205,7 +205,7 @@ pub fn expand_matrix_a<P: DilithiumSchemeParams>(
                 xof.squeeze(&mut temp_buf).map_err(SignError::from_algo)?;
                 // Extract two 12-bit values from 3 bytes
                 let d1 = (temp_buf[0] as u32) | (((temp_buf[1] as u32) & 0x0F) << 8);
-                let d2 = (((temp_buf[1] as u32) >> 4) | ((temp_buf[2] as u32) << 4)) as u32;
+                let d2 = ((temp_buf[1] as u32) >> 4) | ((temp_buf[2] as u32) << 4);
 
                 if d1 < DilithiumParams::Q {
                     poly.coeffs[ctr] = d1;

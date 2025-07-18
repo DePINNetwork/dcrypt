@@ -13,14 +13,6 @@ pub const ED25519_SIGNATURE_SIZE: usize = 64;
 
 // ===== Mathematical Constants =====
 
-/// The field prime p = 2^255 - 19
-pub const FIELD_PRIME: [u8; 32] = [
-    0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
-];
-
 /// The curve order L = 2^252 + 27742317777372353535851937790883648493
 pub const CURVE_ORDER: [u8; 32] = [
     0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
@@ -68,10 +60,4 @@ pub const SQRT_M1: [u8; 32] = [
 #[inline]
 pub fn load4(b: &[u8]) -> u32 {
     (b[0] as u32) | ((b[1] as u32) << 8) | ((b[2] as u32) << 16) | ((b[3] as u32) << 24)
-}
-
-/// Load 3 bytes as u32 (little-endian)
-#[inline]
-pub fn load3(b: &[u8]) -> u32 {
-    (b[0] as u32) | ((b[1] as u32) << 8) | ((b[2] as u32) << 16)
 }

@@ -14,7 +14,6 @@ use algorithms::hash::HashFunction;
 use algorithms::mac::hmac::Hmac;
 use internal::constant_time::ct_eq;
 use crate::traditional::ecdsa::common::SignatureComponents;
-use algorithms::error::Error as SignError;
 
 /// ECDSA signature scheme using NIST P-192 curve (secp192r1)
 pub struct EcdsaP192;
@@ -65,7 +64,7 @@ impl SignatureTrait for EcdsaP192 {
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> ApiResult<Self::KeyPair> {
         let (sk_scalar, pk_point) = ec::generate_keypair(rng)
-            .map_err(|e| ApiError::from(SignError::from(e)))?;
+            .map_err(ApiError::from)?;
         
         let sk_bytes: [u8; ec::P192_SCALAR_SIZE] = sk_scalar.serialize();
         
@@ -90,8 +89,8 @@ impl SignatureTrait for EcdsaP192 {
 
     fn sign(message: &[u8], secret_key: &Self::SecretKey) -> ApiResult<Self::SignatureData> {
         let mut hasher = Sha256::new(); // Use SHA-256 for P-192
-        hasher.update(message).map_err(|e| ApiError::from(SignError::from(e)))?;
-        let hash_output = hasher.finalize().map_err(|e| ApiError::from(SignError::from(e)))?;
+        hasher.update(message).map_err(ApiError::from)?;
+        let hash_output = hasher.finalize().map_err(ApiError::from)?;
         
         // Truncate or reduce hash output to P-192 scalar size (24 bytes)
         let mut z_bytes_fixed_size = [0u8; ec::P192_SCALAR_SIZE];
@@ -105,7 +104,7 @@ impl SignatureTrait for EcdsaP192 {
             let k = deterministic_k_hedged_p192::<Sha256, _>(&d, &z, &mut rng); // Specify hash for k_hedged
             
             let kg = ec::scalar_mult_base_g(&k)
-                .map_err(|e| ApiError::from(SignError::from(e)))?;
+                .map_err(ApiError::from)?;
             
             if kg.is_identity() { continue; }
             let r_bytes = kg.x_coordinate_bytes();
@@ -116,13 +115,13 @@ impl SignatureTrait for EcdsaP192 {
             };
             
             let k_inv = k.inv_mod_n()
-                .map_err(|e| ApiError::from(SignError::from(e)))?;
+                .map_err(ApiError::from)?;
             let rd = r.mul_mod_n(&d)
-                .map_err(|e| ApiError::from(SignError::from(e)))?;
+                .map_err(ApiError::from)?;
             let z_plus_rd = z.add_mod_n(&rd)
-                .map_err(|e| ApiError::from(SignError::from(e)))?;
+                .map_err(ApiError::from)?;
             let s = k_inv.mul_mod_n(&z_plus_rd)
-                .map_err(|e| ApiError::from(SignError::from(e)))?;
+                .map_err(ApiError::from)?;
             
             if s.is_zero() { continue; }
             
@@ -160,19 +159,19 @@ impl SignatureTrait for EcdsaP192 {
         })?;
             
         let mut hasher = Sha256::new(); // Use SHA-256
-        hasher.update(message).map_err(|e| ApiError::from(SignError::from(e)))?;
-        let hash_output = hasher.finalize().map_err(|e| ApiError::from(SignError::from(e)))?;
+        hasher.update(message).map_err(ApiError::from)?;
+        let hash_output = hasher.finalize().map_err(ApiError::from)?;
         
         let mut z_bytes_fixed_size = [0u8; ec::P192_SCALAR_SIZE];
         z_bytes_fixed_size.copy_from_slice(&hash_output.as_ref()[..ec::P192_SCALAR_SIZE]); // Truncate SHA-256 output
         let z = reduce_bytes_to_scalar_p192(&z_bytes_fixed_size)?;
         
-        let s_inv = s.inv_mod_n().map_err(|e| ApiError::from(SignError::from(e)))?;
-        let u1 = z.mul_mod_n(&s_inv).map_err(|e| ApiError::from(SignError::from(e)))?;
-        let u2 = r.mul_mod_n(&s_inv).map_err(|e| ApiError::from(SignError::from(e)))?;
+        let s_inv = s.inv_mod_n().map_err(ApiError::from)?;
+        let u1 = z.mul_mod_n(&s_inv).map_err(ApiError::from)?;
+        let u2 = r.mul_mod_n(&s_inv).map_err(ApiError::from)?;
         
         let q_point = ec::Point::deserialize_uncompressed(&public_key.0)
-            .map_err(|e| ApiError::from(SignError::from(e)))?;
+            .map_err(ApiError::from)?;
         
         if q_point.is_identity() {
              return Err(ApiError::InvalidKey {
@@ -183,9 +182,9 @@ impl SignatureTrait for EcdsaP192 {
         }
 
         let u1g = ec::scalar_mult_base_g(&u1)
-            .map_err(|e| ApiError::from(SignError::from(e)))?;
+            .map_err(ApiError::from)?;
         let u2q = ec::scalar_mult(&u2, &q_point)
-            .map_err(|e| ApiError::from(SignError::from(e)))?;
+            .map_err(ApiError::from)?;
         
         let point = u1g.add(&u2q);
         
@@ -200,7 +199,7 @@ impl SignatureTrait for EcdsaP192 {
         let x1_bytes = point.x_coordinate_bytes();
         let v = reduce_bytes_to_scalar_p192(&x1_bytes)?;
         
-        if !ct_eq(&r.serialize(), &v.serialize()) {
+        if !ct_eq(r.serialize(), v.serialize()) {
             return Err(ApiError::InvalidSignature {
                 context: "ECDSA-P192 verify",
                 #[cfg(feature = "std")]
@@ -299,7 +298,7 @@ fn reduce_bytes_to_scalar_p192(bytes: &[u8; ec::P192_SCALAR_SIZE]) -> ApiResult<
                     message: "Computed scalar component is zero or invalid".to_string(),
                 }
             }
-            _ => ApiError::from(SignError::from(algo_err)),
+            _ => ApiError::from(algo_err),
         }
     })
 }

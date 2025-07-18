@@ -87,14 +87,14 @@ fn parse_aes_cbc_test_file(filepath: &str) -> Vec<AesCbcTestVector> {
             continue;
         }
         
-        if line.starts_with("COUNT = ") {
+        if let Some(count_str) = line.strip_prefix("COUNT = ") {
             // Start of a new test case
             if let Some(vector) = current_vector.take() {
                 test_vectors.push(vector);
             }
             
             // Extract count
-            let count = line[8..].parse::<usize>().unwrap();
+            let count = count_str.parse::<usize>().unwrap();
             
             current_vector = Some(AesCbcTestVector {
                 count,
@@ -105,14 +105,14 @@ fn parse_aes_cbc_test_file(filepath: &str) -> Vec<AesCbcTestVector> {
             });
         } else if let Some(ref mut vector) = current_vector {
             // Parse test vector data
-            if line.starts_with("KEY = ") {
-                vector.key = line[6..].to_string();
-            } else if line.starts_with("IV = ") {
-                vector.iv = line[5..].to_string();
-            } else if line.starts_with("PLAINTEXT = ") {
-                vector.plaintext = line[12..].to_string();
-            } else if line.starts_with("CIPHERTEXT = ") {
-                vector.ciphertext = line[13..].to_string();
+            if let Some(key_str) = line.strip_prefix("KEY = ") {
+                vector.key = key_str.to_string();
+            } else if let Some(iv_str) = line.strip_prefix("IV = ") {
+                vector.iv = iv_str.to_string();
+            } else if let Some(plaintext_str) = line.strip_prefix("PLAINTEXT = ") {
+                vector.plaintext = plaintext_str.to_string();
+            } else if let Some(ciphertext_str) = line.strip_prefix("CIPHERTEXT = ") {
+                vector.ciphertext = ciphertext_str.to_string();
             }
         }
     }
@@ -144,8 +144,8 @@ fn run_aes128_cbc_tests(filepath: &str, name: &str, is_encrypt: bool) {
         
         // Ensure key has the expected size for AES-128
         assert_eq!(key.len(), 16, 
-            "Key size mismatch for {} test case {}. Expected: 16, Got: {}",
-            name, i, key.len());
+            "Key size mismatch for {} test case {} (COUNT={}). Expected: 16, Got: {}",
+            name, i, test.count, key.len());
         
         // Create AES-128 cipher and CBC mode
         let secret_key = SecretBytes::<16>::from_slice(&key)
@@ -156,29 +156,29 @@ fn run_aes128_cbc_tests(filepath: &str, name: &str, is_encrypt: bool) {
         if is_encrypt {
             // Test encryption
             let plaintext = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let expected = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let result = cbc.encrypt(&plaintext).unwrap();
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.plaintext, test.ciphertext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.plaintext, test.ciphertext, hex::encode(&result));
         } else {
             // Test decryption
             let ciphertext = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let expected = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let result = cbc.decrypt(&ciphertext).unwrap();
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.ciphertext, test.plaintext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.ciphertext, test.plaintext, hex::encode(&result));
         }
     }
 }
@@ -202,8 +202,8 @@ fn run_aes192_cbc_tests(filepath: &str, name: &str, is_encrypt: bool) {
         
         // Ensure key has the expected size for AES-192
         assert_eq!(key.len(), 24, 
-            "Key size mismatch for {} test case {}. Expected: 24, Got: {}",
-            name, i, key.len());
+            "Key size mismatch for {} test case {} (COUNT={}). Expected: 24, Got: {}",
+            name, i, test.count, key.len());
         
         // Create AES-192 cipher and CBC mode
         let secret_key = SecretBytes::<24>::from_slice(&key)
@@ -214,29 +214,29 @@ fn run_aes192_cbc_tests(filepath: &str, name: &str, is_encrypt: bool) {
         if is_encrypt {
             // Test encryption
             let plaintext = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let expected = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let result = cbc.encrypt(&plaintext).unwrap();
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.plaintext, test.ciphertext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.plaintext, test.ciphertext, hex::encode(&result));
         } else {
             // Test decryption
             let ciphertext = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let expected = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let result = cbc.decrypt(&ciphertext).unwrap();
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.ciphertext, test.plaintext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.ciphertext, test.plaintext, hex::encode(&result));
         }
     }
 }
@@ -260,8 +260,8 @@ fn run_aes256_cbc_tests(filepath: &str, name: &str, is_encrypt: bool) {
         
         // Ensure key has the expected size for AES-256
         assert_eq!(key.len(), 32, 
-            "Key size mismatch for {} test case {}. Expected: 32, Got: {}",
-            name, i, key.len());
+            "Key size mismatch for {} test case {} (COUNT={}). Expected: 32, Got: {}",
+            name, i, test.count, key.len());
         
         // Create AES-256 cipher and CBC mode
         let secret_key = SecretBytes::<32>::from_slice(&key)
@@ -272,29 +272,29 @@ fn run_aes256_cbc_tests(filepath: &str, name: &str, is_encrypt: bool) {
         if is_encrypt {
             // Test encryption
             let plaintext = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let expected = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let result = cbc.encrypt(&plaintext).unwrap();
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.plaintext, test.ciphertext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.plaintext, test.ciphertext, hex::encode(&result));
         } else {
             // Test decryption
             let ciphertext = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let expected = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let result = cbc.decrypt(&ciphertext).unwrap();
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.ciphertext, test.plaintext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.ciphertext, test.plaintext, hex::encode(&result));
         }
     }
 }

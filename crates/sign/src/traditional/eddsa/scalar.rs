@@ -25,32 +25,6 @@ impl Scalar {
     pub fn from_bytes(bytes: &[u8; 32]) -> Self {
         Scalar { bytes: *bytes }
     }
-    
-    /// Create scalar from 512-bit hash (reduces modulo L)
-    pub fn from_hash(hash: &[u8; 64]) -> Self {
-        let mut bytes = [0u8; 32];
-        reduce_scalar_512(hash, &mut bytes);
-        Scalar { bytes }
-    }
-    
-    /// Get bytes representation
-    pub fn to_bytes(&self) -> [u8; 32] {
-        self.bytes
-    }
-    
-    /// Add two scalars modulo L
-    pub fn add(&self, other: &Scalar) -> Scalar {
-        let mut result = [0u8; 32];
-        scalar_add(&self.bytes, &other.bytes, &mut result);
-        Scalar { bytes: result }
-    }
-    
-    /// Multiply two scalars modulo L
-    pub fn mul(&self, other: &Scalar) -> Scalar {
-        let mut result = [0u8; 32];
-        scalar_mul(&self.bytes, &other.bytes, &mut result);
-        Scalar { bytes: result }
-    }
 }
 
 /// Multiply a scalar by a small u8 and reduce (constant-time)
@@ -241,15 +215,19 @@ mod tests {
     
     #[test]
     fn test_scalar_arithmetic() {
+        // Test basic scalar operations
         let a = Scalar::from_bytes(&[1; 32]);
         let b = Scalar::from_bytes(&[2; 32]);
         
-        let c = a.add(&b);
-        let d = a.mul(&b);
+        // Test add
+        let mut c = [0u8; 32];
+        scalar_add(&a.bytes, &b.bytes, &mut c);
+        assert!(c != [0; 32]);
         
-        // Basic sanity checks
-        assert!(c.bytes != [0; 32]);
-        assert!(d.bytes != [0; 32]);
+        // Test mul
+        let mut d = [0u8; 32];
+        scalar_mul(&a.bytes, &b.bytes, &mut d);
+        assert!(d != [0; 32]);
     }
     
     #[test]
@@ -261,11 +239,14 @@ mod tests {
         // Should be reduced to a value less than L
         let mut is_less = false;
         for i in (0..32).rev() {
-            if large[i] < CURVE_ORDER[i] {
-                is_less = true;
-                break;
-            } else if large[i] > CURVE_ORDER[i] {
-                break;
+            use core::cmp::Ordering;
+            match large[i].cmp(&CURVE_ORDER[i]) {
+                Ordering::Less => {
+                    is_less = true;
+                    break;
+                }
+                Ordering::Greater => break,
+                Ordering::Equal => continue,
             }
         }
         assert!(is_less);

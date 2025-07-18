@@ -75,14 +75,14 @@ fn parse_sha3_test_file(filepath: &str) -> Vec<Sha3TestVector> {
             continue;
         }
         
-        if line.starts_with("Len = ") {
+        if let Some(len_str) = line.strip_prefix("Len = ") {
             // Start of a new test case
             if let Some(vector) = current_vector.take() {
                 test_vectors.push(vector);
             }
             
             // Extract bit length
-            let len = line[6..].parse::<usize>().unwrap();
+            let len = len_str.parse::<usize>().unwrap();
             
             current_vector = Some(Sha3TestVector {
                 len,
@@ -91,10 +91,10 @@ fn parse_sha3_test_file(filepath: &str) -> Vec<Sha3TestVector> {
             });
         } else if let Some(ref mut vector) = current_vector {
             // Parse test vector data
-            if line.starts_with("Msg = ") {
-                vector.msg = line[6..].to_string();
-            } else if line.starts_with("MD = ") {
-                vector.md = line[5..].to_string();
+            if let Some(msg) = line.strip_prefix("Msg = ") {
+                vector.msg = msg.to_string();
+            } else if let Some(md) = line.strip_prefix("MD = ") {
+                vector.md = md.to_string();
             }
         }
     }
@@ -265,7 +265,7 @@ fn parse_sha3_monte_test_file(filepath: &str) -> Vec<Sha3MonteTestVector> {
             continue;
         }
         
-        if line.starts_with("Seed = ") {
+        if let Some(seed) = line.strip_prefix("Seed = ") {
             // Start of a new test case
             if !current_seed.is_empty() && !current_expected.is_empty() {
                 test_vectors.push(Sha3MonteTestVector {
@@ -275,14 +275,13 @@ fn parse_sha3_monte_test_file(filepath: &str) -> Vec<Sha3MonteTestVector> {
                 });
             }
             
-            current_seed = line[7..].to_string();
+            current_seed = seed.to_string();
             current_expected = String::new();
             count = 0;
-        } else if line.starts_with("COUNT = ") {
-            let count_str = line[8..].trim();
-            count = count_str.parse::<usize>().unwrap_or(0);
+        } else if let Some(count_str) = line.strip_prefix("COUNT = ") {
+            count = count_str.trim().parse::<usize>().unwrap_or(0);
         } else if line.starts_with("MD = ") && count == 100 { // Last iteration
-            current_expected = line[5..].to_string();
+            current_expected = line.strip_prefix("MD = ").unwrap().to_string();
         }
     }
     

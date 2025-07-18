@@ -89,7 +89,6 @@ fn parse_key_pair_vectors(rsp_content: &str, curve_marker: &str) -> Vec<KeyPairT
         // If we encounter another section marker while we were in the target section, stop.
         if in_section && line.starts_with('[') && line.ends_with(']') && line != curve_marker {
             // Moved to a new curve section or end of relevant sections
-            in_section = false;
             break;
         }
         
@@ -142,7 +141,6 @@ fn parse_pkv_vectors(rsp_content: &str, curve_marker: &str) -> Vec<PkvTestVector
         }
 
         if in_section && line.starts_with('[') && line.ends_with(']') && line != curve_marker {
-            in_section = false;
             break;
         }
 
@@ -723,7 +721,7 @@ fn test_p256_sigver_rsp_verify() {
     let mut correct_hash_pass = 0;
     let mut correct_hash_fail = 0;
     let mut mismatch_hash_correct_fail_originally_p = 0;
-    let mut mismatch_hash_unexpected_pass = 0; // Should be 0
+    let mismatch_hash_unexpected_pass = 0; // Should be 0
     let mut mismatch_hash_originally_fail_and_failed = 0;
 
     let combo_expected_by_impl = "P-256,SHA256"; // EcdsaP256 uses SHA256 internally
@@ -780,8 +778,7 @@ fn test_p256_sigver_rsp_verify() {
         } else if verification_result.is_ok() {
             // vector.expected_result == "F"
             // Signature was ALREADY INVALID for its original hash. It should still be invalid with our hash.
-            mismatch_hash_unexpected_pass += 1;
-             panic!(
+            panic!(
                 "Vector {} ({}): Originally FAILED, but PASSED with EcdsaP256 internal SHA256. This is unexpected.\nMsg: {}\nR: {}\nS: {}",
                 i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex
             );

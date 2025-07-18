@@ -136,7 +136,7 @@ impl EdwardsPoint {
         let lhs = yy.sub(&xx);  // -X² + Y²
         let rhs = zz.add(&d().mul(&xx).mul(&yy).mul(&zz_inv));  // Z² + d·X²·Y²·Z⁻²
         
-        ct_eq(&lhs.to_bytes(), &rhs.to_bytes())
+        ct_eq(lhs.to_bytes(), rhs.to_bytes())
     }
 }
 
@@ -147,7 +147,7 @@ impl CompressedPoint {
     }
     
     /// Get bytes
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(self) -> [u8; 32] {
         self.bytes
     }
     

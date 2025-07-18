@@ -35,7 +35,7 @@ use super::sampling::{
 };
 use super::encoding::{
     pack_public_key, unpack_public_key, pack_secret_key, 
-    unpack_secret_key, pack_signature, unpack_signature, pack_polyveck_w1
+    unpack_secret_key,     pack_signature, unpack_signature, pack_polyveck_w1,
 };
 
 use algorithms::hash::sha3::Sha3_256;
@@ -80,10 +80,10 @@ where
 
     // Convert A to NTT domain (Â)
     let mut matrix_a_hat = Vec::with_capacity(P::K_DIM);
-    for i in 0..P::K_DIM {
-        let mut row = matrix_a[i].clone();
-        row.ntt_inplace().map_err(SignError::from_algo)?; 
-        matrix_a_hat.push(row);
+    for row in matrix_a {
+        let mut row_ntt = row;
+        row_ntt.ntt_inplace().map_err(SignError::from_algo)?; 
+        matrix_a_hat.push(row_ntt);
     }
 
     // Step 4: Sample s1, s2
@@ -145,10 +145,10 @@ where
 
     let matrix_a = expand_matrix_a::<P>(&rho_seed)?;
     let mut matrix_a_hat = Vec::with_capacity(P::K_DIM);
-    for i in 0..P::K_DIM {
-        let mut row = matrix_a[i].clone();
-        row.ntt_inplace().map_err(SignError::from_algo)?;
-        matrix_a_hat.push(row);
+    for row in matrix_a {
+        let mut row_ntt = row;
+        row_ntt.ntt_inplace().map_err(SignError::from_algo)?;
+        matrix_a_hat.push(row_ntt);
     }
 
     let mut xof_mu = ShakeXof256::new();
@@ -303,10 +303,10 @@ where
     // Step 4: Expand A from ρ, then convert to Â
     let matrix_a = expand_matrix_a::<P>(&rho_seed)?;
     let mut matrix_a_hat = Vec::with_capacity(P::K_DIM);
-    for i in 0..P::K_DIM {
-        let mut row = matrix_a[i].clone();
-        row.ntt_inplace().map_err(SignError::from_algo)?;
-        matrix_a_hat.push(row);
+    for row in matrix_a {
+        let mut row_ntt = row;
+        row_ntt.ntt_inplace().map_err(SignError::from_algo)?;
+        matrix_a_hat.push(row_ntt);
     }
 
     // Step 5: tr = H(pk)

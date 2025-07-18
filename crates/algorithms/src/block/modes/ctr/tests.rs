@@ -89,14 +89,14 @@ fn parse_aes_ctr_test_file(filepath: &str) -> Vec<AesCtrTestVector> {
             continue;
         }
         
-        if line.starts_with("COUNT = ") {
+        if let Some(count_str) = line.strip_prefix("COUNT = ") {
             // Start of a new test case
             if let Some(vector) = current_vector.take() {
                 test_vectors.push(vector);
             }
             
             // Extract count
-            let count = line[8..].parse::<usize>().unwrap();
+            let count = count_str.parse::<usize>().unwrap();
             
             current_vector = Some(AesCtrTestVector {
                 count,
@@ -107,14 +107,14 @@ fn parse_aes_ctr_test_file(filepath: &str) -> Vec<AesCtrTestVector> {
             });
         } else if let Some(ref mut vector) = current_vector {
             // Parse test vector data
-            if line.starts_with("KEY = ") {
-                vector.key = line[6..].to_string();
-            } else if line.starts_with("CTR = ") {
-                vector.ctr = line[6..].to_string();
-            } else if line.starts_with("PLAINTEXT = ") {
-                vector.plaintext = line[12..].to_string();
-            } else if line.starts_with("CIPHERTEXT = ") {
-                vector.ciphertext = line[13..].to_string();
+            if let Some(key_str) = line.strip_prefix("KEY = ") {
+                vector.key = key_str.to_string();
+            } else if let Some(ctr_str) = line.strip_prefix("CTR = ") {
+                vector.ctr = ctr_str.to_string();
+            } else if let Some(plaintext_str) = line.strip_prefix("PLAINTEXT = ") {
+                vector.plaintext = plaintext_str.to_string();
+            } else if let Some(ciphertext_str) = line.strip_prefix("CIPHERTEXT = ") {
+                vector.ciphertext = ciphertext_str.to_string();
             }
         }
     }
@@ -240,15 +240,15 @@ fn run_aes128_ctr_tests(filepath: &str, name: &str, is_encrypt: bool) {
     for (i, test) in test_vectors.iter().enumerate() {
         // Convert hex strings to bytes
         let key_bytes = hex::decode(&test.key).unwrap_or_else(|_| 
-            panic!("Invalid hex key in test vector {}: {}", i, test.key));
+            panic!("Invalid hex key in test vector {} (COUNT={}): {}", i, test.count, test.key));
         
         let ctr = hex::decode(&test.ctr).unwrap_or_else(|_| 
-            panic!("Invalid hex CTR in test vector {}: {}", i, test.ctr));
+            panic!("Invalid hex CTR in test vector {} (COUNT={}): {}", i, test.count, test.ctr));
         
         // Ensure key has the expected size for AES-128
         assert_eq!(key_bytes.len(), 16, 
-            "Key size mismatch for {} test case {}. Expected: 16, Got: {}",
-            name, i, key_bytes.len());
+            "Key size mismatch for {} test case {} (COUNT={}). Expected: 16, Got: {}",
+            name, i, test.count, key_bytes.len());
         
         // Create AES-128 cipher with SecretBytes wrapper
         let key = SecretBytes::<16>::new(key_bytes.try_into().unwrap());
@@ -257,29 +257,29 @@ fn run_aes128_ctr_tests(filepath: &str, name: &str, is_encrypt: bool) {
         if is_encrypt {
             // Test encryption
             let plaintext = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let expected = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let result = process_nist_ctr_aes128(&cipher, &ctr, &plaintext);
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.plaintext, test.ciphertext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.plaintext, test.ciphertext, hex::encode(&result));
         } else {
             // Test decryption (in CTR mode, decryption is the same as encryption)
             let ciphertext = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let expected = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let result = process_nist_ctr_aes128(&cipher, &ctr, &ciphertext);
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.ciphertext, test.plaintext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.ciphertext, test.plaintext, hex::encode(&result));
         }
     }
 }
@@ -291,15 +291,15 @@ fn run_aes192_ctr_tests(filepath: &str, name: &str, is_encrypt: bool) {
     for (i, test) in test_vectors.iter().enumerate() {
         // Convert hex strings to bytes
         let key_bytes = hex::decode(&test.key).unwrap_or_else(|_| 
-            panic!("Invalid hex key in test vector {}: {}", i, test.key));
+            panic!("Invalid hex key in test vector {} (COUNT={}): {}", i, test.count, test.key));
         
         let ctr = hex::decode(&test.ctr).unwrap_or_else(|_| 
-            panic!("Invalid hex CTR in test vector {}: {}", i, test.ctr));
+            panic!("Invalid hex CTR in test vector {} (COUNT={}): {}", i, test.count, test.ctr));
         
         // Ensure key has the expected size for AES-192
         assert_eq!(key_bytes.len(), 24, 
-            "Key size mismatch for {} test case {}. Expected: 24, Got: {}",
-            name, i, key_bytes.len());
+            "Key size mismatch for {} test case {} (COUNT={}). Expected: 24, Got: {}",
+            name, i, test.count, key_bytes.len());
         
         // Create AES-192 cipher with SecretBytes wrapper
         let key = SecretBytes::<24>::new(key_bytes.try_into().unwrap());
@@ -308,29 +308,29 @@ fn run_aes192_ctr_tests(filepath: &str, name: &str, is_encrypt: bool) {
         if is_encrypt {
             // Test encryption
             let plaintext = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let expected = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let result = process_nist_ctr_aes192(&cipher, &ctr, &plaintext);
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.plaintext, test.ciphertext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.plaintext, test.ciphertext, hex::encode(&result));
         } else {
             // Test decryption (in CTR mode, decryption is the same as encryption)
             let ciphertext = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let expected = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let result = process_nist_ctr_aes192(&cipher, &ctr, &ciphertext);
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.ciphertext, test.plaintext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.ciphertext, test.plaintext, hex::encode(&result));
         }
     }
 }
@@ -342,15 +342,15 @@ fn run_aes256_ctr_tests(filepath: &str, name: &str, is_encrypt: bool) {
     for (i, test) in test_vectors.iter().enumerate() {
         // Convert hex strings to bytes
         let key_bytes = hex::decode(&test.key).unwrap_or_else(|_| 
-            panic!("Invalid hex key in test vector {}: {}", i, test.key));
+            panic!("Invalid hex key in test vector {} (COUNT={}): {}", i, test.count, test.key));
         
         let ctr = hex::decode(&test.ctr).unwrap_or_else(|_| 
-            panic!("Invalid hex CTR in test vector {}: {}", i, test.ctr));
+            panic!("Invalid hex CTR in test vector {} (COUNT={}): {}", i, test.count, test.ctr));
         
         // Ensure key has the expected size for AES-256
         assert_eq!(key_bytes.len(), 32, 
-            "Key size mismatch for {} test case {}. Expected: 32, Got: {}",
-            name, i, key_bytes.len());
+            "Key size mismatch for {} test case {} (COUNT={}). Expected: 32, Got: {}",
+            name, i, test.count, key_bytes.len());
         
         // Create AES-256 cipher with SecretBytes wrapper
         let key = SecretBytes::<32>::new(key_bytes.try_into().unwrap());
@@ -359,29 +359,29 @@ fn run_aes256_ctr_tests(filepath: &str, name: &str, is_encrypt: bool) {
         if is_encrypt {
             // Test encryption
             let plaintext = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let expected = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let result = process_nist_ctr_aes256(&cipher, &ctr, &plaintext);
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.plaintext, test.ciphertext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.plaintext, test.ciphertext, hex::encode(&result));
         } else {
             // Test decryption (in CTR mode, decryption is the same as encryption)
             let ciphertext = hex::decode(&test.ciphertext).unwrap_or_else(|_| 
-                panic!("Invalid hex ciphertext in test vector {}: {}", i, test.ciphertext));
+                panic!("Invalid hex ciphertext in test vector {} (COUNT={}): {}", i, test.count, test.ciphertext));
             
             let expected = hex::decode(&test.plaintext).unwrap_or_else(|_| 
-                panic!("Invalid hex plaintext in test vector {}: {}", i, test.plaintext));
+                panic!("Invalid hex plaintext in test vector {} (COUNT={}): {}", i, test.count, test.plaintext));
             
             let result = process_nist_ctr_aes256(&cipher, &ctr, &ciphertext);
             
             assert_eq!(result, expected, 
-                "{} test case {} failed.\nInput: {}\nExpected: {}\nGot: {}", 
-                name, i, test.ciphertext, test.plaintext, hex::encode(&result));
+                "{} test case {} (COUNT={}) failed.\nInput: {}\nExpected: {}\nGot: {}", 
+                name, i, test.count, test.ciphertext, test.plaintext, hex::encode(&result));
         }
     }
 }

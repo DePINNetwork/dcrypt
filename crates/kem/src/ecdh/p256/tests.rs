@@ -4,37 +4,6 @@ use api::Kem;
 use algorithms::ec::p256 as ec_p256;
 use rand::rngs::OsRng;
 
-// Simple hex encoding/decoding utilities
-fn hex_decode(hex: &str) -> Result<Vec<u8>, &'static str> {
-    if hex.len() % 2 != 0 {
-        return Err("Hex string must have even length");
-    }
-    
-    hex.as_bytes()
-        .chunks(2)
-        .map(|chunk| {
-            let high = hex_char_to_nibble(chunk[0])?;
-            let low = hex_char_to_nibble(chunk[1])?;
-            Ok((high << 4) | low)
-        })
-        .collect()
-}
-
-fn hex_char_to_nibble(c: u8) -> Result<u8, &'static str> {
-    match c {
-        b'0'..=b'9' => Ok(c - b'0'),
-        b'a'..=b'f' => Ok(c - b'a' + 10),
-        b'A'..=b'F' => Ok(c - b'A' + 10),
-        _ => Err("Invalid hex character"),
-    }
-}
-
-fn hex_encode(bytes: &[u8]) -> String {
-    bytes.iter()
-        .map(|b| format!("{:02x}", b))
-        .collect()
-}
-
 #[test]
 fn test_p256_kem_basic_flow() {
     let mut rng = OsRng;
