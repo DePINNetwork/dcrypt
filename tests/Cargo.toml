@@ -11,6 +11,7 @@ license.workspace = true
 kem = { path = "../crates/kem", version = "0.1.0" }
 sign = { path = "../crates/sign", version = "0.1.0" }
 algorithms = { path = "../crates/algorithms", version = "0.1.0"}
+params = { path = "../crates/params", version = "0.1.0" }
 symmetric = { path = "../crates/symmetric", version = "0.1.0" }
 hybrid = { path = "../crates/hybrid", version = "0.1.0" }
 api = { path = "../crates/api", default-features = false }

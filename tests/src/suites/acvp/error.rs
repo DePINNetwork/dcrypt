@@ -41,3 +41,11 @@ impl From<api::error::Error> for EngineError {
         EngineError::Crypto(api_err.to_string())
     }
 }
+
+// Implement From<sign::error::Error> for EngineError
+impl From<sign::error::Error> for EngineError {
+    fn from(sign_err: sign::error::Error) -> Self {
+        // Convert sign::Error to EngineError::Crypto
+        EngineError::Crypto(sign_err.to_string())
+    }
+}

@@ -5,3 +5,5 @@ pub mod aes_ctr;
 pub mod aes_gcm;
 pub mod ecdsa;  
 pub mod ml_kem;
+pub mod ml_dsa;
+pub mod ml_dsa_adapter;

@@ -1,5 +1,5 @@
 // File: crates/sign/src/pq/dilithium/mod.rs
-//! Dilithium Digital Signature Algorithm (as per FIPS 203)
+//! Dilithium Digital Signature Algorithm (as per FIPS 204)
 //!
 //! This module provides high-level implementations for Dilithium2, Dilithium3, and Dilithium5,
 //! which are lattice-based digital signature schemes standardized by NIST.
@@ -21,13 +21,14 @@
 //! - `sampling.rs`: Implements Dilithium-specific sampling procedures for secret polynomials,
 //!   the masking vector `y`, and the challenge polynomial `c`.
 //! - `encoding.rs`: Handles the precise serialization and deserialization formats for public keys,
-//!   secret keys, and signatures as specified by FIPS 203.
+//!   secret keys, and signatures as specified by FIPS 204.
 //! - `sign.rs`: Contains the core `keypair_internal`, `sign_internal`, and `verify_internal` logic.
 
 use api::{Signature as SignatureTrait, Result as ApiResult};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use rand::{CryptoRng, RngCore};
 use core::marker::PhantomData;
+use crate::error::Error as SignError;
 
 // Internal modules for Dilithium logic
 mod polyvec;       
@@ -35,6 +36,17 @@ mod arithmetic;
 mod sampling;      
 mod encoding;      
 mod sign;          
+
+// Import what we need for public key reconstruction
+use polyvec::{expand_matrix_a, matrix_polyvecl_mul};
+use arithmetic::power2round_polyvec;
+
+// Make encoding functions accessible for serialization
+use encoding::{
+    unpack_public_key,
+    unpack_signature,
+    unpack_secret_key,
+};
 
 // Re-export from params crate for easy access to DilithiumNParams structs.
 // These structs from `dcrypt-params` hold the specific numerical parameters (K, L, eta, gamma1, etc.)
@@ -56,43 +68,198 @@ pub struct DilithiumPublicKey(pub(crate) Vec<u8>);
 
 /// Dilithium Secret Key.
 ///
-/// Stores the packed representation of `(rho, K, tr, s1, s2, t0)`.
-/// - `rho`: Seed for matrix A (same as in public key).
-/// - `K`: A 32-byte seed used for sampling the masking vector `y` and as part of the
-///   PRF input for generating the challenge `c`.
-/// - `tr`: A 32-byte hash of the packed public key, used for domain separation in challenge generation.
-/// - `s1`, `s2`: Secret polynomial vectors with small coefficients (norm bounded by `eta`).
-///   Packed according to `P::ETA_S1S2` bits.
-/// - `t0`: A vector of K polynomials representing the low-order bits of `t = A*s1 + s2`.
-///   Coefficients are in `(-2^(d-1), 2^(d-1)]` and packed accordingly.
+/// Stores the FIPS 204 compliant packed representation of `(rho, K, tr, s1, s2, t0)`.
+/// This implementation follows the standard FIPS 204 format exclusively.
 #[derive(Clone, Debug, Zeroize, ZeroizeOnDrop)]
-pub struct DilithiumSecretKey(pub(crate) Vec<u8>);
+pub struct DilithiumSecretKey(Vec<u8>);
 
 /// Dilithium Signature Data.
 ///
 /// Stores the packed representation of `(c_tilde, z, h)`.
-/// - `c_tilde`: A short (32-byte) seed from which the challenge polynomial `c` (with `tau` non-zero
-///   coefficients) is derived.
-/// - `z`: A vector of L polynomials, `z = y + c*s1`. Its coefficients must be within
-///   `[-gamma1 + beta, gamma1 - beta]`. Packed based on this range.
-/// - `h`: A hint vector (PolyVecK of 0s/1s) indicating which coefficients of `w1_prime - c*t0`
-///   required correction during verification using `UseHint`. Packed efficiently.
+/// - `c_tilde`: A short seed from which the challenge polynomial `c` is derived.
+/// - `z`: A vector of L polynomials, `z = y + c*s1`.
+/// - `h`: A hint vector indicating which coefficients required correction during verification.
 #[derive(Clone, Debug)]
 pub struct DilithiumSignatureData(pub(crate) Vec<u8>);
 
 // AsRef/AsMut implementations allow access to the raw byte data.
 impl AsRef<[u8]> for DilithiumPublicKey { fn as_ref(&self) -> &[u8] { &self.0 } }
 impl AsMut<[u8]> for DilithiumPublicKey { fn as_mut(&mut self) -> &mut [u8] { &mut self.0 } }
-impl AsRef<[u8]> for DilithiumSecretKey { fn as_ref(&self) -> &[u8] { &self.0 } }
-impl AsMut<[u8]> for DilithiumSecretKey { fn as_mut(&mut self) -> &mut [u8] { &mut self.0 } }
 impl AsRef<[u8]> for DilithiumSignatureData { fn as_ref(&self) -> &[u8] { &self.0 } }
 impl AsMut<[u8]> for DilithiumSignatureData { fn as_mut(&mut self) -> &mut [u8] { &mut self.0 } }
 
+// --- DilithiumSecretKey Implementation ---
+
+impl AsRef<[u8]> for DilithiumSecretKey {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl AsMut<[u8]> for DilithiumSecretKey {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
+
+impl DilithiumSecretKey {
+    /// Create from FIPS 204 format bytes
+    /// 
+    /// The secret key must be in the standard FIPS 204 format which includes
+    /// the tr component and appropriate padding.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SignError> {
+        // Validate that the size matches one of the standard FIPS 204 sizes
+        match bytes.len() {
+            2560 => {}, // Dilithium2 FIPS 204 format
+            4032 => {}, // Dilithium3 FIPS 204 format
+            4896 => {}, // Dilithium5 FIPS 204 format
+            _ => return Err(SignError::Deserialization(format!(
+                "Invalid FIPS 204 secret key size: {} bytes", bytes.len()
+            ))),
+        };
+        
+        // Basic validation by attempting to unpack
+        match bytes.len() {
+            2560 => {
+                let _ = unpack_secret_key::<Dilithium2Params>(bytes)?;
+            }
+            4032 => {
+                let _ = unpack_secret_key::<Dilithium3Params>(bytes)?;
+            }
+            4896 => {
+                let _ = unpack_secret_key::<Dilithium5Params>(bytes)?;
+            }
+            _ => unreachable!(),
+        }
+        
+        Ok(Self(bytes.to_vec()))
+    }
+    
+    /// Get the serialized bytes of this secret key (FIPS 204 format)
+    pub fn to_bytes(&self) -> &[u8] {
+        &self.0
+    }
+    
+    /// Extract the public key from this secret key
+    pub fn public_key(&self) -> Result<DilithiumPublicKey, SignError> {
+        match self.0.len() {
+            2560 => {
+                let (rho, _, _, s1, s2, _) = unpack_secret_key::<Dilithium2Params>(&self.0)?;
+                let pk_bytes = reconstruct_public_key::<Dilithium2Params>(&rho, &s1, &s2)?;
+                Ok(DilithiumPublicKey(pk_bytes))
+            }
+            4032 => {
+                let (rho, _, _, s1, s2, _) = unpack_secret_key::<Dilithium3Params>(&self.0)?;
+                let pk_bytes = reconstruct_public_key::<Dilithium3Params>(&rho, &s1, &s2)?;
+                Ok(DilithiumPublicKey(pk_bytes))
+            }
+            4896 => {
+                let (rho, _, _, s1, s2, _) = unpack_secret_key::<Dilithium5Params>(&self.0)?;
+                let pk_bytes = reconstruct_public_key::<Dilithium5Params>(&rho, &s1, &s2)?;
+                Ok(DilithiumPublicKey(pk_bytes))
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+// Helper function to reconstruct public key from secret key components
+fn reconstruct_public_key<P: DilithiumSchemeParams>(
+    rho: &[u8; 32],
+    s1: &polyvec::PolyVecL<P>,
+    s2: &polyvec::PolyVecK<P>,
+) -> Result<Vec<u8>, SignError> {
+    // Expand matrix A from rho
+    let matrix_a = expand_matrix_a::<P>(rho)?;
+    
+    // Convert to NTT domain
+    let mut matrix_a_hat = Vec::with_capacity(P::K_DIM);
+    for row in matrix_a {
+        let mut row_ntt = row;
+        row_ntt.ntt_inplace().map_err(SignError::from_algo)?;
+        matrix_a_hat.push(row_ntt);
+    }
+    
+    let mut s1_hat = s1.clone();
+    s1_hat.ntt_inplace().map_err(SignError::from_algo)?;
+    
+    let mut s2_hat = s2.clone();
+    s2_hat.ntt_inplace().map_err(SignError::from_algo)?;
+    
+    // t = As1 + s2
+    let mut t_hat = matrix_polyvecl_mul(&matrix_a_hat, &s1_hat);
+    t_hat = t_hat.add(&s2_hat);
+    
+    // Convert back to standard domain
+    let mut t = t_hat;
+    t.inv_ntt_inplace().map_err(SignError::from_algo)?;
+    
+    // Get t1 using Power2Round
+    let (_, t1) = power2round_polyvec(&t, P::D_PARAM);
+    
+    // Pack public key
+    encoding::pack_public_key::<P>(rho, &t1)
+}
+
+// --- Serialization/Deserialization Methods ---
+
+impl DilithiumPublicKey {
+    /// Deserialize a public key from bytes with full validation
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SignError> {
+        // Determine parameter set from key size and validate
+        match bytes.len() {
+            n if n == Dilithium2Params::PUBLIC_KEY_BYTES => {
+                let _ = unpack_public_key::<Dilithium2Params>(bytes)?;
+            }
+            n if n == Dilithium3Params::PUBLIC_KEY_BYTES => {
+                let _ = unpack_public_key::<Dilithium3Params>(bytes)?;
+            }
+            n if n == Dilithium5Params::PUBLIC_KEY_BYTES => {
+                let _ = unpack_public_key::<Dilithium5Params>(bytes)?;
+            }
+            _ => return Err(SignError::Deserialization(
+                format!("Invalid public key size: {} bytes", bytes.len())
+            ))
+        }
+        
+        Ok(Self(bytes.to_vec()))
+    }
+    
+    /// Get the serialized bytes of this public key
+    pub fn to_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl DilithiumSignatureData {
+    /// Deserialize a signature from bytes with full validation
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, SignError> {
+        // Determine parameter set from signature size and validate
+        match bytes.len() {
+            n if n == Dilithium2Params::SIGNATURE_SIZE => {
+                let _ = unpack_signature::<Dilithium2Params>(bytes)?;
+            }
+            n if n == Dilithium3Params::SIGNATURE_SIZE => {
+                let _ = unpack_signature::<Dilithium3Params>(bytes)?;
+            }
+            n if n == Dilithium5Params::SIGNATURE_SIZE => {
+                let _ = unpack_signature::<Dilithium5Params>(bytes)?;
+            }
+            _ => return Err(SignError::Deserialization(
+                format!("Invalid signature size: {} bytes", bytes.len())
+            ))
+        }
+        
+        Ok(Self(bytes.to_vec()))
+    }
+    
+    /// Get the serialized bytes of this signature
+    pub fn to_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
 
 /// Generic Dilithium signature structure parameterized by `P: DilithiumSchemeParams`.
-/// This allows a single core implementation (`sign.rs`) to be instantiated for
-/// different Dilithium security levels (Dilithium2, Dilithium3, Dilithium5)
-/// by simply changing the type parameter `P`.
 pub struct Dilithium<P: DilithiumSchemeParams + 'static> {
     _params: PhantomData<P>,
 }
@@ -109,21 +276,15 @@ impl<P: DilithiumSchemeParams + Send + Sync + 'static> SignatureTrait for Dilith
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> ApiResult<Self::KeyPair> {
         let (pk_bytes, sk_bytes) = sign::keypair_internal::<P, R>(rng)
             .map_err(api::Error::from)?;
-        Ok((DilithiumPublicKey(pk_bytes), DilithiumSecretKey(sk_bytes)))
+        let sk = DilithiumSecretKey::from_bytes(&sk_bytes)
+            .map_err(api::Error::from)?;
+        Ok((DilithiumPublicKey(pk_bytes), sk))
     }
 
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey { keypair.0.clone() }
     fn secret_key(keypair: &Self::KeyPair) -> Self::SecretKey { keypair.1.clone() }
 
     fn sign(message: &[u8], secret_key: &Self::SecretKey) -> ApiResult<Self::SignatureData> {
-        // Dilithium signing, as per FIPS 203, is deterministic given the secret key and message.
-        // The internal randomness for the masking vector `y` and the challenge `c` (via its seed)
-        // are derived from parts of the secret key (`K`) and a counter (`kappa`).
-        // An external RNG is not directly consumed by the core signing loop after `K` is fixed.
-        // However, some library designs might use an RNG for the initial seed `K` itself if it's
-        // not part of a deterministic derivation from a master seed.
-        // For this API, we'll use a thread_rng for any potential non-spec randomization points
-        // or if a future variant required it, but standard Dilithium does not.
         let mut rng = rand::rngs::OsRng;
         let sig_bytes = sign::sign_internal::<P, _>(message, &secret_key.0, &mut rng)
             .map_err(api::Error::from)?;
@@ -136,8 +297,7 @@ impl<P: DilithiumSchemeParams + Send + Sync + 'static> SignatureTrait for Dilith
     }
 }
 
-// Concrete types for different Dilithium levels, re-exporting the generic Dilithium struct
-// instantiated with specific parameters from the `params` crate.
+// Concrete types for different Dilithium levels
 pub type Dilithium2 = Dilithium<Dilithium2Params>;
 pub type Dilithium3 = Dilithium<Dilithium3Params>;
 pub type Dilithium5 = Dilithium<Dilithium5Params>;

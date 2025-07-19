@@ -1122,6 +1122,7 @@ dependencies = [
  "internal",
  "kem",
  "once_cell",
+ "params",
  "proptest",
  "rand",
  "rand_chacha",

@@ -34,8 +34,8 @@ use super::sampling::{
     sample_polyvecl_uniform_gamma1, sample_challenge_c
 };
 use super::encoding::{
-    pack_public_key, unpack_public_key, pack_secret_key, 
-    unpack_secret_key,     pack_signature, unpack_signature, pack_polyveck_w1,
+    pack_public_key, unpack_public_key, pack_secret_key, unpack_secret_key,
+    pack_signature, unpack_signature, pack_polyveck_w1,
 };
 
 use algorithms::hash::sha3::Sha3_256;
@@ -118,7 +118,7 @@ where
     let mut tr = [0u8; 32];
     tr.copy_from_slice(&tr_digest);
 
-    // Step 9: Pack secret key
+    // Step 9: Pack secret key in FIPS 204 format
     let sk_bytes = pack_secret_key::<P>(&rho_seed, &k_seed, &tr, &s1_vec, &s2_vec, &t0_vec)?;
 
     Ok((pk_bytes, sk_bytes))
@@ -126,12 +126,7 @@ where
 
 /// Signing (Algorithm 10 from FIPS 204)
 /// 
-/// Produces signature (c̃, z, h) using rejection sampling.
-/// Aborts and retries if z or w-cs2 exceed bounds (side-channel protection).
-/// Deterministic: y derived from K and counter κ.
-/// 
-/// With OMEGA_PARAM = 62 for Dilithium2, attempts generating > 62 hints
-/// are properly rejected, ensuring the verifier can reconstruct w1 correctly.
+/// Accepts FIPS 204 format secret key bytes
 pub(crate) fn sign_internal<P, R>(
     message: &[u8],
     sk_bytes: &[u8],
@@ -141,6 +136,7 @@ where
     P: DilithiumSchemeParams,
     R: RngCore + CryptoRng,
 {
+    // Unpack the FIPS 204 format secret key
     let (rho_seed, k_seed, tr_hash, s1_vec, s2_vec, t0_vec) = unpack_secret_key::<P>(sk_bytes)?;
 
     let matrix_a = expand_matrix_a::<P>(&rho_seed)?;
@@ -225,8 +221,6 @@ where
         }
         
         // Compute z_for_hint = ct0 - cs2 using centered subtraction
-        // This ensures that the difference is computed correctly in the centered domain (-Q/2, Q/2]
-        // which is critical for the hint mechanism's correctness.
         let z_for_hint = ct0_vec.sub_centered(&cs2_vec);
         
         // Check the centered norm

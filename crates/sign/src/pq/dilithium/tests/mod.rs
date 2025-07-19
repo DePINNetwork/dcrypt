@@ -112,15 +112,15 @@ fn test_dilithium2_sign_verify() {
     
     // Step 4: Deep algebraic verification using the ACTUAL challenge from the signature
     
-    // Unpack all components
-    let unpacked_sk = unpack_secret_key::<Dilithium2Params>(&sk.0).unwrap();
+    // Unpack all components - use as_ref() to get bytes
+    let unpacked_sk = unpack_secret_key::<Dilithium2Params>(sk.as_ref()).unwrap();
     let (rho_seed, tr_hash) = (unpacked_sk.0, unpacked_sk.2);
     let (s1_vec, s2_vec, t0_vec) = (unpacked_sk.3, unpacked_sk.4, unpacked_sk.5);
-    let (_, t1_vec) = unpack_public_key::<Dilithium2Params>(&pk.0).unwrap();
+    let (_, t1_vec) = unpack_public_key::<Dilithium2Params>(pk.as_ref()).unwrap();
     
     // Extract & reuse the real challenge from the signature
     let (c_tilde_sig, z_vec, h_hint_poly) = 
-        unpack_signature::<Dilithium2Params>(&sig.0).unwrap();
+        unpack_signature::<Dilithium2Params>(sig.as_ref()).unwrap();
     
     let c = sample_challenge_c::<Dilithium2Params>(
         &c_tilde_sig,
@@ -572,13 +572,13 @@ fn test_secret_key_serialization_roundtrip() {
     // Generate a keypair
     let (_, sk) = Dilithium2::keypair(&mut rng).unwrap();
     
-    // Unpack and repack
-    let (rho, k, tr, s1, s2, t0) = unpack_secret_key::<Dilithium2Params>(&sk.0).unwrap();
+    // Unpack and repack - use as_ref() to get bytes
+    let (rho, k, tr, s1, s2, t0) = unpack_secret_key::<Dilithium2Params>(sk.as_ref()).unwrap();
     let sk_repacked = pack_secret_key::<Dilithium2Params>(&rho, &k, &tr, &s1, &s2, &t0).unwrap();
     
     // Compare (accounting for potential padding)
-    let content_size = sk_repacked.len().min(sk.0.len()) - 32; // Exclude padding
-    assert_eq!(&sk.0[..content_size], &sk_repacked[..content_size]);
+    let content_size = sk_repacked.len().min(sk.as_ref().len()) - 32; // Exclude padding
+    assert_eq!(&sk.as_ref()[..content_size], &sk_repacked[..content_size]);
 }
 
 #[test]
@@ -588,11 +588,11 @@ fn test_public_key_serialization_roundtrip() {
     // Generate a keypair
     let (pk, _) = Dilithium2::keypair(&mut rng).unwrap();
     
-    // Unpack and repack
-    let (rho, t1) = unpack_public_key::<Dilithium2Params>(&pk.0).unwrap();
+    // Unpack and repack - use as_ref() to get bytes
+    let (rho, t1) = unpack_public_key::<Dilithium2Params>(pk.as_ref()).unwrap();
     let pk_repacked = pack_public_key::<Dilithium2Params>(&rho, &t1).unwrap();
     
-    assert_eq!(pk.0, pk_repacked);
+    assert_eq!(pk.as_ref(), &pk_repacked[..]);
 }
 
 #[test]
@@ -602,11 +602,11 @@ fn test_signature_serialization_roundtrip() {
     
     let sig = Dilithium2::sign(TEST_MESSAGE, &sk).unwrap();
     
-    // Unpack and repack
-    let (c_tilde, z, h) = unpack_signature::<Dilithium2Params>(&sig.0).unwrap();
+    // Unpack and repack - use as_ref() to get bytes
+    let (c_tilde, z, h) = unpack_signature::<Dilithium2Params>(sig.as_ref()).unwrap();
     let sig_repacked = pack_signature::<Dilithium2Params>(&c_tilde, &z, &h).unwrap();
     
-    assert_eq!(sig.0, sig_repacked);
+    assert_eq!(sig.as_ref(), &sig_repacked[..]);
 }
 
 #[test]
@@ -632,7 +632,7 @@ fn test_deterministic_signatures() {
     let sig2 = Dilithium2::sign(TEST_MESSAGE, &sk).unwrap();
     
     // Signatures should be deterministic
-    assert_eq!(sig1.0, sig2.0);
+    assert_eq!(sig1.as_ref(), sig2.as_ref());
 }
 
 #[test]
@@ -654,12 +654,14 @@ fn test_modified_signature_fails() {
     let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
     let (pk, sk) = Dilithium2::keypair(&mut rng).unwrap();
     
-    let mut sig = Dilithium2::sign(TEST_MESSAGE, &sk).unwrap();
+    let sig = Dilithium2::sign(TEST_MESSAGE, &sk).unwrap();
     
-    // Modify the signature
-    sig.0[0] ^= 1;
+    // Create a modified signature by cloning and modifying
+    let mut sig_bytes = sig.as_ref().to_vec();
+    sig_bytes[0] ^= 1;
+    let modified_sig = DilithiumSignatureData::from_bytes(&sig_bytes).unwrap();
     
-    assert!(Dilithium2::verify(TEST_MESSAGE, &sig, &pk).is_err());
+    assert!(Dilithium2::verify(TEST_MESSAGE, &modified_sig, &pk).is_err());
 }
 
 #[test]
@@ -676,28 +678,23 @@ fn test_wrong_signature_fails() {
 
 #[test]
 fn test_invalid_public_key_size() {
-    let invalid_pk = DilithiumPublicKey(vec![0u8; 100]); // Wrong size
-    let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
-    let (_, sk) = Dilithium2::keypair(&mut rng).unwrap();
-    let sig = Dilithium2::sign(TEST_MESSAGE, &sk).unwrap();
-    
-    assert!(Dilithium2::verify(TEST_MESSAGE, &sig, &invalid_pk).is_err());
+    let invalid_pk_bytes = vec![0u8; 100]; // Wrong size
+    let result = DilithiumPublicKey::from_bytes(&invalid_pk_bytes);
+    assert!(result.is_err());
 }
 
 #[test]
 fn test_invalid_secret_key_size() {
-    let invalid_sk = DilithiumSecretKey(vec![0u8; 100]); // Wrong size
-    
-    assert!(Dilithium2::sign(TEST_MESSAGE, &invalid_sk).is_err());
+    // Test creating with invalid size
+    let result = DilithiumSecretKey::from_bytes(&vec![0u8; 100]);
+    assert!(result.is_err());
 }
 
 #[test]
 fn test_invalid_signature_size() {
-    let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
-    let (pk, _) = Dilithium2::keypair(&mut rng).unwrap();
-    let invalid_sig = DilithiumSignatureData(vec![0u8; 100]); // Wrong size
-    
-    assert!(Dilithium2::verify(TEST_MESSAGE, &invalid_sig, &pk).is_err());
+    let invalid_sig_bytes = vec![0u8; 100]; // Wrong size
+    let result = DilithiumSignatureData::from_bytes(&invalid_sig_bytes);
+    assert!(result.is_err());
 }
 
 #[test]
@@ -721,15 +718,17 @@ fn test_polyvec_zeroization() {
 
 #[test]
 fn test_secret_key_zeroization() {
-    let mut sk = DilithiumSecretKey(vec![42u8; 100]);
-    let ptr = sk.0.as_ptr();
+    let sk_bytes = vec![42u8; 2560]; // Valid Dilithium2 size
+    let mut sk = DilithiumSecretKey::from_bytes(&sk_bytes).unwrap();
+    let ptr = sk.as_ref().as_ptr();
     
     // Zeroize
     sk.zeroize();
     
     // Check memory is zeroed (carefully, as the memory might be reused)
     unsafe {
-        for i in 0..100 {
+        // Only check up to the actual length
+        for i in 0..sk.as_ref().len() {
             assert_eq!(*ptr.add(i), 0);
         }
     }
@@ -1131,7 +1130,7 @@ fn test_signature_size_bounds() {
     ];
     
     for (expected_size, sig) in test_cases {
-        assert_eq!(sig.0.len(), expected_size);
+        assert_eq!(sig.as_ref().len(), expected_size);
     }
 }
 
@@ -1142,7 +1141,7 @@ fn test_signature_exact_size() {
     let (_, sk) = Dilithium2::keypair(&mut rng).unwrap();
     let sig = Dilithium2::sign(TEST_MESSAGE, &sk).unwrap();
     
-    let (c_tilde, z, h) = unpack_signature::<Dilithium2Params>(&sig.0).unwrap();
+    let (c_tilde, z, h) = unpack_signature::<Dilithium2Params>(sig.as_ref()).unwrap();
     
     // Check c_tilde size
     assert_eq!(c_tilde.len(), Dilithium2Params::CHALLENGE_BYTES);
