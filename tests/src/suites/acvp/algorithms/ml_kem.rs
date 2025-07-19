@@ -228,6 +228,64 @@ fn ml_kem_decap(group: &TestGroup, case: &TestCase) -> Result<()> {
     Ok(())
 }
 
+/// Encapsulation Key Check ("encapsulationKeyCheck", "VAL")
+fn ml_kem_encap_keycheck(group: &TestGroup, case: &TestCase) -> Result<()> {
+    let param_set = group.defaults.get("parameterSet")
+        .ok_or(EngineError::MissingField("parameterSet"))?
+        .as_string();
+
+    let ek_hex = case.inputs.get("ek")
+        .ok_or(EngineError::MissingField("ek"))?
+        .as_string();
+
+    let pk_bytes = hex::decode(&ek_hex)?;
+    
+    // Check if the key has the correct size for the parameter set
+    let expected_size = match param_set.as_str() {
+        "ML-KEM-512" => 800,   // Kyber512 public key size
+        "ML-KEM-768" => 1184,  // Kyber768 public key size
+        "ML-KEM-1024" => 1568, // Kyber1024 public key size
+        other => return Err(EngineError::InvalidData(format!("Unknown parameterSet: {}", other)))
+    };
+    
+    let is_valid = pk_bytes.len() == expected_size;
+    
+    // If we need more thorough validation, we could try to parse the key
+    // For now, just check the size
+    case.outputs.borrow_mut().insert("testPassed".into(), is_valid.to_string());
+    
+    Ok(())
+}
+
+/// Decapsulation Key Check ("decapsulationKeyCheck", "VAL")
+fn ml_kem_decap_keycheck(group: &TestGroup, case: &TestCase) -> Result<()> {
+    let param_set = group.defaults.get("parameterSet")
+        .ok_or(EngineError::MissingField("parameterSet"))?
+        .as_string();
+
+    let dk_hex = case.inputs.get("dk")
+        .ok_or(EngineError::MissingField("dk"))?
+        .as_string();
+
+    let sk_bytes = hex::decode(&dk_hex)?;
+    
+    // Check if the key has the correct size for the parameter set
+    let expected_size = match param_set.as_str() {
+        "ML-KEM-512" => 1632,  // Kyber512 secret key size
+        "ML-KEM-768" => 2400,  // Kyber768 secret key size
+        "ML-KEM-1024" => 3168, // Kyber1024 secret key size
+        other => return Err(EngineError::InvalidData(format!("Unknown parameterSet: {}", other)))
+    };
+    
+    let is_valid = sk_bytes.len() == expected_size;
+    
+    // If we need more thorough validation, we could try to parse the key
+    // For now, just check the size
+    case.outputs.borrow_mut().insert("testPassed".into(), is_valid.to_string());
+    
+    Ok(())
+}
+
 /// Public entry – called from the global algorithm registry
 pub fn register(map: &mut std::collections::HashMap<DispatchKey, HandlerFn>) {
     // Key generation - note the algorithm name includes the mode
@@ -237,4 +295,8 @@ pub fn register(map: &mut std::collections::HashMap<DispatchKey, HandlerFn>) {
     insert(map, "ML-KEM-encapDecap", "encapsulation", "AFT", ml_kem_encap);
     insert(map, "ML-KEM-encapDecap", "decapsulation", "VAL", ml_kem_decap);
     insert(map, "ML-KEM-encapDecap", "decapsulation", "AFT", ml_kem_decap);
+    
+    // Key validation checks
+    insert(map, "ML-KEM-encapDecap", "encapsulationKeyCheck", "VAL", ml_kem_encap_keycheck);
+    insert(map, "ML-KEM-encapDecap", "decapsulationKeyCheck", "VAL", ml_kem_decap_keycheck);
 }
