@@ -59,6 +59,79 @@ fn test_aes_gcm_acvp() {
     r.run_suite(&suite).expect("ACVP GCM tests failed");
 }
 
+
+#[test]
+fn test_sha256_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHA2-256-1.0")
+        .expect("Failed to load SHA2-256-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHA-256 ACVP tests failed");
+}
+
+#[test]
+fn test_sha224_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHA2-224-1.0")
+        .expect("Failed to load SHA2-224-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHA-224 ACVP tests failed");
+}
+
+#[test]
+fn test_sha384_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHA2-384-1.0")
+        .expect("Failed to load SHA2-384-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHA-384 ACVP tests failed");
+}
+
+#[test]
+fn test_sha512_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHA2-512-1.0")
+        .expect("Failed to load SHA2-512-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHA-512 ACVP tests failed");
+}
+
+#[test]
+fn test_sha512_224_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHA2-512-224-1.0")
+        .expect("Failed to load SHA2-512-224-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHA-512/224 ACVP tests failed");
+}
+
+#[test]
+fn test_sha512_256_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHA2-512-256-1.0")
+        .expect("Failed to load SHA2-512-256-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHA-512/256 ACVP tests failed");
+}
+
 #[test]
 fn test_ecdsa_keygen_acvp() {
     let engine = DcryptEngine;
@@ -157,6 +230,54 @@ fn test_ecdsa_sigver_acvp() {
     // }
     
     r.run_suite(&suite).expect("ACVP ECDSA SigVer tests failed");
+}
+
+#[test]
+fn test_eddsa_keygen_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("EDDSA-KeyGen-1.0")
+        .expect("Failed to load EDDSA-KeyGen-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: EDDSA-KeyGen-1.0");
+    r.run_suite(&suite).expect("ACVP EdDSA KeyGen tests failed");
+}
+
+#[test]
+fn test_eddsa_keyver_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("EDDSA-KeyVer-1.0")
+        .expect("Failed to load EDDSA-KeyVer-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: EDDSA-KeyVer-1.0");
+    r.run_suite(&suite).expect("ACVP EdDSA KeyVer tests failed");
+}
+
+#[test]
+fn test_eddsa_siggen_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("EDDSA-SigGen-1.0")
+        .expect("Failed to load EDDSA-SigGen-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: EDDSA-SigGen-1.0");
+    r.run_suite(&suite).expect("ACVP EdDSA SigGen tests failed");
+}
+
+#[test]
+fn test_eddsa_sigver_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("EDDSA-SigVer-1.0")
+        .expect("Failed to load EDDSA-SigVer-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: EDDSA-SigVer-1.0");
+    r.run_suite(&suite).expect("ACVP EdDSA SigVer tests failed");
 }
 
 #[test]

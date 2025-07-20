@@ -50,6 +50,13 @@ fn canonicalise_inputs(inputs: &mut HashMap<String, FlexValue>) {
             inputs.insert("ct".into(), v);
         }
     }
+
+    // --------- Expansion Technique --------------------------------
+    // Normalize expansion technique to lowercase for consistent handling
+    if let Some(exp_tech) = inputs.get("expansionTechnique") {
+        let normalized = exp_tech.as_string().to_lowercase();
+        inputs.insert("expansionTechnique".into(), FlexValue::String(normalized));
+    }
 }
 
 /// ----------------------------------------------------------------

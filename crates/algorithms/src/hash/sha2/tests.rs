@@ -68,6 +68,42 @@ fn test_sha384_empty() {
 }
 
 #[test]
+fn test_sha512_224_empty() {
+    // NIST test vector: Empty string for SHA-512/224
+    let expected = "6ed0dd02806fa89e25de060c19d3ac86cabb87d6a0ddd05c333b84f4";
+    
+    let hash = Sha512_224::digest(&[]).unwrap();
+    assert_eq!(hex::encode(hash.as_ref()), expected);
+}
+
+#[test]
+fn test_sha512_256_empty() {
+    // NIST test vector: Empty string for SHA-512/256
+    let expected = "c672b8d1ef56ed28ab87c3622c5114069bdd3ad7b8f9737498d0c01ecef0967a";
+    
+    let hash = Sha512_256::digest(&[]).unwrap();
+    assert_eq!(hex::encode(hash.as_ref()), expected);
+}
+
+#[test]
+fn test_sha512_224_abc() {
+    // NIST test vector: "abc" for SHA-512/224
+    let expected = "4634270f707b6a54daae7530460842e20e37ed265ceee9a43e8924aa";
+    
+    let hash = Sha512_224::digest(b"abc").unwrap();
+    assert_eq!(hex::encode(hash.as_ref()), expected);
+}
+
+#[test]
+fn test_sha512_256_abc() {
+    // NIST test vector: "abc" for SHA-512/256
+    let expected = "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23";
+    
+    let hash = Sha512_256::digest(b"abc").unwrap();
+    assert_eq!(hex::encode(hash.as_ref()), expected);
+}
+
+#[test]
 fn test_sha2_nist_short_vectors() {
     let dir = vectors_dir();
     

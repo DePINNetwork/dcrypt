@@ -14,10 +14,11 @@
 //! # Example
 //!
 //! ```
-//! use dcrypt_sign::traditional::eddsa::Ed25519;
+//! use sign::traditional::eddsa::Ed25519;
 //! use api::Signature;
 //! use rand::rngs::OsRng;
 //!
+//! # fn main() -> api::Result<()> {
 //! let mut rng = OsRng;
 //! let (public_key, secret_key) = Ed25519::keypair(&mut rng)?;
 //! 
@@ -25,7 +26,10 @@
 //! let signature = Ed25519::sign(message, &secret_key)?;
 //! 
 //! assert!(Ed25519::verify(message, &signature, &public_key).is_ok());
+//! # Ok(())
+//! # }
 //! ```
+
 
 mod constants;
 mod field;

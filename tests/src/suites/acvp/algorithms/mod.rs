@@ -7,3 +7,5 @@ pub mod ecdsa;
 pub mod ml_kem;
 pub mod ml_dsa;
 pub mod ml_dsa_adapter;
+pub mod eddsa;
+pub mod sha2;

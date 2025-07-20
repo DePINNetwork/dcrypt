@@ -105,6 +105,24 @@ impl HashAlgorithm for Sha512Algorithm {
     const ALGORITHM_ID: &'static str = "SHA-512";
 }
 
+/// Marker type for SHA-512/224 algorithm
+pub enum Sha512_224Algorithm {}
+
+impl HashAlgorithm for Sha512_224Algorithm {
+    const OUTPUT_SIZE: usize = SHA224_OUTPUT_SIZE;
+    const BLOCK_SIZE: usize = SHA512_BLOCK_SIZE;
+    const ALGORITHM_ID: &'static str = "SHA-512/224";
+}
+
+/// Marker type for SHA-512/256 algorithm
+pub enum Sha512_256Algorithm {}
+
+impl HashAlgorithm for Sha512_256Algorithm {
+    const OUTPUT_SIZE: usize = SHA256_OUTPUT_SIZE;
+    const BLOCK_SIZE: usize = SHA512_BLOCK_SIZE;
+    const ALGORITHM_ID: &'static str = "SHA-512/256";
+}
+
 /// SHA-224 hash function state with enhanced memory safety
 #[derive(Clone, Zeroize)]
 pub struct Sha224 {
@@ -165,6 +183,36 @@ impl Drop for Sha512 {
     }
 }
 
+/// SHA-512/224 hash function state with enhanced memory safety
+#[derive(Clone, Zeroize)]
+pub struct Sha512_224 {
+    state: [u64; 8],
+    buffer: [u8; SHA512_BLOCK_SIZE],
+    buffer_idx: usize,
+    total_bytes: u128,
+}
+
+impl Drop for Sha512_224 {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
+/// SHA-512/256 hash function state with enhanced memory safety
+#[derive(Clone, Zeroize)]
+pub struct Sha512_256 {
+    state: [u64; 8],
+    buffer: [u8; SHA512_BLOCK_SIZE],
+    buffer_idx: usize,
+    total_bytes: u128,
+}
+
+impl Drop for Sha512_256 {
+    fn drop(&mut self) {
+        self.zeroize();
+    }
+}
+
 // --- SHA-256 internal methods with enhanced security ---
 impl Sha256 {
     fn init_state() -> [u32; 8] {
@@ -174,7 +222,7 @@ impl Sha256 {
             0x3c6ef372,
             0xa54ff53a,
             0x510e527f,
-            0x9b05688c, // corrected H5
+            0x9b05688c,
             0x1f83d9ab,
             0x5be0cd19,
         ]
@@ -506,6 +554,48 @@ impl Sha512 {
     }
 }
 
+// SHA-512/224 implementation
+impl Sha512_224 {
+    fn init_state() -> [u64; 8] {
+        [
+            0x8c3d37c819544da2, 0x73e1996689dcd4d6,
+            0x1dfab7ae32ff9c82, 0x679dd514582f9fcf,
+            0x0f6d2b697bd44da8, 0x77e36f7304c48942,
+            0x3f9d85a86a1d36c8, 0x1112e6ad91d692a1,
+        ]
+    }
+
+    fn new() -> Self {
+        Sha512_224 {
+            state: Self::init_state(),
+            buffer: [0u8; SHA512_BLOCK_SIZE],
+            buffer_idx: 0,
+            total_bytes: 0,
+        }
+    }
+}
+
+// SHA-512/256 implementation
+impl Sha512_256 {
+    fn init_state() -> [u64; 8] {
+        [
+            0x22312194fc2bf72c, 0x9f555fa3c84c64c2,
+            0x2393b86b6f53b151, 0x963877195940eabd,
+            0x96283ee2a88effe3, 0xbe5e1e2553863992,
+            0x2b0199fc2c85b8aa, 0x0eb72ddc81c52ca2,
+        ]
+    }
+
+    fn new() -> Self {
+        Sha512_256 {
+            state: Self::init_state(),
+            buffer: [0u8; SHA512_BLOCK_SIZE],
+            buffer_idx: 0,
+            total_bytes: 0,
+        }
+    }
+}
+
 // --- HashFunction impls with SecureZeroingType ---
 impl SecureZeroingType for Sha256 {
     fn zeroed() -> Self {
@@ -698,6 +788,112 @@ impl HashFunction for Sha512 {
 
     fn name() -> String {
         "SHA-512".to_string()
+    }
+}
+
+impl SecureZeroingType for Sha512_224 {
+    fn zeroed() -> Self {
+        Self::new()
+    }
+}
+
+impl HashFunction for Sha512_224 {
+    type Algorithm = Sha512_224Algorithm;
+    type Output = Digest<SHA224_OUTPUT_SIZE>;
+
+    fn new() -> Self {
+        Sha512_224::new()
+    }
+
+    fn update(&mut self, data: &[u8]) -> Result<&mut Self> {
+        let mut tmp = Sha512::new();
+        tmp.state = self.state;
+        tmp.buffer = self.buffer;
+        tmp.buffer_idx = self.buffer_idx;
+        tmp.total_bytes = self.total_bytes;
+        tmp.update_internal_u128(data)?;
+        self.state = tmp.state;
+        self.buffer = tmp.buffer;
+        self.buffer_idx = tmp.buffer_idx;
+        self.total_bytes = tmp.total_bytes;
+        Ok(self)
+    }
+
+    fn finalize(&mut self) -> Result<Self::Output> {
+        let mut tmp = Sha512::new();
+        tmp.state = self.state;
+        tmp.buffer = self.buffer;
+        tmp.buffer_idx = self.buffer_idx;
+        tmp.total_bytes = self.total_bytes;
+        let full = tmp.finalize_internal_u128()?;
+        let mut digest = [0u8; SHA224_OUTPUT_SIZE];
+        digest.copy_from_slice(&full[..SHA224_OUTPUT_SIZE]);
+        Ok(Digest::new(digest))
+    }
+
+    fn output_size() -> usize {
+        SHA224_OUTPUT_SIZE
+    }
+
+    fn block_size() -> usize {
+        SHA512_BLOCK_SIZE
+    }
+
+    fn name() -> String {
+        "SHA-512/224".to_string()
+    }
+}
+
+impl SecureZeroingType for Sha512_256 {
+    fn zeroed() -> Self {
+        Self::new()
+    }
+}
+
+impl HashFunction for Sha512_256 {
+    type Algorithm = Sha512_256Algorithm;
+    type Output = Digest<SHA256_OUTPUT_SIZE>;
+
+    fn new() -> Self {
+        Sha512_256::new()
+    }
+
+    fn update(&mut self, data: &[u8]) -> Result<&mut Self> {
+        let mut tmp = Sha512::new();
+        tmp.state = self.state;
+        tmp.buffer = self.buffer;
+        tmp.buffer_idx = self.buffer_idx;
+        tmp.total_bytes = self.total_bytes;
+        tmp.update_internal_u128(data)?;
+        self.state = tmp.state;
+        self.buffer = tmp.buffer;
+        self.buffer_idx = tmp.buffer_idx;
+        self.total_bytes = tmp.total_bytes;
+        Ok(self)
+    }
+
+    fn finalize(&mut self) -> Result<Self::Output> {
+        let mut tmp = Sha512::new();
+        tmp.state = self.state;
+        tmp.buffer = self.buffer;
+        tmp.buffer_idx = self.buffer_idx;
+        tmp.total_bytes = self.total_bytes;
+        let full = tmp.finalize_internal_u128()?;
+        let mut digest = [0u8; SHA256_OUTPUT_SIZE];
+        digest.copy_from_slice(&full[..SHA256_OUTPUT_SIZE]);
+        Ok(Digest::new(digest))
+    }
+
+    fn output_size() -> usize {
+        SHA256_OUTPUT_SIZE
+    }
+
+    fn block_size() -> usize {
+        SHA512_BLOCK_SIZE
+    }
+
+    fn name() -> String {
+        "SHA-512/256".to_string()
     }
 }
 

@@ -1,17 +1,20 @@
 //! Pure data model for ACVP-style test vectors.
 //! No dependency on the rest of the framework.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::cell::RefCell;
 
-/// Flexible value that can be either string or number
-#[derive(Debug, Clone, Deserialize)]
+/// Flexible value that can be either string, number, bool, array, object, or null
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum FlexValue {
     String(String),
     Number(serde_json::Number),
     Bool(bool),
+    Array(Vec<FlexValue>),
+    Object(HashMap<String, FlexValue>),
+    Null,
 }
 
 impl FlexValue {
@@ -20,6 +23,9 @@ impl FlexValue {
             FlexValue::String(s) => s.clone(),
             FlexValue::Number(n) => n.to_string(),
             FlexValue::Bool(b) => b.to_string(),
+            FlexValue::Array(arr) => serde_json::to_string(arr).unwrap_or_else(|_| format!("{:?}", arr)),
+            FlexValue::Object(obj) => serde_json::to_string(obj).unwrap_or_else(|_| format!("{:?}", obj)),
+            FlexValue::Null => String::new(),
         }
     }
 }
