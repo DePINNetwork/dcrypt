@@ -132,6 +132,62 @@ fn test_sha512_256_acvp() {
     r.run_suite(&suite).expect("SHA-512/256 ACVP tests failed");
 }
 
+// Add these test functions to tests/tests/acvp_tests.rs
+
+#[test]
+fn test_sha3_224_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHA3-224-2.0")
+        .expect("Failed to load SHA3-224-2.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHA3-224 ACVP tests failed");
+}
+
+#[test]
+fn test_sha3_256_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHA3-256-2.0")
+        .expect("Failed to load SHA3-256-2.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHA3-256 ACVP tests failed");
+}
+
+// Note: SHA3-384 and SHA3-512 ACVP test vectors are not available in the test vector directory.
+// The SHA3-384 and SHA3-512 implementations are tested via the NIST test vectors in the unit tests.
+// If ACVP test vectors for these variants become available, uncomment the tests below:
+
+// #[test]
+// #[ignore = "ACVP test vectors not available"]
+// fn test_sha3_384_acvp() {
+//     let engine = DcryptEngine;
+//     let suite = loader::load_suite_by_name("SHA3-384-2.0")
+//         .expect("Failed to load SHA3-384-2.0 suite");
+//     
+//     let r = Runner::new(&engine);
+//     
+//     println!("Running ACVP test suite: {}", suite.suite_name);
+//     r.run_suite(&suite).expect("SHA3-384 ACVP tests failed");
+// }
+
+// #[test]
+// #[ignore = "ACVP test vectors not available"]
+// fn test_sha3_512_acvp() {
+//     let engine = DcryptEngine;
+//     let suite = loader::load_suite_by_name("SHA3-512-2.0")
+//         .expect("Failed to load SHA3-512-2.0 suite");
+//     
+//     let r = Runner::new(&engine);
+//     
+//     println!("Running ACVP test suite: {}", suite.suite_name);
+//     r.run_suite(&suite).expect("SHA3-512 ACVP tests failed");
+// }
+
 #[test]
 fn test_ecdsa_keygen_acvp() {
     let engine = DcryptEngine;

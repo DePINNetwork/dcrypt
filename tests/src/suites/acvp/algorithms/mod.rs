@@ -9,3 +9,4 @@ pub mod ml_dsa;
 pub mod ml_dsa_adapter;
 pub mod eddsa;
 pub mod sha2;
+pub mod sha3;
