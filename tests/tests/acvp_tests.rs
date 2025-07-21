@@ -213,6 +213,55 @@ fn test_shake256_acvp() {
 }
 
 #[test]
+fn test_hmac_sha256_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("HMAC-SHA2-256-1.0")
+        .expect("Failed to load HMAC-SHA2-256-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: HMAC-SHA2-256");
+    r.run_suite(&suite).expect("HMAC-SHA2-256 ACVP tests failed");
+}
+
+#[test]
+fn test_hmac_sha384_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("HMAC-SHA2-384-1.0")
+        .expect("Failed to load HMAC-SHA2-384-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: HMAC-SHA2-384");
+    r.run_suite(&suite).expect("HMAC-SHA2-384 ACVP tests failed");
+}
+
+#[test]
+fn test_hmac_sha512_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("HMAC-SHA2-512-1.0")
+        .expect("Failed to load HMAC-SHA2-512-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: HMAC-SHA2-512");
+    r.run_suite(&suite).expect("HMAC-SHA2-512 ACVP tests failed");
+}
+
+#[test]
+fn test_hmac_sha3_256_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("HMAC-SHA3-256-1.0")
+        .expect("Failed to load HMAC-SHA3-256-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: HMAC-SHA3-256");
+    r.run_suite(&suite).expect("HMAC-SHA3-256 ACVP tests failed");
+}
+
+
+#[test]
 fn test_ecdsa_keygen_acvp() {
     let engine = DcryptEngine;
     let suite = loader::load_suite_by_name("ECDSA-KeyGen-FIPS186-5")

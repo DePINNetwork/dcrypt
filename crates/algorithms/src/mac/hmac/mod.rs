@@ -1,7 +1,7 @@
 //! HMAC (Hash-based Message Authentication Code) – constant-time & allocation-free
 //!
 //! • RFC 2104 / FIPS 198-1 compliant  
-//! • Secret-dependent work happens on stack-fixed buffers (≤ 128 bytes)  
+//! • Secret-dependent work happens on stack-fixed buffers (≤ 144 bytes)  
 //! • Error paths burn the same CPU cycles as success paths
 
 use crate::error::{Error, Result};
@@ -10,7 +10,7 @@ use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use common::security::{SecretBuffer, SecureZeroingType};
 
-const MAX_BLOCK: usize = 128; // SHA-512 block size
+const MAX_BLOCK: usize = 144; // SHA3-224 block size (largest among SHA-2 and SHA-3)
 
 /// Constant-time HMAC implementation.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
