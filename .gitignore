@@ -4,3 +4,4 @@ tools/
 tree.md
 Cargo.lock
 .gitignore
+output.txt

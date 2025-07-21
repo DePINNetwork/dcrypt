@@ -189,6 +189,30 @@ fn test_sha3_256_acvp() {
 // }
 
 #[test]
+fn test_shake128_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHAKE-128-1.0")
+        .expect("Failed to load SHAKE-128-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHAKE-128 ACVP tests failed");
+}
+
+#[test]
+fn test_shake256_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("SHAKE-256-1.0")
+        .expect("Failed to load SHAKE-256-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: {}", suite.suite_name);
+    r.run_suite(&suite).expect("SHAKE-256 ACVP tests failed");
+}
+
+#[test]
 fn test_ecdsa_keygen_acvp() {
     let engine = DcryptEngine;
     let suite = loader::load_suite_by_name("ECDSA-KeyGen-FIPS186-5")
