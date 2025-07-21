@@ -260,6 +260,17 @@ fn test_hmac_sha3_256_acvp() {
     r.run_suite(&suite).expect("HMAC-SHA3-256 ACVP tests failed");
 }
 
+#[test]
+fn test_hkdf_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("HKDF-1.0")
+        .expect("Failed to load HKDF-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: HKDF-1.0");
+    r.run_suite(&suite).expect("HKDF ACVP tests failed");
+}
 
 #[test]
 fn test_ecdsa_keygen_acvp() {

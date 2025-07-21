@@ -33,6 +33,7 @@ pub static REGISTRY: Lazy<HashMap<DispatchKey, HandlerFn>> = Lazy::new(|| {
     super::algorithms::sha3::register(&mut m);
     super::algorithms::shake::register(&mut m);
     super::algorithms::hmac::register(&mut m);
+    super::algorithms::hkdf::register(&mut m);
     m
 });
 
