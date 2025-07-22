@@ -1115,6 +1115,7 @@ dependencies = [
  "algorithms",
  "api",
  "arrayref",
+ "base64 0.22.1",
  "common",
  "criterion",
  "hex",

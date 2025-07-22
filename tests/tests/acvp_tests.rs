@@ -273,6 +273,18 @@ fn test_hkdf_acvp() {
 }
 
 #[test]
+fn test_pbkdf2_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("PBKDF-1.0")
+        .expect("Failed to load PBKDF-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: PBKDF-1.0");
+    r.run_suite(&suite).expect("PBKDF2 ACVP tests failed");
+}
+
+#[test]
 fn test_ecdsa_keygen_acvp() {
     let engine = DcryptEngine;
     let suite = loader::load_suite_by_name("ECDSA-KeyGen-FIPS186-5")

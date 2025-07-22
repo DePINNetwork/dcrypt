@@ -29,6 +29,7 @@ thiserror = "1"
 arrayref = "0.3"
 subtle = "2"
 zeroize = { version = "1", features = ["derive"] }
+base64 = "0.22"
 
 [dev-dependencies]
 proptest = "1"
