@@ -6,7 +6,6 @@
 pub mod dsa;
 pub mod ecdsa;
 pub mod eddsa;
-pub mod rsa;
 
 // Re-export DSA types
 pub use dsa::Dsa;
@@ -25,6 +24,3 @@ pub use ecdsa::{
 
 // Re-export EdDSA types
 pub use eddsa::Ed25519;
-
-// Re-export RSA types
-pub use rsa::{RsaPss, RsaPkcs1};

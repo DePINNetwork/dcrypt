@@ -6,7 +6,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod error;
-pub mod rsa;
 pub mod dh;
 pub mod ecdh;
 pub mod kyber;
@@ -15,7 +14,6 @@ pub mod saber;
 pub mod mceliece;
 
 // Re-exports
-pub use rsa::{RsaKem2048, RsaKem4096};
 pub use dh::Dh2048;
 pub use ecdh::{EcdhP192, EcdhP224, EcdhP256, EcdhP384, EcdhP521}; // Added EcdhP192
 pub use kyber::{Kyber512, Kyber768, Kyber1024};

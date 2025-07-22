@@ -14,3 +14,4 @@ pub mod shake;
 pub mod hmac;
 pub mod hkdf;
 pub mod pbkdf2;
+pub mod rsa;
