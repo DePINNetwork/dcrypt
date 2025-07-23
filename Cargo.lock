@@ -19,6 +19,7 @@ dependencies = [
  "base64 0.22.1",
  "byteorder",
  "common",
+ "criterion",
  "faster-hex",
  "getrandom 0.2.15",
  "hex",

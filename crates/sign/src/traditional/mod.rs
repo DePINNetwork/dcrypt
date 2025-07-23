@@ -3,12 +3,8 @@
 //! This module contains implementations of traditional (pre-quantum) signature
 //! schemes including ECDSA, EdDSA, and RSA.
 
-pub mod dsa;
 pub mod ecdsa;
 pub mod eddsa;
-
-// Re-export DSA types
-pub use dsa::Dsa;
 
 // Re-export ECDSA types
 pub use ecdsa::{

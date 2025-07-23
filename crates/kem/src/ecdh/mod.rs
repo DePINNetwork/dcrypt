@@ -4,12 +4,15 @@
 //! This module provides constant-time implementations of ECDH-KEM
 //! using the NIST P-192, P-224, P-256, P-384, and P-521 curves,
 //! following standard practices for key encapsulation mechanisms.
+//! It now also includes support for Koblitz (secp256k1) and Binary (sect283k1) curves.
 
 pub mod p192;
 pub mod p224;
 pub mod p256;
 pub mod p384;
-pub mod p521; 
+pub mod p521;
+pub mod k256; // Koblitz curve secp256k1
+pub mod b283k; // Binary curve sect283k1
 
 // Re-export the P-192 types
 pub use p192::{
@@ -54,6 +57,24 @@ pub use p521::{
     EcdhP521SecretKey,
     EcdhP521SharedSecret,
     EcdhP521Ciphertext
+};
+
+// Re-export the K-256 (secp256k1) types
+pub use k256::{
+    EcdhK256,
+    EcdhK256PublicKey,
+    EcdhK256SecretKey,
+    EcdhK256SharedSecret,
+    EcdhK256Ciphertext,
+};
+
+// Re-export the B-283k (sect283k1) types
+pub use b283k::{
+    EcdhB283k,
+    EcdhB283kPublicKey,
+    EcdhB283kSecretKey,
+    EcdhB283kSharedSecret,
+    EcdhB283kCiphertext,
 };
 
 // Version tag for KDF context - updated for compressed point format

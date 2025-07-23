@@ -5,12 +5,15 @@
 //! on NIST curves P-224, P-256, P-384, and P-521. These implementations are designed 
 //! to be resistant to timing attacks and provide a foundation for higher-level 
 //! protocols like ECDH-KEM.
+//! This module now also includes support for Koblitz (secp256k1) and Binary (sect283k1) curves.
 
 pub mod p192;
 pub mod p224;
 pub mod p256;
 pub mod p384;
 pub mod p521;
+pub mod k256;  // For secp256k1
+pub mod b283k; // For sect283k1
 
 // Re-export common types
 pub use p192::{Point as P192Point, Scalar as P192Scalar};
@@ -18,6 +21,8 @@ pub use p224::{Point as P224Point, Scalar as P224Scalar};
 pub use p256::{Point as P256Point, Scalar as P256Scalar};
 pub use p384::{Point as P384Point, Scalar as P384Scalar};
 pub use p521::{Point as P521Point, Scalar as P521Scalar};
+pub use k256::{Point as K256Point, Scalar as K256Scalar};
+pub use b283k::{Point as B283kPoint, Scalar as B283kScalar};
 
 /// Common trait for coordinate systems used in elliptic curve operations
 pub trait CoordinateSystem {}

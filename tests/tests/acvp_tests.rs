@@ -285,6 +285,30 @@ fn test_pbkdf2_acvp() {
 }
 
 #[test]
+fn test_ecdh_component_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("KAS-ECC-CDH-Component-1.0")
+        .expect("Failed to load KAS-ECC-CDH-Component-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: KAS-ECC-CDH-Component-1.0");
+    r.run_suite(&suite).expect("ECDH Component tests failed");
+}
+
+#[test]
+fn test_ecdh_kas_ecc_acvp() {
+    let engine = DcryptEngine;
+    let suite = loader::load_suite_by_name("KAS-ECC-1.0")
+        .expect("Failed to load KAS-ECC-1.0 suite");
+    
+    let r = Runner::new(&engine);
+    
+    println!("Running ACVP test suite: KAS-ECC-1.0");
+    r.run_suite(&suite).expect("KAS-ECC tests failed");
+}
+
+#[test]
 fn test_ecdsa_keygen_acvp() {
     let engine = DcryptEngine;
     let suite = loader::load_suite_by_name("ECDSA-KeyGen-FIPS186-5")

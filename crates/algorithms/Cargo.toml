@@ -8,34 +8,33 @@ repository = "https://github.com/example/dcrypt"
 license = "MIT OR Apache-2.0"
 
 [features]
-# Feature configuration for different environments
-default = ["std", "xof", "ec"] # Add 'ec' to default if desired
+# Default features
+default = ["std", "xof", "ec"]
 
 # Standard library support - enables all features
 std = [
-    "alloc", 
-    "byteorder/std", 
-    "subtle/std", 
-    "hex/std", 
-    "rand/std", 
-    "getrandom/std", 
+    "alloc",
+    "byteorder/std",
+    "subtle/std",
+    "hex/std",
+    "rand/std",
+    "getrandom/std",
     "serde_json",
     # Forward std to dependencies
     "api/std",
     "common/std",
     "internal/std",
-    # If 'std' implies all algorithm features are on, add them here
+    # Enable all algorithm features with std
     "hash", "xof", "aead", "block", "kdf", "mac", "stream", "ec"
 ]
 
 # Allocator support - provides Vec, Box, String, etc.
 alloc = [
-    # Forward alloc to dependencies that need it
     "api/alloc",
     "common/alloc",
 ]
 
-# Optional feature groups for modular inclusion
+# Algorithm feature groups
 hash = []
 xof = ["alloc"]
 aead = ["alloc"]
@@ -43,37 +42,54 @@ block = []
 kdf = ["alloc"]
 mac = []
 stream = []
-ec = ["alloc"] # <<<< ADDED THIS FEATURE. EC operations might need alloc for points/scalars.
+ec = ["alloc"]
 
-# Enable serde_json for tests
+# Optional features
 serde_json = ["dep:serde_json", "dep:serde"]
 
 [dependencies]
-# ... (rest of dependencies remain the same) ...
+# Internal dependencies
 api = { path = "../api", version = "0.1.0", default-features = false }
 common = { path = "../common", version = "0.1.0", default-features = false }
 internal = { path = "../internal", version = "0.1.0", default-features = false }
 params = { path = "../params", version = "0.1.0" }
-zeroize = { version = "1.5.7", features = ["zeroize_derive"] } # Ensure this matches workspace if it moves
-byteorder = { version = "1.4.3", default-features = false }
+
+# Core cryptographic dependencies
+zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
 subtle = { version = "2.6.1", default-features = false }
-faster-hex = { version = "0.6.1", optional = true }
+byteorder = { version = "1.4.3", default-features = false }
+
+# Encoding/serialization
 hex = { version = "0.4.3", default-features = false }
+base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
+faster-hex = { version = "0.6.1", optional = true }
 serde = { version = "1.0.189", features = ["derive"], optional = true }
 serde_json = { version = "1.0.107", optional = true }
-portable-atomic = { version = "1.6", default-features = false }
-base64 = { version = "0.22.1", default-features = false, features = ["alloc"] } # Ensure 'alloc' for base64 if no_std
 
+# Random number generation
 rand = { version = "0.8.5", default-features = false }
 getrandom = { version = "0.2.15", default-features = false, optional = true, features = ["custom"] }
+
+# Platform-specific dependencies
+portable-atomic = { version = "1.6", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rand_chacha = { version = "0.3.1", default-features = false }
 
 [dev-dependencies]
-serde = { version = "1.0.189", features = ["derive"] } # Matches workspace
-serde_json = "1.0.107" # Matches workspace
+criterion = { version = "0.5", features = ["html_reports"] }
+serde = { version = "1.0.189", features = ["derive"] }
+serde_json = "1.0.107"
+rand = { version = "0.8.5", features = ["std", "std_rng"] }
+rand_chacha = "0.3.1"
 
+[[bench]]
+name = "aes"
+harness = false
+
+[[bench]]
+name = "aes_gcm"
+harness = false
 
 [package.metadata.docs.rs]
 all-features = true
