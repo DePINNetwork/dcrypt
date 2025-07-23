@@ -136,6 +136,18 @@ pub use xof::{ExtendableOutputFunction, ShakeXof128, ShakeXof256, Blake3Xof};
 // **NEW** PQC Math Primitive Modules
 #[cfg(feature = "alloc")] // Polynomial arithmetic often benefits from dynamic allocation
 pub mod poly;
+
+// Re-export polynomial types for easier access
+#[cfg(feature = "alloc")]
+pub use poly::{
+    prelude,
+    params::{Modulus, NttModulus, DilithiumParams, Kyber256Params},
+    polynomial::Polynomial,
+    ntt::{NttOperator, InverseNttOperator, CooleyTukeyNtt, montgomery_reduce},
+    sampling::{UniformSampler, CbdSampler, GaussianSampler, DefaultSamplers},
+    serialize::{CoefficientPacker, CoefficientUnpacker, DefaultCoefficientSerde},
+};
+
 #[cfg(feature = "alloc")]
 pub mod lattice; // Re-exports poly
 
@@ -144,3 +156,4 @@ pub mod lattice; // Re-exports poly
 pub mod mq;
 #[cfg(feature = "alloc")]
 pub mod code;
+

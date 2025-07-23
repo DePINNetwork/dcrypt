@@ -91,6 +91,47 @@ harness = false
 name = "aes_gcm"
 harness = false
 
+[[bench]]
+name = "sha2"
+harness = false
+
+[[bench]]
+name = "chacha20_poly1305"
+harness = false
+
+[[bench]]
+name = "k256"
+harness = false
+
+[[bench]]
+name = "xchacha20_poly1305"
+harness = false
+
+[[bench]]
+name = "p256"
+harness = false
+
+[[bench]]
+name = "p384"
+harness = false
+
+[[bench]]
+name = "p521"
+harness = false
+
+[[bench]]
+name = "b283k"
+harness = false
+
+[[bench]]
+name = "argon2"
+harness = false
+
+[[bench]]
+name = "ntt"
+harness = false
+
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+

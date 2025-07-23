@@ -5,7 +5,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
 use algorithms::aead::gcm::Gcm;
-use algorithms::block::{Aes128, Aes192, Aes256};
+use algorithms::block::{Aes128, Aes192, Aes256, BlockCipher};
 use algorithms::types::{SecretBytes, Nonce};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
