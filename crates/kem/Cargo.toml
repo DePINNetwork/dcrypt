@@ -41,3 +41,40 @@ subtle = { version = "2.6.1", default-features = false }
 
 [dev-dependencies]
 rand_chacha = { workspace = true }
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "kyber"
+harness = false
+
+[[bench]]
+name = "ecdh_p192"
+harness = false
+
+[[bench]]
+name = "ecdh_p224"
+harness = false
+
+[[bench]]
+name = "ecdh_p256"
+harness = false
+
+[[bench]]
+name = "ecdh_p384"
+harness = false
+
+[[bench]]
+name = "ecdh_p521"
+harness = false
+
+[[bench]]
+name = "ecdh_k256"
+harness = false
+
+[[bench]]
+name = "ecdh_b283k"
+harness = false
+
+[[bench]]
+name = "ecdh_comparison"
+harness = false
