@@ -154,79 +154,83 @@ fn bench_ecdh_throughput_comparison(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-Throughput-Operations-per-Second");
     group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Logarithmic));
     
+    // Reduce sample size for long-running benchmarks
+    group.sample_size(10);
+    // Set a reasonable time limit
+    group.measurement_time(std::time::Duration::from_secs(20));
+    
     let mut rng = OsRng;
-    let iterations = 1000;
+    
+    // Use different iteration counts based on curve performance
+    let configs = [
+        ("P-192", 100),   // Fast curve, more iterations
+        ("P-224", 100),   // Fast curve, more iterations  
+        ("P-256", 100),   // Fast curve, more iterations
+        ("P-384", 50),    // Medium curve, fewer iterations
+        ("P-521", 20),    // Slower curve, fewer iterations
+        ("K-256", 10),    // Very slow curve, minimal iterations
+        ("B-283k", 5),    // Extremely slow curve, minimal iterations
+    ];
     
     // Benchmark operations per second for each curve
-    group.bench_function("P-192", |b| {
-        b.iter(|| {
-            for _ in 0..iterations {
-                let (pk, sk) = EcdhP192::keypair(&mut rng).unwrap();
-                let (ct, _) = EcdhP192::encapsulate(&mut rng, &pk).unwrap();
-                let _ = EcdhP192::decapsulate(&sk, &ct).unwrap();
-            }
+    for (curve_name, iterations) in configs {
+        group.bench_function(curve_name, |b| {
+            b.iter(|| {
+                match curve_name {
+                    "P-192" => {
+                        for _ in 0..iterations {
+                            let (pk, sk) = EcdhP192::keypair(&mut rng).unwrap();
+                            let (ct, _) = EcdhP192::encapsulate(&mut rng, &pk).unwrap();
+                            let _ = EcdhP192::decapsulate(&sk, &ct).unwrap();
+                        }
+                    },
+                    "P-224" => {
+                        for _ in 0..iterations {
+                            let (pk, sk) = EcdhP224::keypair(&mut rng).unwrap();
+                            let (ct, _) = EcdhP224::encapsulate(&mut rng, &pk).unwrap();
+                            let _ = EcdhP224::decapsulate(&sk, &ct).unwrap();
+                        }
+                    },
+                    "P-256" => {
+                        for _ in 0..iterations {
+                            let (pk, sk) = EcdhP256::keypair(&mut rng).unwrap();
+                            let (ct, _) = EcdhP256::encapsulate(&mut rng, &pk).unwrap();
+                            let _ = EcdhP256::decapsulate(&sk, &ct).unwrap();
+                        }
+                    },
+                    "P-384" => {
+                        for _ in 0..iterations {
+                            let (pk, sk) = EcdhP384::keypair(&mut rng).unwrap();
+                            let (ct, _) = EcdhP384::encapsulate(&mut rng, &pk).unwrap();
+                            let _ = EcdhP384::decapsulate(&sk, &ct).unwrap();
+                        }
+                    },
+                    "P-521" => {
+                        for _ in 0..iterations {
+                            let (pk, sk) = EcdhP521::keypair(&mut rng).unwrap();
+                            let (ct, _) = EcdhP521::encapsulate(&mut rng, &pk).unwrap();
+                            let _ = EcdhP521::decapsulate(&sk, &ct).unwrap();
+                        }
+                    },
+                    "K-256" => {
+                        for _ in 0..iterations {
+                            let (pk, sk) = EcdhK256::keypair(&mut rng).unwrap();
+                            let (ct, _) = EcdhK256::encapsulate(&mut rng, &pk).unwrap();
+                            let _ = EcdhK256::decapsulate(&sk, &ct).unwrap();
+                        }
+                    },
+                    "B-283k" => {
+                        for _ in 0..iterations {
+                            let (pk, sk) = EcdhB283k::keypair(&mut rng).unwrap();
+                            let (ct, _) = EcdhB283k::encapsulate(&mut rng, &pk).unwrap();
+                            let _ = EcdhB283k::decapsulate(&sk, &ct).unwrap();
+                        }
+                    },
+                    _ => unreachable!(),
+                }
+            });
         });
-    });
-    
-    group.bench_function("P-224", |b| {
-        b.iter(|| {
-            for _ in 0..iterations {
-                let (pk, sk) = EcdhP224::keypair(&mut rng).unwrap();
-                let (ct, _) = EcdhP224::encapsulate(&mut rng, &pk).unwrap();
-                let _ = EcdhP224::decapsulate(&sk, &ct).unwrap();
-            }
-        });
-    });
-    
-    group.bench_function("P-256", |b| {
-        b.iter(|| {
-            for _ in 0..iterations {
-                let (pk, sk) = EcdhP256::keypair(&mut rng).unwrap();
-                let (ct, _) = EcdhP256::encapsulate(&mut rng, &pk).unwrap();
-                let _ = EcdhP256::decapsulate(&sk, &ct).unwrap();
-            }
-        });
-    });
-    
-    group.bench_function("P-384", |b| {
-        b.iter(|| {
-            for _ in 0..iterations {
-                let (pk, sk) = EcdhP384::keypair(&mut rng).unwrap();
-                let (ct, _) = EcdhP384::encapsulate(&mut rng, &pk).unwrap();
-                let _ = EcdhP384::decapsulate(&sk, &ct).unwrap();
-            }
-        });
-    });
-    
-    group.bench_function("P-521", |b| {
-        b.iter(|| {
-            for _ in 0..iterations {
-                let (pk, sk) = EcdhP521::keypair(&mut rng).unwrap();
-                let (ct, _) = EcdhP521::encapsulate(&mut rng, &pk).unwrap();
-                let _ = EcdhP521::decapsulate(&sk, &ct).unwrap();
-            }
-        });
-    });
-    
-    group.bench_function("K-256", |b| {
-        b.iter(|| {
-            for _ in 0..iterations {
-                let (pk, sk) = EcdhK256::keypair(&mut rng).unwrap();
-                let (ct, _) = EcdhK256::encapsulate(&mut rng, &pk).unwrap();
-                let _ = EcdhK256::decapsulate(&sk, &ct).unwrap();
-            }
-        });
-    });
-    
-    group.bench_function("B-283k", |b| {
-        b.iter(|| {
-            for _ in 0..iterations {
-                let (pk, sk) = EcdhB283k::keypair(&mut rng).unwrap();
-                let (ct, _) = EcdhB283k::encapsulate(&mut rng, &pk).unwrap();
-                let _ = EcdhB283k::decapsulate(&sk, &ct).unwrap();
-            }
-        });
-    });
+    }
     
     group.finish();
 }

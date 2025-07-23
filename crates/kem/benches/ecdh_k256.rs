@@ -16,6 +16,9 @@ use rand_chacha::ChaCha20Rng;
 /// Benchmark key generation for ECDH-K256
 fn bench_keypair_generation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-K256/keypair");
+    // Set reasonable limits for slow operations
+    group.sample_size(20);
+    group.measurement_time(std::time::Duration::from_secs(10));
     
     // Benchmark with OsRng (system randomness)
     group.bench_function("OsRng", |b| {
@@ -41,6 +44,9 @@ fn bench_keypair_generation(c: &mut Criterion) {
 /// Benchmark encapsulation for ECDH-K256
 fn bench_encapsulation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-K256/encapsulate");
+    group.sample_size(20);
+    group.measurement_time(std::time::Duration::from_secs(10));
+    
     let mut rng = ChaCha20Rng::from_seed([1u8; 32]);
     
     // Generate a recipient keypair for benchmarking
@@ -74,11 +80,14 @@ fn bench_encapsulation(c: &mut Criterion) {
 /// Benchmark decapsulation for ECDH-K256
 fn bench_decapsulation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-K256/decapsulate");
+    group.sample_size(20);
+    group.measurement_time(std::time::Duration::from_secs(10));
+    
     let mut rng = ChaCha20Rng::from_seed([2u8; 32]);
     
     // Generate recipient keypair and pre-compute ciphertexts
     let (recipient_pk, recipient_sk) = EcdhK256::keypair(&mut rng).unwrap();
-    let ciphertexts: Vec<_> = (0..100)
+    let ciphertexts: Vec<_> = (0..10)
         .map(|_| {
             let (ct, _) = EcdhK256::encapsulate(&mut rng, &recipient_pk).unwrap();
             ct
@@ -113,6 +122,8 @@ fn bench_decapsulation(c: &mut Criterion) {
 /// Benchmark full roundtrip (keypair + encapsulate + decapsulate)
 fn bench_full_roundtrip(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-K256/roundtrip");
+    group.sample_size(10);
+    group.measurement_time(std::time::Duration::from_secs(15));
     
     group.bench_function("complete", |b| {
         let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
@@ -152,10 +163,13 @@ fn bench_full_roundtrip(c: &mut Criterion) {
 /// Benchmark batch operations for ECDH-K256
 fn bench_batch_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-K256/batch");
+    group.sample_size(10);
+    group.measurement_time(std::time::Duration::from_secs(20));
+    
     let mut rng = ChaCha20Rng::from_seed([5u8; 32]);
     
-    // Benchmark batch key generation
-    for batch_size in [10, 100, 1000] {
+    // Benchmark batch key generation - reduced batch sizes
+    for batch_size in [5, 10, 25] {
         group.bench_with_input(
             BenchmarkId::new("keypair_generation", batch_size),
             &batch_size,
@@ -173,7 +187,7 @@ fn bench_batch_operations(c: &mut Criterion) {
     // Benchmark batch encapsulation
     let (recipient_pk, _) = EcdhK256::keypair(&mut rng).unwrap();
     
-    for batch_size in [10, 100, 1000] {
+    for batch_size in [5, 10, 25] {
         group.bench_with_input(
             BenchmarkId::new("encapsulation", batch_size),
             &batch_size,
@@ -194,6 +208,8 @@ fn bench_batch_operations(c: &mut Criterion) {
 /// Benchmark memory allocation patterns
 fn bench_memory_patterns(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-K256/memory");
+    group.sample_size(10);
+    
     let mut rng = ChaCha20Rng::from_seed([6u8; 32]);
     
     // Benchmark allocation/deallocation patterns
@@ -212,17 +228,17 @@ fn bench_memory_patterns(c: &mut Criterion) {
         });
     });
     
-    // Benchmark with reused allocations
+    // Benchmark with reused allocations - reduced size
     group.bench_function("reused_allocations", |b| {
         let (recipient_pk, recipient_sk) = EcdhK256::keypair(&mut rng).unwrap();
-        let mut ciphertexts = Vec::with_capacity(100);
-        let mut shared_secrets = Vec::with_capacity(100);
+        let mut ciphertexts = Vec::with_capacity(10);
+        let mut shared_secrets = Vec::with_capacity(10);
         
         b.iter(|| {
             ciphertexts.clear();
             shared_secrets.clear();
             
-            for _ in 0..10 {
+            for _ in 0..5 {
                 let (ct, ss) = EcdhK256::encapsulate(&mut rng, &recipient_pk).unwrap();
                 ciphertexts.push(ct);
                 shared_secrets.push(ss);

@@ -37,7 +37,11 @@ rand = { workspace = true }
 serde = { workspace = true, optional = true }
 subtle = "2.5"
 
-
 [dev-dependencies]
 rand_chacha = { workspace = true }
 hex = "0.4"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "dilithium"
+harness = false

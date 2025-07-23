@@ -13,6 +13,9 @@ use rand::rngs::OsRng;
 /// Benchmark key pair generation for ECDH-B283k
 fn bench_keypair_generation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ecdh_b283k_keypair");
+    // Reduce sample size for this slow operation
+    group.sample_size(10);
+    group.measurement_time(std::time::Duration::from_secs(10));
     
     group.bench_function("generate", |b| {
         let mut rng = OsRng;
@@ -28,6 +31,9 @@ fn bench_keypair_generation(c: &mut Criterion) {
 /// Benchmark encapsulation operation for ECDH-B283k
 fn bench_encapsulation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ecdh_b283k_encapsulate");
+    group.sample_size(10);
+    group.measurement_time(std::time::Duration::from_secs(15));
+    
     let mut rng = OsRng;
     
     // Generate a recipient keypair for benchmarking
@@ -49,6 +55,9 @@ fn bench_encapsulation(c: &mut Criterion) {
 /// Benchmark decapsulation operation for ECDH-B283k
 fn bench_decapsulation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ecdh_b283k_decapsulate");
+    group.sample_size(10);
+    group.measurement_time(std::time::Duration::from_secs(15));
+    
     let mut rng = OsRng;
     
     // Generate recipient keypair and create a ciphertext
@@ -71,6 +80,8 @@ fn bench_decapsulation(c: &mut Criterion) {
 /// Benchmark complete KEM flow (keypair + encapsulate + decapsulate)
 fn bench_complete_flow(c: &mut Criterion) {
     let mut group = c.benchmark_group("ecdh_b283k_complete");
+    group.sample_size(10);
+    group.measurement_time(std::time::Duration::from_secs(20));
     
     group.bench_function("full_kem_flow", |b| {
         let mut rng = OsRng;
@@ -98,12 +109,16 @@ fn bench_complete_flow(c: &mut Criterion) {
 /// Benchmark multiple encapsulations with the same public key
 fn bench_multiple_encapsulations(c: &mut Criterion) {
     let mut group = c.benchmark_group("ecdh_b283k_multi_encap");
+    group.sample_size(10);
+    group.measurement_time(std::time::Duration::from_secs(20));
+    
     let mut rng = OsRng;
     
     // Generate a single recipient keypair
     let (recipient_pk, _) = EcdhB283k::keypair(&mut rng).expect("Keypair generation failed");
     
-    for count in [10, 100, 1000].iter() {
+    // Only test small batch sizes for this very slow curve
+    for count in [2, 5, 10].iter() {
         group.bench_with_input(
             BenchmarkId::from_parameter(count),
             count,
@@ -175,6 +190,8 @@ fn bench_serialization(c: &mut Criterion) {
 /// Compare B283k performance characteristics
 fn bench_performance_characteristics(c: &mut Criterion) {
     let mut group = c.benchmark_group("ecdh_b283k_characteristics");
+    group.sample_size(10);
+    
     let mut rng = OsRng;
     
     // Measure the cost of shared secret validation (identity point checks)
@@ -209,13 +226,16 @@ fn bench_performance_characteristics(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark parallel operations (if running with multiple threads)
+/// Benchmark parallel operations (if running with multiple threads) - simplified for B283k
 fn bench_parallel_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("ecdh_b283k_parallel");
+    group.sample_size(10);
+    group.measurement_time(std::time::Duration::from_secs(20));
+    
     let mut rng = OsRng;
     
-    // Generate multiple keypairs for parallel testing
-    let keypairs: Vec<_> = (0..10)
+    // Generate fewer keypairs for this slow curve
+    let keypairs: Vec<_> = (0..5)
         .map(|_| EcdhB283k::keypair(&mut rng).expect("Keypair generation failed"))
         .collect();
     

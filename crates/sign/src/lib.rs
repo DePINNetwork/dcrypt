@@ -12,7 +12,6 @@ pub mod error;
 // Re-exports from traditional schemes
 pub use traditional::eddsa::Ed25519;
 pub use traditional::ecdsa::{EcdsaP192, EcdsaP256, EcdsaP384, EcdsaP521};
-pub use traditional::dsa::Dsa;
 
 // Re-exports from post-quantum schemes
 pub use pq::dilithium::{Dilithium2, Dilithium3, Dilithium5};
