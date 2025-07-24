@@ -3,7 +3,7 @@
 //! Benchmarks for Kyber Key Encapsulation Mechanisms
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use kem::kyber::{Kyber512, Kyber768, Kyber1024};
+use dcrypt_kem::kyber::{Kyber512, Kyber768, Kyber1024};
 use dcrypt_api::Kem;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;

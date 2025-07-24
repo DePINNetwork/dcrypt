@@ -6,13 +6,13 @@ use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 
 // Import all ECDH implementations
-use kem::ecdh::p192::EcdhP192;
-use kem::ecdh::p224::EcdhP224;
-use kem::ecdh::p256::EcdhP256;
-use kem::ecdh::p384::EcdhP384;
-use kem::ecdh::p521::EcdhP521;
-use kem::ecdh::k256::EcdhK256;
-use kem::ecdh::b283k::EcdhB283k;
+use dcrypt_kem::ecdh::p192::EcdhP192;
+use dcrypt_kem::ecdh::p224::EcdhP224;
+use dcrypt_kem::ecdh::p256::EcdhP256;
+use dcrypt_kem::ecdh::p384::EcdhP384;
+use dcrypt_kem::ecdh::p521::EcdhP521;
+use dcrypt_kem::ecdh::k256::EcdhK256;
+use dcrypt_kem::ecdh::b283k::EcdhB283k;
 
 fn bench_ecdh_keypair_comparison(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-Keypair-Comparison");

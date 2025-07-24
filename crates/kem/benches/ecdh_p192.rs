@@ -2,7 +2,7 @@
 //! Benchmarks for ECDH-P192 KEM operations
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use kem::ecdh::p192::{EcdhP192, EcdhP192PublicKey, EcdhP192SecretKey, EcdhP192Ciphertext};
+use dcrypt_kem::ecdh::p192::{EcdhP192, EcdhP192PublicKey, EcdhP192SecretKey, EcdhP192Ciphertext};
 use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 use rand::SeedableRng;

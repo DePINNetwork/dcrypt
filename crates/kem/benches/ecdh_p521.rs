@@ -2,7 +2,7 @@
 //! Benchmarks for ECDH-KEM with P-521 curve
 
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
-use kem::ecdh::p521::{EcdhP521, EcdhP521PublicKey, EcdhP521SecretKey};
+use dcrypt_kem::ecdh::p521::{EcdhP521, EcdhP521PublicKey, EcdhP521SecretKey};
 use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 

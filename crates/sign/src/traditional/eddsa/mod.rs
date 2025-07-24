@@ -14,11 +14,11 @@
 //! # Example
 //!
 //! ```
-//! use sign::traditional::eddsa::Ed25519;
+//! use dcrypt_sign::traditional::eddsa::Ed25519;
 //! use dcrypt_api::Signature;
 //! use rand::rngs::OsRng;
 //!
-//! # fn main() -> api::Result<()> {
+//! # fn main() -> dcrypt_api::Result<()> {
 //! let mut rng = OsRng;
 //! let (public_key, secret_key) = Ed25519::keypair(&mut rng)?;
 //! 

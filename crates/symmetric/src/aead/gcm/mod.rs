@@ -7,10 +7,10 @@
 //! # Examples
 //!
 //! ```
-//! use symmetric::{Aes128Gcm, GcmNonce}; // Corrected
-//! use symmetric::Aes128Key;            // Corrected
-//! use symmetric::{SymmetricCipher, Aead}; // Corrected
-//! use symmetric::Result;                 // Corrected
+//! use dcrypt_symmetric::{Aes128Gcm, GcmNonce}; // Corrected
+//! use dcrypt_symmetric::Aes128Key;            // Corrected
+//! use dcrypt_symmetric::{SymmetricCipher, Aead}; // Corrected
+//! use dcrypt_symmetric::Result;                 // Corrected
 //!
 //! // Example function that handles errors properly
 //! fn example() -> Result<()> {

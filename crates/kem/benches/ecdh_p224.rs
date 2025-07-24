@@ -2,7 +2,7 @@
 //! Benchmarks for ECDH-P224 KEM operations
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BatchSize};
-use kem::ecdh::p224::{EcdhP224, EcdhP224PublicKey, EcdhP224SecretKey, EcdhP224Ciphertext};
+use dcrypt_kem::ecdh::p224::{EcdhP224, EcdhP224PublicKey, EcdhP224SecretKey, EcdhP224Ciphertext};
 use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 

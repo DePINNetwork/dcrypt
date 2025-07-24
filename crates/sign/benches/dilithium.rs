@@ -4,7 +4,7 @@
 //! across key generation, signing, and verification operations with various message sizes.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use sign::pq::dilithium::{Dilithium2, Dilithium3, Dilithium5};
+use dcrypt_sign::pq::dilithium::{Dilithium2, Dilithium3, Dilithium5};
 use dcrypt_api::Signature;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -212,21 +212,21 @@ fn bench_serialization(c: &mut Criterion) {
     // Benchmark public key deserialization
     group.bench_function("dilithium2_pk_deserialize", |b| {
         b.iter(|| {
-            use sign::pq::dilithium::DilithiumPublicKey;
+            use dcrypt_sign::pq::dilithium::DilithiumPublicKey;
             let _ = black_box(DilithiumPublicKey::from_bytes(&pk2_bytes).unwrap());
         });
     });
     
     group.bench_function("dilithium3_pk_deserialize", |b| {
         b.iter(|| {
-            use sign::pq::dilithium::DilithiumPublicKey;
+            use dcrypt_sign::pq::dilithium::DilithiumPublicKey;
             let _ = black_box(DilithiumPublicKey::from_bytes(&pk3_bytes).unwrap());
         });
     });
     
     group.bench_function("dilithium5_pk_deserialize", |b| {
         b.iter(|| {
-            use sign::pq::dilithium::DilithiumPublicKey;
+            use dcrypt_sign::pq::dilithium::DilithiumPublicKey;
             let _ = black_box(DilithiumPublicKey::from_bytes(&pk5_bytes).unwrap());
         });
     });
@@ -234,21 +234,21 @@ fn bench_serialization(c: &mut Criterion) {
     // Benchmark secret key deserialization
     group.bench_function("dilithium2_sk_deserialize", |b| {
         b.iter(|| {
-            use sign::pq::dilithium::DilithiumSecretKey;
+            use dcrypt_sign::pq::dilithium::DilithiumSecretKey;
             let _ = black_box(DilithiumSecretKey::from_bytes(&sk2_bytes).unwrap());
         });
     });
     
     group.bench_function("dilithium3_sk_deserialize", |b| {
         b.iter(|| {
-            use sign::pq::dilithium::DilithiumSecretKey;
+            use dcrypt_sign::pq::dilithium::DilithiumSecretKey;
             let _ = black_box(DilithiumSecretKey::from_bytes(&sk3_bytes).unwrap());
         });
     });
     
     group.bench_function("dilithium5_sk_deserialize", |b| {
         b.iter(|| {
-            use sign::pq::dilithium::DilithiumSecretKey;
+            use dcrypt_sign::pq::dilithium::DilithiumSecretKey;
             let _ = black_box(DilithiumSecretKey::from_bytes(&sk5_bytes).unwrap());
         });
     });
@@ -256,21 +256,21 @@ fn bench_serialization(c: &mut Criterion) {
     // Benchmark signature deserialization
     group.bench_function("dilithium2_sig_deserialize", |b| {
         b.iter(|| {
-            use sign::pq::dilithium::DilithiumSignatureData;
+            use dcrypt_sign::pq::dilithium::DilithiumSignatureData;
             let _ = black_box(DilithiumSignatureData::from_bytes(&sig2_bytes).unwrap());
         });
     });
     
     group.bench_function("dilithium3_sig_deserialize", |b| {
         b.iter(|| {
-            use sign::pq::dilithium::DilithiumSignatureData;
+            use dcrypt_sign::pq::dilithium::DilithiumSignatureData;
             let _ = black_box(DilithiumSignatureData::from_bytes(&sig3_bytes).unwrap());
         });
     });
     
     group.bench_function("dilithium5_sig_deserialize", |b| {
         b.iter(|| {
-            use sign::pq::dilithium::DilithiumSignatureData;
+            use dcrypt_sign::pq::dilithium::DilithiumSignatureData;
             let _ = black_box(DilithiumSignatureData::from_bytes(&sig5_bytes).unwrap());
         });
     });

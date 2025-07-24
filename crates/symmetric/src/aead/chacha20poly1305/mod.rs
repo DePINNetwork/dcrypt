@@ -7,9 +7,9 @@
 //! # Examples
 //!
 //! ```
-//! use symmetric::{ChaCha20Poly1305Cipher, ChaCha20Poly1305Key}; // Corrected
-//! use symmetric::{SymmetricCipher, Aead}; // Corrected
-//! use symmetric::Result; // Corrected
+//! use dcrypt_symmetric::{ChaCha20Poly1305Cipher, ChaCha20Poly1305Key}; // Corrected
+//! use dcrypt_symmetric::{SymmetricCipher, Aead}; // Corrected
+//! use dcrypt_symmetric::Result; // Corrected
 //!
 //! // Function demonstrating proper error handling
 //! fn encrypt_decrypt_example() -> Result<()> {
@@ -38,8 +38,8 @@
 //! ## Key Derivation
 //!
 //! ```
-//! use symmetric::{derive_chacha20poly1305_key, generate_salt}; // Corrected
-//! use symmetric::Result; // Corrected
+//! use dcrypt_symmetric::{derive_chacha20poly1305_key, generate_salt}; // Corrected
+//! use dcrypt_symmetric::Result; // Corrected
 //!
 //! fn key_derivation_example() -> Result<()> {
 //!     let password = b"my secure password";
@@ -56,10 +56,10 @@
 //! ## Encrypted Package Format
 //!
 //! ```
-//! use symmetric::{ChaCha20Poly1305Cipher, ChaCha20Poly1305Key, 
+//! use dcrypt_symmetric::{ChaCha20Poly1305Cipher, ChaCha20Poly1305Key, 
 //!     ChaCha20Poly1305CiphertextPackage}; // Corrected
-//! use symmetric::{SymmetricCipher, Aead}; // Corrected
-//! use symmetric::Result; // Corrected
+//! use dcrypt_symmetric::{SymmetricCipher, Aead}; // Corrected
+//! use dcrypt_symmetric::Result; // Corrected
 //!
 //! fn package_example() -> Result<()> {
 //!     // Generate a random key
@@ -89,12 +89,12 @@
 //! For streaming encryption of large data, see the `streaming::chacha20poly1305` module.
 //! ```
 //! use std::io::Cursor;
-//! use symmetric::ChaCha20Poly1305Key; // Corrected
-//! use symmetric::streaming::{StreamingEncrypt, StreamingDecrypt}; // Corrected
-//! use symmetric::streaming::chacha20poly1305::{ // Corrected
+//! use dcrypt_symmetric::ChaCha20Poly1305Key; // Corrected
+//! use dcrypt_symmetric::streaming::{StreamingEncrypt, StreamingDecrypt}; // Corrected
+//! use dcrypt_symmetric::streaming::chacha20poly1305::{ // Corrected
 //!     ChaCha20Poly1305EncryptStream, ChaCha20Poly1305DecryptStream
 //! };
-//! use symmetric::Result; // Corrected
+//! use dcrypt_symmetric::Result; // Corrected
 //!
 //! fn streaming_example() -> Result<()> {
 //!     // Generate a random key

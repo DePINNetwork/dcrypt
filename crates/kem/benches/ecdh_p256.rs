@@ -8,7 +8,7 @@
 //! - Full round-trip operations
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use kem::ecdh::p256::EcdhP256;
+use dcrypt_kem::ecdh::p256::EcdhP256;
 use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 use rand::SeedableRng;
