@@ -32,9 +32,9 @@ thiserror = { workspace = true, optional = true }
 
 [features]
 default = ["std"]
-std = ["rand/std", "algorithms/std", "symmetric/std", "kem/std", "sign/std", "pke/std"]
-alloc = ["algorithms/alloc", "symmetric/alloc", "kem/alloc", "sign/alloc", "pke/alloc"]
-serde = ["dep:serde", "algorithms/serde", "symmetric/serde", "kem/serde", "sign/serde", "pke/serde"]
+std = ["rand?/std"]  # Use ? to make it optional
+alloc = []
+serde = ["dep:serde", "dep:thiserror"]
 full = ["std", "alloc", "serde"]
 
 # Your existing workspace configuration stays exactly the same
