@@ -1,69 +1,79 @@
 //! ACVP handlers for AES-GCM mode
 
-use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
-use dcrypt_algorithms::block::aes::{Aes128, Aes192, Aes256};
+use crate::suites::acvp::model::{TestCase, TestGroup};
+use arrayref::array_ref;
 use dcrypt_algorithms::aead::gcm::Gcm;
+use dcrypt_algorithms::block::aes::{Aes128, Aes192, Aes256};
 use dcrypt_algorithms::block::BlockCipher;
 use dcrypt_algorithms::types::{Nonce, SecretBytes};
-use arrayref::array_ref;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
-use super::super::dispatcher::{insert, HandlerFn, DispatchKey};
+use super::super::dispatcher::{insert, DispatchKey, HandlerFn};
 
 /// Extract tag length from test case (ACVP provides it in bits)
 fn get_tag_length(case: &TestCase, group: &TestGroup) -> Result<usize> {
     // Look for tagLen in case inputs first, then group defaults
-    let tag_len_bits = case.inputs.get("tagLen")
+    let tag_len_bits = case
+        .inputs
+        .get("tagLen")
         .or_else(|| group.defaults.get("tagLen"))
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField("tagLen"))?
         .parse::<usize>()
         .map_err(|_| EngineError::InvalidData("Invalid tagLen".into()))?;
-    
+
     // Convert from bits to bytes
     if tag_len_bits % 8 != 0 {
-        return Err(EngineError::InvalidData(
-            format!("Tag length must be a multiple of 8 bits, got {}", tag_len_bits)
-        ));
+        return Err(EngineError::InvalidData(format!(
+            "Tag length must be a multiple of 8 bits, got {}",
+            tag_len_bits
+        )));
     }
-    
+
     let tag_len_bytes = tag_len_bits / 8;
     if tag_len_bytes < 1 || tag_len_bytes > 16 {
-        return Err(EngineError::InvalidData(
-            format!("Tag length must be between 8 and 128 bits, got {}", tag_len_bits)
-        ));
+        return Err(EngineError::InvalidData(format!(
+            "Tag length must be between 8 and 128 bits, got {}",
+            tag_len_bits
+        )));
     }
-    
+
     Ok(tag_len_bytes)
 }
 
 /// Standard AES-GCM AFT encrypt
 pub(crate) fn aes_gcm_encrypt(group: &TestGroup, case: &TestCase) -> Result<()> {
     // Get inputs
-    let key_hex = case.inputs.get("key")
+    let key_hex = case
+        .inputs
+        .get("key")
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField("key"))?;
-    let iv_hex = case.inputs.get("iv")
+    let iv_hex = case
+        .inputs
+        .get("iv")
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField("iv"))?;
-    let plaintext_hex = case.inputs.get("pt")
+    let plaintext_hex = case
+        .inputs
+        .get("pt")
         .or_else(|| case.inputs.get("plainText"))
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField("pt"))?;
-    
+
     // AAD is optional
-    let aad_hex = case.inputs.get("aad")
-        .map(|v| v.as_string());
-    
+    let aad_hex = case.inputs.get("aad").map(|v| v.as_string());
+
     // Expected outputs (optional for generation)
-    let expected_ct_hex = case.inputs.get("ct")
+    let expected_ct_hex = case
+        .inputs
+        .get("ct")
         .or_else(|| case.inputs.get("cipherText"))
         .map(|v| v.as_string());
-    let expected_tag_hex = case.inputs.get("tag")
-        .map(|v| v.as_string());
-    
+    let expected_tag_hex = case.inputs.get("tag").map(|v| v.as_string());
+
     // Decode hex values
     let mut key_bytes = hex::decode(&key_hex)?;
     let iv_bytes = hex::decode(&iv_hex)?;
@@ -73,10 +83,10 @@ pub(crate) fn aes_gcm_encrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
     } else {
         Vec::new()
     };
-    
+
     // Get tag length
     let tag_len = get_tag_length(case, group)?;
-    
+
     // Perform encryption based on key size AND IV length
     let result = match (key_bytes.len(), iv_bytes.len()) {
         // 128-bit key with 96-bit IV
@@ -133,17 +143,20 @@ pub(crate) fn aes_gcm_encrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
             let gcm = Gcm::new_with_tag_len(cipher, &nonce, tag_len)?;
             gcm.internal_encrypt(&plaintext, Some(&aad))?
         }
-        (_, iv_len) => return Err(EngineError::InvalidData(
-            format!("Unsupported IV length for GCM: {} bytes", iv_len)
-        )),
+        (_, iv_len) => {
+            return Err(EngineError::InvalidData(format!(
+                "Unsupported IV length for GCM: {} bytes",
+                iv_len
+            )))
+        }
     };
-    
+
     // Zeroize sensitive data
     key_bytes.zeroize();
-    
+
     // Split result into ciphertext and tag
     let (ciphertext, tag) = result.split_at(result.len() - tag_len);
-    
+
     // Check results if expected values were provided
     if let Some(exp_ct_hex) = expected_ct_hex {
         let expected_ct = hex::decode(&exp_ct_hex)?;
@@ -155,9 +168,11 @@ pub(crate) fn aes_gcm_encrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
         }
     } else {
         // Store ciphertext for response generation
-        case.outputs.borrow_mut().insert("ct".into(), hex::encode(ciphertext));
+        case.outputs
+            .borrow_mut()
+            .insert("ct".into(), hex::encode(ciphertext));
     }
-    
+
     if let Some(exp_tag_hex) = expected_tag_hex {
         let expected_tag = hex::decode(&exp_tag_hex)?;
         if tag.ct_eq(&expected_tag).unwrap_u8() != 1 {
@@ -168,9 +183,11 @@ pub(crate) fn aes_gcm_encrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
         }
     } else {
         // Store tag for response generation
-        case.outputs.borrow_mut().insert("tag".into(), hex::encode(tag));
+        case.outputs
+            .borrow_mut()
+            .insert("tag".into(), hex::encode(tag));
     }
-    
+
     Ok(())
 }
 
@@ -190,34 +207,45 @@ fn lookup<'a>(case: &'a TestCase, group: &'a TestGroup, names: &[&str]) -> Optio
 /// Standard AES-GCM AFT decrypt
 pub(crate) fn aes_gcm_decrypt(group: &TestGroup, case: &TestCase) -> Result<()> {
     // Get inputs
-    let key_hex = case.inputs.get("key")
+    let key_hex = case
+        .inputs
+        .get("key")
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField("key"))?;
-    let iv_hex = case.inputs.get("iv")
+    let iv_hex = case
+        .inputs
+        .get("iv")
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField("iv"))?;
-    let ciphertext_hex = case.inputs.get("ct")
+    let ciphertext_hex = case
+        .inputs
+        .get("ct")
         .or_else(|| case.inputs.get("cipherText"))
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField("ct"))?;
-    let tag_hex = case.inputs.get("tag")
+    let tag_hex = case
+        .inputs
+        .get("tag")
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField("tag"))?;
-    
+
     // AAD is optional
-    let aad_hex = case.inputs.get("aad")
-        .map(|v| v.as_string());
-    
+    let aad_hex = case.inputs.get("aad").map(|v| v.as_string());
+
     // Expected plaintext (optional)
-    let expected_pt_hex = case.inputs.get("pt")
+    let expected_pt_hex = case
+        .inputs
+        .get("pt")
         .or_else(|| case.inputs.get("plainText"))
         .map(|v| v.as_string());
-    
+
     // For decryption tests, ACVP might include a "fail" flag
-    let should_fail = case.inputs.get("fail")
+    let should_fail = case
+        .inputs
+        .get("fail")
         .map(|v| v.as_string() == "true")
         .unwrap_or(false);
-    
+
     // Decode hex values
     let mut key_bytes = hex::decode(&key_hex)?;
     let iv_bytes = hex::decode(&iv_hex)?;
@@ -228,14 +256,14 @@ pub(crate) fn aes_gcm_decrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
     } else {
         Vec::new()
     };
-    
+
     // Get tag length from the tag itself
     let tag_len = tag.len();
-    
+
     // Combine ciphertext and tag for decryption
     let mut combined = ciphertext.clone();
     combined.extend_from_slice(&tag);
-    
+
     // Perform decryption based on key size AND IV length
     let decrypt_result = match (key_bytes.len(), iv_bytes.len()) {
         // 128-bit key with 96-bit IV
@@ -292,14 +320,17 @@ pub(crate) fn aes_gcm_decrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
             let gcm = Gcm::new_with_tag_len(cipher, &nonce, tag_len)?;
             gcm.internal_decrypt(&combined, Some(&aad))
         }
-        (_, iv_len) => return Err(EngineError::InvalidData(
-            format!("Unsupported IV length for GCM: {} bytes", iv_len)
-        )),
+        (_, iv_len) => {
+            return Err(EngineError::InvalidData(format!(
+                "Unsupported IV length for GCM: {} bytes",
+                iv_len
+            )))
+        }
     };
-    
+
     // Zeroize sensitive data
     key_bytes.zeroize();
-    
+
     // Handle the result based on whether we expect failure
     match (decrypt_result, should_fail) {
         (Ok(plaintext), false) => {
@@ -314,14 +345,18 @@ pub(crate) fn aes_gcm_decrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
                 }
             } else {
                 // Store plaintext for response generation
-                case.outputs.borrow_mut().insert("pt".into(), hex::encode(&plaintext));
+                case.outputs
+                    .borrow_mut()
+                    .insert("pt".into(), hex::encode(&plaintext));
             }
             Ok(())
         }
         (Err(_), true) => {
             // Failed decryption when expected (authentication failure)
             // This is a pass - the implementation correctly rejected invalid data
-            case.outputs.borrow_mut().insert("testPassed".into(), "true".into());
+            case.outputs
+                .borrow_mut()
+                .insert("testPassed".into(), "true".into());
             Ok(())
         }
         (Ok(_), true) => {
@@ -335,7 +370,9 @@ pub(crate) fn aes_gcm_decrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
             // Failed decryption when success was expected
             // For ACVP, some test cases are expected to fail authentication
             // These should be marked as testPassed = false, not errors
-            case.outputs.borrow_mut().insert("testPassed".into(), "false".into());
+            case.outputs
+                .borrow_mut()
+                .insert("testPassed".into(), "false".into());
             Ok(())
         }
     }

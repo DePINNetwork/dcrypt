@@ -5,11 +5,11 @@
 
 use core::fmt;
 use core::ops::{Deref, DerefMut};
-use zeroize::Zeroize;
 use hex;
+use zeroize::Zeroize;
 
 use crate::error::{Error, Result};
-use crate::types::{ConstantTimeEq, SecureZeroingType, FixedSize, ByteSerializable};
+use crate::types::{ByteSerializable, ConstantTimeEq, FixedSize, SecureZeroingType};
 
 /// A cryptographic digest with a fixed size
 #[derive(Clone, Zeroize)]
@@ -23,7 +23,7 @@ impl<const N: usize> Digest<N> {
     pub fn new(data: [u8; N]) -> Self {
         Self { data, len: N }
     }
-    
+
     /// Create a new digest with a specified logical length
     /// This is particularly useful for hash functions with variable output size
     pub fn with_len(data: [u8; N], len: usize) -> Self {
@@ -32,7 +32,7 @@ impl<const N: usize> Digest<N> {
         }
         Self { data, len }
     }
-    
+
     /// Create from a slice, if it has the correct length
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
         // Using custom check since we allow slices smaller than N
@@ -43,34 +43,36 @@ impl<const N: usize> Digest<N> {
                 actual: slice.len(),
             });
         }
-        
+
         let mut data = [0u8; N];
         data[..slice.len()].copy_from_slice(slice);
-        
-        Ok(Self { data, len: slice.len() })
+
+        Ok(Self {
+            data,
+            len: slice.len(),
+        })
     }
-    
+
     /// Get the length of the digest
     pub fn len(&self) -> usize {
         self.len
     }
-    
+
     /// Check if the digest is empty
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
-    
+
     /// Convert to a hexadecimal string
     pub fn to_hex(&self) -> String {
         hex::encode(&self.data[..self.len])
     }
-    
+
     /// Create from a hexadecimal string
     pub fn from_hex(hex_str: &str) -> Result<Self> {
-        let bytes = hex::decode(hex_str).map_err(|_| {
-            Error::param("hex_str", "Invalid hexadecimal string")
-        })?;
-        
+        let bytes = hex::decode(hex_str)
+            .map_err(|_| Error::param("hex_str", "Invalid hexadecimal string"))?;
+
         Self::from_slice(&bytes)
     }
 }
@@ -89,7 +91,7 @@ impl<const N: usize> AsMut<[u8]> for Digest<N> {
 
 impl<const N: usize> Deref for Digest<N> {
     type Target = [u8];
-    
+
     fn deref(&self) -> &Self::Target {
         &self.data[..self.len]
     }
@@ -132,7 +134,10 @@ impl<const N: usize> ConstantTimeEq for Digest<N> {
 
 impl<const N: usize> SecureZeroingType for Digest<N> {
     fn zeroed() -> Self {
-        Self { data: [0u8; N], len: N }
+        Self {
+            data: [0u8; N],
+            len: N,
+        }
     }
 }
 
@@ -146,7 +151,7 @@ impl<const N: usize> ByteSerializable for Digest<N> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data[..self.len].to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::from_slice(bytes)
     }

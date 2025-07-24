@@ -1,10 +1,10 @@
 //! P-192 scalar arithmetic operations
 
 use crate::ec::p192::constants::P192_SCALAR_SIZE;
-use crate::error::{Error, Result, validate};
+use crate::error::{validate, Error, Result};
 use dcrypt_common::security::SecretBuffer;
-use zeroize::{Zeroize, ZeroizeOnDrop};
 use dcrypt_params::traditional::ecdsa::NIST_P192;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// P-192 scalar: integers mod n, where
 /// n = 0xFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF (curve order).
@@ -134,7 +134,7 @@ impl Scalar {
     pub fn mul_mod_n(&self, other: &Self) -> Result<Self> {
         let mut acc = Self::from_bytes_unchecked([0u8; 24]);
         let self_val = self.clone();
-        
+
         for &byte in other.serialize().iter() {
             for i in (0..8).rev() {
                 acc = acc.add_mod_n(&acc)?; // Double
@@ -151,15 +151,14 @@ impl Scalar {
         if self.is_zero() {
             return Err(Error::param("P-192 Scalar", "Inverse of zero"));
         }
-        
+
         // P-192 curve order n = FFFFFFFFFFFFFFFFFFFFFFFF99DEF836146BC9B1B4D22831
         // n-2 = FFFFFFFFFFFFFFFFFFFFFFFF99DEF836146BC9B1B4D2282F
         const N_MINUS_2: [u8; 24] = [
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0x99, 0xDE, 0xF8, 0x36,
-            0x14, 0x6B, 0xC9, 0xB1, 0xB4, 0xD2, 0x28, 0x2F,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x99, 0xDE,
+            0xF8, 0x36, 0x14, 0x6B, 0xC9, 0xB1, 0xB4, 0xD2, 0x28, 0x2F,
         ];
-        
+
         // Binary exponentiation
         let mut result = {
             let mut one = [0u8; 24];
@@ -167,7 +166,7 @@ impl Scalar {
             Scalar::from_bytes_unchecked(one)
         };
         let base = self.clone();
-        
+
         for &byte in N_MINUS_2.iter() {
             for i in (0..8).rev() {
                 result = result.mul_mod_n(&result)?; // Square
@@ -176,7 +175,7 @@ impl Scalar {
                 }
             }
         }
-        
+
         Ok(result)
     }
 
@@ -270,10 +269,6 @@ impl Scalar {
     /// n = FFFFFFFFFFFFFFFFFFFFFFFF99DEF836146BC9B1B4D22831
     const N_LIMBS: [u32; 6] = [
         0xB4D22831, // least significant 32 bits
-        0x146BC9B1,
-        0x99DEF836,
-        0xFFFFFFFF,
-        0xFFFFFFFF,
-        0xFFFFFFFF, // most significant
+        0x146BC9B1, 0x99DEF836, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, // most significant
     ];
 }

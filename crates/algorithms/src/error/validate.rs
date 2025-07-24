@@ -15,7 +15,11 @@ pub fn parameter(condition: bool, name: &'static str, reason: &'static str) -> R
 #[inline(always)]
 pub fn length(context: &'static str, actual: usize, expected: usize) -> Result<()> {
     if actual != expected {
-        return Err(Error::Length { context, expected, actual });
+        return Err(Error::Length {
+            context,
+            expected,
+            actual,
+        });
     }
     Ok(())
 }
@@ -24,10 +28,10 @@ pub fn length(context: &'static str, actual: usize, expected: usize) -> Result<(
 #[inline(always)]
 pub fn min_length(context: &'static str, actual: usize, min: usize) -> Result<()> {
     if actual < min {
-        return Err(Error::Length { 
-            context, 
-            expected: min, 
-            actual 
+        return Err(Error::Length {
+            context,
+            expected: min,
+            actual,
         });
     }
     Ok(())
@@ -37,10 +41,10 @@ pub fn min_length(context: &'static str, actual: usize, min: usize) -> Result<()
 #[inline(always)]
 pub fn max_length(context: &'static str, actual: usize, max: usize) -> Result<()> {
     if actual > max {
-        return Err(Error::Length { 
-            context, 
-            expected: max, 
-            actual 
+        return Err(Error::Length {
+            context,
+            expected: max,
+            actual,
         });
     }
     Ok(())

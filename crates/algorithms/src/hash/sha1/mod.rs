@@ -5,7 +5,7 @@
 //! for compatibility with existing systems.
 
 use crate::error::{Error, Result};
-use crate::hash::{Hash, HashFunction, HashAlgorithm};
+use crate::hash::{Hash, HashAlgorithm, HashFunction};
 use crate::types::Digest;
 use byteorder::{BigEndian, ByteOrder};
 use zeroize::Zeroize;
@@ -17,9 +17,7 @@ const SHA1_BLOCK_SIZE: usize = 64;
 const SHA1_OUTPUT_SIZE: usize = 20;
 
 /// Initial hash values for SHA-1
-const H0: [u32; 5] = [
-    0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0,
-];
+const H0: [u32; 5] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
 
 /// SHA-1 algorithm marker type
 pub enum Sha1Algorithm {}
@@ -104,13 +102,15 @@ impl Sha1 {
     /// Internal update implementation
     fn update_internal(&mut self, data: &[u8]) -> Result<()> {
         let mut data_idx = 0;
-        
+
         // Check for overflow in total_len calculation
         let new_bits = (data.len() as u64).wrapping_mul(8);
-        self.total_len = self.total_len.checked_add(new_bits)
+        self.total_len = self
+            .total_len
+            .checked_add(new_bits)
             .ok_or(Error::Processing {
                 operation: "SHA-1",
-                details: "Message length overflow"
+                details: "Message length overflow",
             })?;
 
         if self.buffer_len > 0 {

@@ -3,7 +3,7 @@
 //! This module defines concrete algorithm types that can be used
 //! with the type-safe wrappers in this crate.
 
-use crate::types::key::{SymmetricAlgorithm, AsymmetricAlgorithm};
+use crate::types::key::{AsymmetricAlgorithm, SymmetricAlgorithm};
 
 // =============================================================================
 // Symmetric Algorithms
@@ -16,7 +16,7 @@ impl SymmetricAlgorithm for Aes128 {
     const KEY_SIZE: usize = 16;
     const BLOCK_SIZE: usize = 16;
     const ALGORITHM_ID: &'static str = "AES-128";
-    
+
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
     }
@@ -29,7 +29,7 @@ impl SymmetricAlgorithm for Aes256 {
     const KEY_SIZE: usize = 32;
     const BLOCK_SIZE: usize = 16;
     const ALGORITHM_ID: &'static str = "AES-256";
-    
+
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
     }
@@ -42,7 +42,7 @@ impl SymmetricAlgorithm for ChaCha20 {
     const KEY_SIZE: usize = 32;
     const BLOCK_SIZE: usize = 64;
     const ALGORITHM_ID: &'static str = "ChaCha20";
-    
+
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
     }
@@ -55,7 +55,7 @@ impl SymmetricAlgorithm for ChaCha20Poly1305 {
     const KEY_SIZE: usize = 32;
     const BLOCK_SIZE: usize = 64; // ChaCha20 block size
     const ALGORITHM_ID: &'static str = "ChaCha20Poly1305";
-    
+
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
     }
@@ -72,7 +72,7 @@ impl AsymmetricAlgorithm for Ed25519 {
     const PUBLIC_KEY_SIZE: usize = 32;
     const SECRET_KEY_SIZE: usize = 32;
     const ALGORITHM_ID: &'static str = "Ed25519";
-    
+
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
     }
@@ -85,7 +85,7 @@ impl AsymmetricAlgorithm for X25519 {
     const PUBLIC_KEY_SIZE: usize = 32;
     const SECRET_KEY_SIZE: usize = 32;
     const ALGORITHM_ID: &'static str = "X25519";
-    
+
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
     }
@@ -96,7 +96,7 @@ pub enum P256 {}
 
 impl AsymmetricAlgorithm for P256 {
     // Using uncompressed point size for PK as a general default
-    const PUBLIC_KEY_SIZE: usize = 65; 
+    const PUBLIC_KEY_SIZE: usize = 65;
     const SECRET_KEY_SIZE: usize = 32;
     const ALGORITHM_ID: &'static str = "P-256";
 
@@ -110,7 +110,7 @@ pub enum P384 {}
 
 impl AsymmetricAlgorithm for P384 {
     // Using uncompressed point size for PK as a general default
-    const PUBLIC_KEY_SIZE: usize = 97; 
+    const PUBLIC_KEY_SIZE: usize = 97;
     const SECRET_KEY_SIZE: usize = 48;
     const ALGORITHM_ID: &'static str = "P-384";
 
@@ -124,7 +124,7 @@ pub enum P521 {}
 
 impl AsymmetricAlgorithm for P521 {
     // Using uncompressed point size for PK as a general default
-    const PUBLIC_KEY_SIZE: usize = 133; 
+    const PUBLIC_KEY_SIZE: usize = 133;
     const SECRET_KEY_SIZE: usize = 66;
     const ALGORITHM_ID: &'static str = "P-521";
 
@@ -138,7 +138,7 @@ impl AsymmetricAlgorithm for P521 {
 // =============================================================================
 
 // Re-export type aliases for common key types
-use crate::types::key::{SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey};
+use crate::types::key::{AsymmetricPublicKey, AsymmetricSecretKey, SymmetricKey};
 
 // Symmetric key aliases
 /// AES-128 symmetric key (128-bit/16-byte key size).
@@ -194,11 +194,11 @@ pub type P521PublicKeyUncompressed = AsymmetricPublicKey<P521, 133>;
 pub type P521PublicKeyCompressed = AsymmetricPublicKey<P521, 67>;
 
 /* Note on compressed vs uncompressed public keys:
- * 
+ *
  * For NIST curves, we provide both compressed and uncompressed type aliases:
  * - Uncompressed format: 0x04 || x || y (1 + 2*coordinate_size bytes)
  * - Compressed format: 0x02/0x03 || x (1 + coordinate_size bytes)
- * 
+ *
  * The AsymmetricAlgorithm trait uses the uncompressed size as the default
  * PUBLIC_KEY_SIZE, but applications can choose which format to use based
  * on their requirements for space efficiency vs. computational overhead.

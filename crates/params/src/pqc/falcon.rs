@@ -10,19 +10,19 @@ pub const FALCON_1024_N: usize = 1024;
 pub struct Falcon512Params {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Standard deviation for signatures
     pub sigma: f64,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Signature size in bytes
     pub signature_size: usize,
 }
@@ -41,19 +41,19 @@ pub const FALCON512: Falcon512Params = Falcon512Params {
 pub struct Falcon1024Params {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Standard deviation for signatures
     pub sigma: f64,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Signature size in bytes
     pub signature_size: usize,
 }

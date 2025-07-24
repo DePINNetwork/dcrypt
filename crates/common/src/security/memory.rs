@@ -7,13 +7,13 @@ use dcrypt_api::Result;
 
 // Handle Vec and Box imports based on features
 #[cfg(feature = "std")]
-use std::{vec::Vec, boxed::Box};
+use std::{boxed::Box, vec::Vec};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{vec::Vec, boxed::Box};
+use alloc::{boxed::Box, vec::Vec};
 
 /// Type alias for cleanup functions used in secure operations
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -31,7 +31,7 @@ pub trait SecureOperation<T> {
     /// 2. Clear all sensitive intermediate data
     /// 3. Return the result or error
     fn execute_secure(self) -> Result<T>;
-    
+
     /// Clear all sensitive data associated with this operation
     ///
     /// This method is called automatically by `execute_secure` but can
@@ -42,7 +42,7 @@ pub trait SecureOperation<T> {
 /// Extension trait for operations that produce a result
 pub trait SecureOperationExt: Sized {
     type Output;
-    
+
     /// Execute the operation and ensure cleanup on both success and failure
     fn execute_with_cleanup<F>(self, cleanup: F) -> Result<Self::Output>
     where
@@ -68,7 +68,7 @@ impl<T> SecureOperationBuilder<T> {
             cleanup_fns: Vec::new(),
         }
     }
-    
+
     /// Add a cleanup function to be called when the operation completes
     pub fn with_cleanup<F>(mut self, cleanup: F) -> Self
     where
@@ -77,7 +77,7 @@ impl<T> SecureOperationBuilder<T> {
         self.cleanup_fns.push(Box::new(cleanup));
         self
     }
-    
+
     /// Transform the state
     pub fn transform<U, F>(self, f: F) -> SecureOperationBuilder<U>
     where
@@ -88,7 +88,7 @@ impl<T> SecureOperationBuilder<T> {
             cleanup_fns: Vec::new(), // Cleanup functions don't transfer
         }
     }
-    
+
     /// Build and execute the operation
     pub fn build<O, F>(self, operation: F) -> Result<O>
     where
@@ -96,12 +96,12 @@ impl<T> SecureOperationBuilder<T> {
     {
         let mut state = self.state;
         let result = operation(&mut state);
-        
+
         // Execute cleanup functions regardless of success/failure
         for cleanup in self.cleanup_fns.into_iter().rev() {
             cleanup(&mut state);
         }
-        
+
         result
     }
 }
@@ -113,7 +113,7 @@ impl<T> SecureOperationBuilder<T> {
 pub trait SecureCompare: Sized {
     /// Compare two values in constant time
     fn secure_eq(&self, other: &Self) -> bool;
-    
+
     /// Compare two values and return a constant-time choice
     fn secure_cmp(&self, other: &Self) -> subtle::Choice;
 }
@@ -123,7 +123,7 @@ impl<const N: usize> SecureCompare for [u8; N] {
         use subtle::ConstantTimeEq;
         bool::from(self.ct_eq(other))
     }
-    
+
     fn secure_cmp(&self, other: &Self) -> subtle::Choice {
         use subtle::ConstantTimeEq;
         self.ct_eq(other)
@@ -135,7 +135,7 @@ impl SecureCompare for &[u8] {
         use subtle::ConstantTimeEq;
         bool::from(self.ct_eq(other))
     }
-    
+
     fn secure_cmp(&self, other: &Self) -> subtle::Choice {
         use subtle::ConstantTimeEq;
         self.ct_eq(other)
@@ -145,19 +145,19 @@ impl SecureCompare for &[u8] {
 /// Memory barrier utilities
 pub mod barrier {
     use core::sync::atomic::{compiler_fence, fence, Ordering};
-    
+
     /// Insert a compiler fence to prevent reordering
     #[inline(always)]
     pub fn compiler_fence_seq_cst() {
         compiler_fence(Ordering::SeqCst);
     }
-    
+
     /// Insert a full memory fence
     #[inline(always)]
     pub fn memory_fence_seq_cst() {
         fence(Ordering::SeqCst);
     }
-    
+
     /// Execute a closure with memory barriers before and after
     #[inline(always)]
     pub fn with_barriers<T, F: FnOnce() -> T>(f: F) -> T {
@@ -173,7 +173,7 @@ pub mod barrier {
 pub mod alloc {
     use super::*;
     use zeroize::Zeroize;
-    
+
     /// Allocate memory for sensitive data with appropriate protections
     ///
     /// Note: This is a placeholder for platform-specific secure allocation.
@@ -184,7 +184,7 @@ pub mod alloc {
         // TODO: Implement platform-specific secure allocation
         Ok(vec![T::default(); size])
     }
-    
+
     /// Free memory and ensure it's zeroized
     pub fn secure_free<T: Zeroize>(mut data: Vec<T>) {
         // Zeroize the data
@@ -199,13 +199,13 @@ pub mod alloc {
 mod tests {
     use super::*;
     use zeroize::Zeroize;
-    
+
     #[cfg(any(feature = "std", feature = "alloc"))]
     struct TestOperation {
         secret: Vec<u8>,
         result: Option<Vec<u8>>,
     }
-    
+
     #[cfg(any(feature = "std", feature = "alloc"))]
     impl SecureOperation<Vec<u8>> for TestOperation {
         fn execute_secure(mut self) -> Result<Vec<u8>> {
@@ -215,7 +215,7 @@ mod tests {
             self.clear_sensitive_data();
             Ok(result)
         }
-        
+
         fn clear_sensitive_data(&mut self) {
             self.secret.zeroize();
             if let Some(ref mut result) = self.result {
@@ -224,7 +224,7 @@ mod tests {
             self.result = None;
         }
     }
-    
+
     #[test]
     #[cfg(any(feature = "std", feature = "alloc"))]
     fn test_secure_operation() {
@@ -232,31 +232,31 @@ mod tests {
             secret: vec![1, 2, 3, 4],
             result: None,
         };
-        
+
         let result = op.execute_secure().unwrap();
         assert_eq!(result, vec![254, 253, 252, 251]);
     }
-    
+
     #[test]
     fn test_secure_compare() {
         let a = [1u8, 2, 3, 4];
         let b = [1u8, 2, 3, 4];
         let c = [1u8, 2, 3, 5];
-        
+
         assert!(a.secure_eq(&b));
         assert!(!a.secure_eq(&c));
     }
-    
+
     #[test]
     fn test_memory_barriers() {
         use barrier::*;
-        
+
         let result = with_barriers(|| {
             let mut x = 42;
             x += 1;
             x
         });
-        
+
         assert_eq!(result, 43);
     }
 }

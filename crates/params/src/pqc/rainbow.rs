@@ -4,22 +4,22 @@
 pub struct RainbowIParams {
     /// Number of variables
     pub v: usize,
-    
+
     /// Number of oil variables for each layer
     pub o: [usize; 1],
-    
+
     /// Number of equations for central map
     pub l: [usize; 2],
-    
+
     /// Field size
     pub q: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Signature size in bytes
     pub signature_size: usize,
 }
@@ -39,22 +39,22 @@ pub const RAINBOW_I: RainbowIParams = RainbowIParams {
 pub struct RainbowIIIParams {
     /// Number of variables
     pub v: usize,
-    
+
     /// Number of oil variables for each layer
     pub o: [usize; 1],
-    
+
     /// Number of equations for central map
     pub l: [usize; 2],
-    
+
     /// Field size
     pub q: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Signature size in bytes
     pub signature_size: usize,
 }
@@ -74,22 +74,22 @@ pub const RAINBOW_III: RainbowIIIParams = RainbowIIIParams {
 pub struct RainbowVParams {
     /// Number of variables
     pub v: usize,
-    
+
     /// Number of oil variables for each layer
     pub o: [usize; 1],
-    
+
     /// Number of equations for central map
     pub l: [usize; 2],
-    
+
     /// Field size
     pub q: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Signature size in bytes
     pub signature_size: usize,
 }

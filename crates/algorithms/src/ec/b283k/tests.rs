@@ -9,13 +9,13 @@ fn test_field_arithmetic() {
     let mut two_bytes = [0u8; 36];
     two_bytes[35] = 2;
     let two = FieldElement::from_bytes(&two_bytes).unwrap();
-    
+
     // a + a = 0 in binary field
     assert!(one.add(&one).is_zero());
-    
+
     // 1 * 2 = 2
     assert_eq!(one.mul(&two), two);
-    
+
     // 1 * 1^-1 = 1
     let inv_one = one.invert().unwrap();
     assert_eq!(one.mul(&inv_one), one);
@@ -34,7 +34,7 @@ fn test_scalar_reduction() {
 fn test_point_operations() {
     let g = base_point_g();
     let g2 = g.double();
-    
+
     // G + G = 2G
     assert_eq!(g.add(&g), g2);
 
@@ -52,11 +52,11 @@ fn test_point_operations() {
 #[test]
 fn test_scalar_multiplication() {
     let g = base_point_g();
-    
+
     let mut two_bytes = [0; 36];
     two_bytes[35] = 2;
     let two = Scalar::new(two_bytes).unwrap();
-    
+
     let g2 = g.mul(&two).unwrap();
     assert_eq!(g2, g.double());
 }
@@ -86,19 +86,19 @@ fn test_base_point_on_curve() {
     // Verify that the base point is on the curve
     let g = base_point_g();
     assert!(!g.is_identity());
-    
+
     // Test that the base point satisfies the curve equation
     let x = &g.x;
     let y = &g.y;
-    
+
     // y^2 + xy = x^3 + 1
     let y_sq = y.square();
     let xy = x.mul(y);
     let lhs = y_sq.add(&xy);
-    
+
     let x_cubed = x.square().mul(x);
     let rhs = x_cubed.add(&FieldElement::one());
-    
+
     assert_eq!(lhs, rhs, "Base point must satisfy curve equation");
 }
 
@@ -107,11 +107,11 @@ fn test_ecdh_key_exchange() {
     // Generate two keypairs
     let (sk1, pk1) = generate_keypair(&mut OsRng).unwrap();
     let (sk2, pk2) = generate_keypair(&mut OsRng).unwrap();
-    
+
     // Compute shared secrets
     let shared1 = scalar_mult(&sk1, &pk2).unwrap();
     let shared2 = scalar_mult(&sk2, &pk1).unwrap();
-    
+
     // They should be equal
     assert_eq!(shared1, shared2);
     assert!(!shared1.is_identity());
@@ -121,14 +121,14 @@ fn test_ecdh_key_exchange() {
 fn test_kdf() {
     let input = b"test shared secret";
     let info = b"test info";
-    
+
     let output1 = kdf_hkdf_sha384_for_ecdh_kem(input, Some(info)).unwrap();
     let output2 = kdf_hkdf_sha384_for_ecdh_kem(input, Some(info)).unwrap();
-    
+
     // KDF should be deterministic
     assert_eq!(output1, output2);
     assert_eq!(output1.len(), B283K_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE);
-    
+
     // Different inputs should produce different outputs
     let output3 = kdf_hkdf_sha384_for_ecdh_kem(b"different input", Some(info)).unwrap();
     assert_ne!(output1, output3);

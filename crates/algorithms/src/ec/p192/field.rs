@@ -1,7 +1,7 @@
 //! P-192 field arithmetic implementation
 
-use crate::error::{Error, Result};
 use crate::ec::p192::constants::P192_FIELD_ELEMENT_SIZE;
+use crate::error::{Error, Result};
 use subtle::{Choice, ConditionallySelectable};
 
 /// Number of 32‐bit limbs for a P-192 field element (6 × 32 = 192 bits)
@@ -9,8 +9,7 @@ const NLIMBS: usize = 6;
 
 /// NIST P-192 coefficient b (big-endian, 24 bytes)
 pub const B: [u8; 24] = [
-    0x64, 0x21, 0x05, 0x19, 0xE5, 0x9C, 0x80, 0xE7,
-    0x0F, 0xA7, 0xE9, 0xAB, 0x72, 0x24, 0x30, 0x49,
+    0x64, 0x21, 0x05, 0x19, 0xE5, 0x9C, 0x80, 0xE7, 0x0F, 0xA7, 0xE9, 0xAB, 0x72, 0x24, 0x30, 0x49,
     0xFE, 0xB8, 0xDE, 0xEC, 0xC1, 0x46, 0xB9, 0xB1,
 ];
 
@@ -32,23 +31,14 @@ impl FieldElement {
     /// Little‐endian limbs become: [FFFFFFFF, FFFFFFFF, FFFFFFFE, FFFFFFFF, FFFFFFFF, FFFFFFFF]
     pub(crate) const MOD_LIMBS: [u32; NLIMBS] = [
         0xFFFFFFFF, // least significant
-        0xFFFFFFFF,
-        0xFFFFFFFE,
-        0xFFFFFFFF,
-        0xFFFFFFFF,
-        0xFFFFFFFF, // most significant
+        0xFFFFFFFF, 0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, // most significant
     ];
 
     /// a = −3 mod p = p − 3 = 2¹⁹² − 2⁶⁴ − 4.
     /// In limbs that is:
     /// subtract 3 from the least‐significant limb 0xFFFFFFFF → 0xFFFFFFFC.
     pub(crate) const A_M3: [u32; NLIMBS] = [
-        0xFFFFFFFC,
-        0xFFFFFFFF,
-        0xFFFFFFFE,
-        0xFFFFFFFF,
-        0xFFFFFFFF,
-        0xFFFFFFFF,
+        0xFFFFFFFC, 0xFFFFFFFF, 0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
     ];
 
     /* ================================================================= */
@@ -146,7 +136,7 @@ impl FieldElement {
         // If carry = 1 or sum >= p, subtract p
         let (reduced, borrow) = Self::sbb6(sum, Self::MOD_LIMBS);
         let need_reduce = (carry | (borrow ^ 1)) & 1;
-        
+
         Self::conditional_select(&sum, &reduced, Choice::from(need_reduce as u8))
     }
 
@@ -193,19 +183,18 @@ impl FieldElement {
         if self.is_zero() {
             return Err(Error::param("FieldElement P-192", "Inverse of zero"));
         }
-        
+
         // P-192 prime: p = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF
         // p-2 = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFD
         const P_MINUS_2: [u8; 24] = [
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD,
         ];
 
         // Binary exponentiation
         let mut result = FieldElement::one();
         let base = self.clone();
-        
+
         for &byte in P_MINUS_2.iter() {
             for bit in (0..8).rev() {
                 result = result.square();
@@ -214,16 +203,16 @@ impl FieldElement {
                 }
             }
         }
-        
+
         Ok(result)
     }
 
     /// Negate this field element: returns p - self if non-zero, else zero
     pub fn negate(&self) -> Self {
-        if self.is_zero() { 
-            self.clone() 
-        } else { 
-            FieldElement::zero().sub(self) 
+        if self.is_zero() {
+            self.clone()
+        } else {
+            FieldElement::zero().sub(self)
         }
     }
 
@@ -233,18 +222,17 @@ impl FieldElement {
         if self.is_zero() {
             return Some(FieldElement::zero());
         }
-        
+
         // Correct exponent  (p + 1) / 4  =  2¹⁹⁰ − 2⁶²
         const EXP: [u8; 24] = [
-            0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ];
-        
+
         // Compute self^exp using square-and-multiply
         let mut result = FieldElement::one();
         let base = self.clone();
-        
+
         for &byte in EXP.iter() {
             for i in (0..8).rev() {
                 result = result.square();
@@ -253,7 +241,7 @@ impl FieldElement {
                 }
             }
         }
-        
+
         // Verify that result^2 == self
         if result.square() == *self {
             Some(result)
@@ -282,7 +270,7 @@ impl FieldElement {
     /// 6‐limb subtraction with borrow (constant-time)
     #[inline(always)]
     fn sbb6(a: [u32; 6], b: [u32; 6]) -> ([u32; 6], u32) {
-        let mut r      = [0u32; 6];
+        let mut r = [0u32; 6];
         let mut borrow = 0u32;
 
         for ((&a_limb, &b_limb), r_limb) in a.iter().zip(b.iter()).zip(r.iter_mut()) {
@@ -290,8 +278,8 @@ impl FieldElement {
             //
             //  `sub` is done in u64 to avoid rust's 'add with borrow'
             //   undefined-behaviour rules, then truncated back to 32 bits.
-            let ai  = a_limb as u64;
-            let bi  = b_limb as u64;
+            let ai = a_limb as u64;
+            let bi = b_limb as u64;
             let tmp = ai.wrapping_sub(bi + borrow as u64);
 
             *r_limb = tmp as u32;
@@ -332,13 +320,13 @@ impl FieldElement {
         for j in 0..6 {
             let hi = t[j + 6] as u64;
 
-            r[j]               += hi;            // + high
-            r[(j + 2) % 6]     += hi;            // + high·2⁶⁴   (wrap at 192)
+            r[j] += hi; // + high
+            r[(j + 2) % 6] += hi; // + high·2⁶⁴   (wrap at 192)
 
             // *** extra wrap for j = 4, 5  (hi·2¹⁹² term) ***
             if j >= 4 {
-                r[j - 2]       += hi;            // + hi·2⁶⁴ that
-                                                 //   arises from 2¹⁹² ≡ 2⁶⁴ + 1
+                r[j - 2] += hi; // + hi·2⁶⁴ that
+                                //   arises from 2¹⁹² ≡ 2⁶⁴ + 1
             }
         }
 
@@ -349,7 +337,7 @@ impl FieldElement {
         for limb in &mut r {
             let tmp = *limb + carry;
             *limb = tmp & 0xFFFF_FFFF;
-            carry  = tmp >> 32;
+            carry = tmp >> 32;
         }
 
         //------------------------------------------------------------------
@@ -357,14 +345,14 @@ impl FieldElement {
         //          using  2¹⁹² ≡ 2⁶⁴ + 1  (mod p)
         //------------------------------------------------------------------
         while carry != 0 {
-            let c = carry;            // c is 1 at most
+            let c = carry; // c is 1 at most
 
             let tmp0 = r[0] + c;
-            r[0]  =  tmp0 & 0xFFFF_FFFF;
+            r[0] = tmp0 & 0xFFFF_FFFF;
             carry = tmp0 >> 32;
 
             let tmp2 = r[2] + c + carry;
-            r[2]  =  tmp2 & 0xFFFF_FFFF;
+            r[2] = tmp2 & 0xFFFF_FFFF;
             carry = tmp2 >> 32;
         }
 
@@ -379,8 +367,7 @@ impl FieldElement {
         for _ in 0..2 {
             let (sub, borrow) = Self::sbb6(out, Self::MOD_LIMBS);
             /* if borrow == 0  → out ≥ p  → use the subtracted value */
-            let selected = Self::conditional_select(&out, &sub,
-                                           Choice::from((borrow ^ 1) as u8));
+            let selected = Self::conditional_select(&out, &sub, Choice::from((borrow ^ 1) as u8));
             out = selected.0;
         }
 

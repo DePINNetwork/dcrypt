@@ -9,8 +9,8 @@ use alloc::vec::Vec;
 use crate::error::{validate, Result};
 use crate::mac::{Mac, MacAlgorithm};
 use crate::types::Tag;
-use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use dcrypt_common::security::SecretBuffer;
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 /// Size of the Poly1305 key in bytes (32 B)
 pub const POLY1305_KEY_SIZE: usize = 32;
@@ -25,14 +25,16 @@ impl MacAlgorithm for Poly1305Algorithm {
     const TAG_SIZE: usize = POLY1305_TAG_SIZE;
     const BLOCK_SIZE: usize = 16;
 
-    fn name() -> &'static str { "Poly1305" }
+    fn name() -> &'static str {
+        "Poly1305"
+    }
 }
 
 /// Poly1305 MAC (branch-free limb arithmetic)
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct Poly1305 {
-    r: SecretBuffer<24>, // 130-bit key r stored as 3 u64s (24 bytes)
-    s: SecretBuffer<16>, // 128-bit key s stored as 2 u64s (16 bytes)
+    r: SecretBuffer<24>,      // 130-bit key r stored as 3 u64s (24 bytes)
+    s: SecretBuffer<16>,      // 128-bit key s stored as 2 u64s (16 bytes)
     data: Zeroizing<Vec<u8>>, // buffered input
 }
 
@@ -51,12 +53,12 @@ impl Poly1305 {
         // ---- split & clamp r -------------------------------------------
         let mut r_bytes = [0u8; 16];
         r_bytes.copy_from_slice(&key[..16]);
-        r_bytes[3]  &= 15;
-        r_bytes[7]  &= 15;
+        r_bytes[3] &= 15;
+        r_bytes[7] &= 15;
         r_bytes[11] &= 15;
         r_bytes[15] &= 15;
-        r_bytes[4]  &= 252;
-        r_bytes[8]  &= 252;
+        r_bytes[4] &= 252;
+        r_bytes[8] &= 252;
         r_bytes[12] &= 252;
 
         // Convert to 64-bit values with proper padding for storage
@@ -137,12 +139,15 @@ impl Poly1305 {
         // 1) polynomial evaluation h = Σ (block · r^i)
         let mut h = [0u64; 3];
         let r = self.get_r(); // Get r values from SecretBuffer
-        
+
         for block in self.data.chunks(16) {
             let mut buf = [0u8; 16];
             buf[..block.len()].copy_from_slice(block);
-            let n2 = if block.len() == 16 { 1 } else {
-                buf[block.len()] = 1; 0
+            let n2 = if block.len() == 16 {
+                1
+            } else {
+                buf[block.len()] = 1;
+                0
             };
             let n0 = u64::from_le_bytes(buf[0..8].try_into().unwrap());
             let n1 = u64::from_le_bytes(buf[8..16].try_into().unwrap());
@@ -195,18 +200,28 @@ impl Mac for Poly1305 {
     type Key = [u8; POLY1305_KEY_SIZE];
     type Tag = Tag<POLY1305_TAG_SIZE>;
 
-    fn new(key: &[u8]) -> Result<Self> { Self::new(key) }
-    fn update(&mut self, data: &[u8]) -> Result<&mut Self> { self.update(data)?; Ok(self) }
-    fn finalize(&mut self) -> Result<Self::Tag> { Ok(self.clone().finalize()) }
-    fn reset(&mut self) -> Result<()> { self.data.clear(); Ok(()) }
+    fn new(key: &[u8]) -> Result<Self> {
+        Self::new(key)
+    }
+    fn update(&mut self, data: &[u8]) -> Result<&mut Self> {
+        self.update(data)?;
+        Ok(self)
+    }
+    fn finalize(&mut self) -> Result<Self::Tag> {
+        Ok(self.clone().finalize())
+    }
+    fn reset(&mut self) -> Result<()> {
+        self.data.clear();
+        Ok(())
+    }
 }
 
 impl Clone for Poly1305 {
     fn clone(&self) -> Self {
-        Self { 
-            r: self.r.clone(), 
-            s: self.s.clone(), 
-            data: self.data.clone() 
+        Self {
+            r: self.r.clone(),
+            s: self.s.clone(),
+            data: self.data.clone(),
         }
     }
 }
@@ -226,11 +241,20 @@ fn mul_reduce(h: [u64; 3], r: [u64; 3]) -> [u64; 3] {
     let mut t4 = h2 * r2;
 
     // propagate carries
-    let c1 = (t0 >> 64) as u64; t0 &= u128::from(u64::MAX); t1 += c1 as u128;
-    let c2 = (t1 >> 64) as u64; t1 &= u128::from(u64::MAX); t2 += c2 as u128;
-    let c3 = (t2 >> 64) as u64; t2 &= u128::from(u64::MAX); t3 += c3 as u128;
-    let c4 = (t3 >> 64) as u64; t3 &= u128::from(u64::MAX); t4 += c4 as u128;
-    let _c5 = (t4 >> 64) as u64; t4 &= u128::from(u64::MAX);
+    let c1 = (t0 >> 64) as u64;
+    t0 &= u128::from(u64::MAX);
+    t1 += c1 as u128;
+    let c2 = (t1 >> 64) as u64;
+    t1 &= u128::from(u64::MAX);
+    t2 += c2 as u128;
+    let c3 = (t2 >> 64) as u64;
+    t2 &= u128::from(u64::MAX);
+    t3 += c3 as u128;
+    let c4 = (t3 >> 64) as u64;
+    t3 &= u128::from(u64::MAX);
+    t4 += c4 as u128;
+    let _c5 = (t4 >> 64) as u64;
+    t4 &= u128::from(u64::MAX);
 
     // fold bits ≥2^130 back in via 2^130 ≡ 5 (mod p)
     let high = (t2 >> 2) + (t3 << 62) + (t4 << 126);
@@ -242,8 +266,12 @@ fn mul_reduce(h: [u64; 3], r: [u64; 3]) -> [u64; 3] {
     let mut m2 = low2;
 
     // final carry
-    let f1 = (m0 >> 64) as u64; m0 &= u128::from(u64::MAX); m1 += f1 as u128;
-    let f2 = (m1 >> 64) as u64; m1 &= u128::from(u64::MAX); m2 += f2 as u128;
+    let f1 = (m0 >> 64) as u64;
+    m0 &= u128::from(u64::MAX);
+    m1 += f1 as u128;
+    let f2 = (m1 >> 64) as u64;
+    m1 &= u128::from(u64::MAX);
+    m2 += f2 as u128;
 
     m2 &= 0x3fff_ffff_ffff_ffff;
     [m0 as u64, m1 as u64, m2 as u64]

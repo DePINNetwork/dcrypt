@@ -3,14 +3,16 @@
 //! Provides the `Salt` type, representing a cryptographic
 //! salt with appropriate validation and randomization capabilities.
 
-use rand::{CryptoRng, RngCore};
 use core::fmt;
 use core::ops::{Deref, DerefMut};
+use rand::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
-use crate::error::{Result, validate};
-use crate::types::{ConstantTimeEq, RandomGeneration, SecureZeroingType, ByteSerializable, FixedSize};
+use crate::error::{validate, Result};
 use crate::types::sealed::Sealed;
+use crate::types::{
+    ByteSerializable, ConstantTimeEq, FixedSize, RandomGeneration, SecureZeroingType,
+};
 
 /// A cryptographic salt with compile-time size guarantee
 #[derive(Clone, Zeroize)]
@@ -26,45 +28,45 @@ impl<const N: usize> Salt<N> {
     pub fn new(data: [u8; N]) -> Self {
         Self { data }
     }
-    
+
     /// Create from a slice, if it has the correct length
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
         validate::length("Salt::from_slice", slice.len(), N)?;
-        
+
         let mut data = [0u8; N];
         data.copy_from_slice(slice);
-        
+
         Ok(Self { data })
     }
-    
+
     /// Create a zeroed salt (not recommended for cryptographic use)
     pub fn zeroed() -> Self {
         Self { data: [0u8; N] }
     }
-    
+
     /// Generate a random salt
     pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         let mut data = [0u8; N];
         rng.fill_bytes(&mut data);
         Self { data }
     }
-    
+
     /// Generate a random salt with a specific size
     pub fn random_with_size<R: RngCore + CryptoRng>(rng: &mut R, size: usize) -> Result<Self> {
         validate::length("Salt::random_with_size", size, N)?;
         Ok(Self::random(rng))
     }
-    
+
     /// Get the size of this salt in bytes
     pub fn size() -> usize {
         N
     }
-    
+
     /// Get the length of the salt
     pub fn len(&self) -> usize {
         N
     }
-    
+
     /// Check if the salt is empty
     pub fn is_empty(&self) -> bool {
         N == 0
@@ -85,7 +87,7 @@ impl<const N: usize> AsMut<[u8]> for Salt<N> {
 
 impl<const N: usize> Deref for Salt<N> {
     type Target = [u8; N];
-    
+
     fn deref(&self) -> &Self::Target {
         &self.data
     }
@@ -139,7 +141,7 @@ impl<const N: usize> ByteSerializable for Salt<N> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::from_slice(bytes)
     }

@@ -17,9 +17,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use super::polynomial::Polynomial;
 use super::params::{Modulus, NttModulus, PostInvNtt};
-use crate::error::{Result, Error};
+use super::polynomial::Polynomial;
+use crate::error::{Error, Result};
 
 /// Modular exponentiation in standard domain
 #[inline(always)]
@@ -38,12 +38,12 @@ fn pow_mod<M: Modulus>(mut base: u32, mut exp: u32) -> u32 {
 /// Forward Number Theoretic Transform
 pub trait NttOperator<M: NttModulus> {
     /// Performs forward NTT on polynomial in-place
-    /// 
+    ///
     /// # Dilithium (FIPS-204)
     /// - Implements Algorithm 41 (DIF)
     /// - Input: coefficients in standard domain
     /// - Output: coefficients in standard domain
-    /// 
+    ///
     /// # Kyber
     /// - Implements Cooley-Tukey NTT
     /// - Converts to Montgomery domain internally
@@ -53,12 +53,12 @@ pub trait NttOperator<M: NttModulus> {
 /// Inverse Number Theoretic Transform
 pub trait InverseNttOperator<M: NttModulus> {
     /// Performs inverse NTT on polynomial in-place
-    /// 
+    ///
     /// # Dilithium (FIPS-204)
     /// - Implements Algorithm 42 (GS)
     /// - Input: coefficients in standard domain
     /// - Output: standard or Montgomery domain based on POST_INVNTT_MODE
-    /// 
+    ///
     /// # Kyber
     /// - Implements Cooley-Tukey inverse NTT
     /// - Scales by N^(-1) and converts back to standard domain
@@ -69,7 +69,7 @@ pub trait InverseNttOperator<M: NttModulus> {
 pub struct CooleyTukeyNtt;
 
 /// Montgomery reduction: computes a * R^-1 mod Q
-/// 
+///
 /// For a ∈ [0, Q·R), returns a·R^(-1) mod Q in [0, Q)
 #[inline(always)]
 pub fn montgomery_reduce<M: NttModulus>(a: u64) -> u32 {
@@ -95,26 +95,26 @@ fn reduce_to_q<M: Modulus>(x: u32) -> u32 {
     let mut y = x;
     y -= M::Q & ((y >= M::Q) as u32).wrapping_neg();
     y -= M::Q & ((y >= M::Q) as u32).wrapping_neg();
-    
+
     if y < M::Q {
         return y;
     }
-    
+
     // Barrett reduction for large/wrapped values
     let (mu, k) = if M::BARRETT_MU != 0 {
         (M::BARRETT_MU, M::BARRETT_K)
     } else {
         // Dynamic computation for moduli without precomputed constants
-        let log_q = 64 - (M::Q as u64).leading_zeros();  // FIXED: Removed unnecessary cast
+        let log_q = 64 - (M::Q as u64).leading_zeros(); // FIXED: Removed unnecessary cast
         let k = log_q + 32;
-        let mu = (1u128 << k) / M::Q as u128;  // FIXED: Removed unnecessary cast
+        let mu = (1u128 << k) / M::Q as u128; // FIXED: Removed unnecessary cast
         (mu, k)
     };
-    
+
     let x_wide = y as u128;
     let q = ((x_wide * mu) >> k) as u32;
     let mut r = y.wrapping_sub(q.wrapping_mul(M::Q));
-    
+
     r = r.wrapping_sub(M::Q & ((r >= M::Q) as u32).wrapping_neg());
     r
 }
@@ -172,25 +172,25 @@ impl<M: NttModulus> NttOperator<M> for CooleyTukeyNtt {
         }
 
         let coeffs = poly.as_mut_coeffs_slice();
-        let is_dilithium = !M::ZETAS.is_empty();  // FIXED: Use is_empty()
+        let is_dilithium = !M::ZETAS.is_empty(); // FIXED: Use is_empty()
 
         if is_dilithium {
             // FIPS-204 Algorithm 41: Forward NTT
             // Decimation-in-Frequency (DIF) with row-major twiddle traversal
             // Input: standard domain, Output: standard domain
             let mut k = 0;
-            let mut len = n / 2;  // Start at 128 for N=256
-            
+            let mut len = n / 2; // Start at 128 for N=256
+
             while len >= 1 {
                 // Row-major (block-first) iteration matches twiddle table order
                 for start in (0..n).step_by(2 * len) {
-                    let zeta = M::ZETAS[k];  // ζ·R mod q (Montgomery form)
+                    let zeta = M::ZETAS[k]; // ζ·R mod q (Montgomery form)
                     k += 1;
-                    
+
                     for j in start..start + len {
                         let a = coeffs[j];
                         let b = coeffs[j + len];
-                        
+
                         // FIPS-204 DIF butterfly:
                         // t = ζ * b (Montgomery mul with ζ·R gives standard domain)
                         let t = montgomery_mul::<M>(b, zeta);
@@ -200,10 +200,10 @@ impl<M: NttModulus> NttOperator<M> for CooleyTukeyNtt {
                         coeffs[j + len] = sub_mod_upto_2q::<M>(a, t);
                     }
                 }
-                
+
                 len >>= 1;
             }
-            
+
             // Reduce all coefficients to [0, Q) for Dilithium compatibility
             for c in coeffs.iter_mut() {
                 *c = reduce_to_q::<M>(*c);
@@ -213,7 +213,7 @@ impl<M: NttModulus> NttOperator<M> for CooleyTukeyNtt {
             for c in coeffs.iter_mut() {
                 *c = to_montgomery::<M>(*c);
             }
-            
+
             let mut len = 1_usize;
             while len < n {
                 let exp = n / (len << 1);
@@ -222,7 +222,7 @@ impl<M: NttModulus> NttOperator<M> for CooleyTukeyNtt {
 
                 for start in (0..n).step_by(len << 1) {
                     let mut w_mont = M::MONT_R;
-                    
+
                     for j in 0..len {
                         let u = coeffs[start + j];
                         let v = montgomery_mul::<M>(coeffs[start + j + len], w_mont);
@@ -253,33 +253,33 @@ impl<M: NttModulus> InverseNttOperator<M> for CooleyTukeyNtt {
         }
 
         let coeffs = poly.as_mut_coeffs_slice();
-        let is_dilithium = !M::ZETAS.is_empty();  // FIXED: Use is_empty()
-        
+        let is_dilithium = !M::ZETAS.is_empty(); // FIXED: Use is_empty()
+
         if is_dilithium {
             // FIPS-204 Algorithm 42: Inverse NTT
             // Gentleman-Sande (GS) with row-major traversal
-            
+
             // Pre-condition: ensure coefficients < Q for GS butterflies
             for c in coeffs.iter_mut() {
                 *c = reduce_to_q::<M>(*c);
             }
-            
-            let mut k = M::ZETAS.len();  // Start after last entry
+
+            let mut k = M::ZETAS.len(); // Start after last entry
             let mut len = 1;
-            
+
             while len < n {
                 // Row-major iteration matching forward NTT structure
                 for start in (0..n).step_by(2 * len) {
-                    k -= 1;  // Traverse ZETAS in reverse
-                    
+                    k -= 1; // Traverse ZETAS in reverse
+
                     // Use negated forward twiddle for inverse
                     let zeta_fwd = M::ZETAS[k];
                     let zeta = if zeta_fwd == 0 { 0 } else { M::Q - zeta_fwd };
-                    
+
                     for j in start..start + len {
                         let t = coeffs[j];
                         let u = coeffs[j + len];
-                        
+
                         // FIPS-204 GS butterfly:
                         // Line 13: w_j ← w_j + w_{j+len}
                         coeffs[j] = add_mod::<M>(t, u);
@@ -288,10 +288,10 @@ impl<M: NttModulus> InverseNttOperator<M> for CooleyTukeyNtt {
                         coeffs[j + len] = montgomery_mul::<M>(diff, zeta);
                     }
                 }
-                
+
                 len <<= 1;
             }
-            
+
             // Final reduction before N^(-1) scaling
             for c in coeffs.iter_mut() {
                 *c = reduce_to_q::<M>(*c);
@@ -304,7 +304,7 @@ impl<M: NttModulus> InverseNttOperator<M> for CooleyTukeyNtt {
             }
 
             match M::POST_INVNTT_MODE {
-                PostInvNtt::Standard => { }  // Already in standard domain
+                PostInvNtt::Standard => {} // Already in standard domain
                 PostInvNtt::Montgomery => {
                     // Convert to Montgomery if requested
                     for c in coeffs.iter_mut() {
@@ -314,8 +314,8 @@ impl<M: NttModulus> InverseNttOperator<M> for CooleyTukeyNtt {
             }
         } else {
             // Kyber Inverse NTT
-            let root_inv_std = pow_mod::<M>(M::ZETA, M::Q - 2);  // FIXED: Removed unnecessary cast
-            
+            let root_inv_std = pow_mod::<M>(M::ZETA, M::Q - 2); // FIXED: Removed unnecessary cast
+
             let mut len = n >> 1;
             while len >= 1 {
                 let exp = n / (len << 1);
@@ -324,13 +324,14 @@ impl<M: NttModulus> InverseNttOperator<M> for CooleyTukeyNtt {
 
                 for start in (0..n).step_by(len << 1) {
                     let mut w_mont = M::MONT_R;
-                    
+
                     for j in 0..len {
                         let u = coeffs[start + j];
                         let v = coeffs[start + j + len];
 
                         coeffs[start + j] = add_mod_fast::<M>(u, v);
-                        coeffs[start + j + len] = montgomery_mul::<M>(sub_mod_fast::<M>(u, v), w_mont);
+                        coeffs[start + j + len] =
+                            montgomery_mul::<M>(sub_mod_fast::<M>(u, v), w_mont);
 
                         w_mont = montgomery_mul::<M>(w_mont, root_mont);
                     }
@@ -342,14 +343,14 @@ impl<M: NttModulus> InverseNttOperator<M> for CooleyTukeyNtt {
             for c in coeffs.iter_mut() {
                 *c = montgomery_mul::<M>(*c, M::N_INV);
             }
-            
+
             if M::POST_INVNTT_MODE == PostInvNtt::Standard {
                 for c in coeffs.iter_mut() {
                     *c = montgomery_reduce::<M>(*c as u64);
                 }
             }
         }
-        
+
         Ok(())
     }
 }
@@ -367,15 +368,15 @@ impl<M: NttModulus> Polynomial<M> {
     }
 
     /// Pointwise multiplication in NTT domain
-    /// 
+    ///
     /// Both polynomials must already be in NTT domain.
     /// For Dilithium: inputs/output in standard domain (post-NTT)
     /// For Kyber: inputs/output in Montgomery domain
     pub fn ntt_mul(&self, other: &Self) -> Self {
         let mut result = Self::zero();
         let n = M::N;
-        let is_dilithium = !M::ZETAS.is_empty();  // FIXED: Use is_empty()
-        
+        let is_dilithium = !M::ZETAS.is_empty(); // FIXED: Use is_empty()
+
         if is_dilithium {
             // Dilithium: coefficients are in standard domain after NTT
             // Use standard multiplication
@@ -390,7 +391,7 @@ impl<M: NttModulus> Polynomial<M> {
                 result.coeffs[i] = montgomery_mul::<M>(self.coeffs[i], other.coeffs[i]);
             }
         }
-        
+
         result
     }
 }

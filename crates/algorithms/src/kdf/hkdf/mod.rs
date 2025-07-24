@@ -5,18 +5,18 @@
 //! uniform and produce output keying material (OKM) suitable for use in cryptographic
 //! contexts.
 
-use crate::error::{Error, Result, validate};
+use crate::error::{validate, Error, Result};
 use crate::hash::HashFunction;
+use crate::kdf::{KdfAlgorithm, KdfOperation, KeyDerivationFunction, ParamProvider, SecurityLevel};
 use crate::mac::hmac::Hmac;
-use crate::kdf::{KeyDerivationFunction, ParamProvider, SecurityLevel, KdfAlgorithm, KdfOperation};
-use crate::types::Salt;
 use crate::types::salt::HkdfCompatible;
+use crate::types::Salt;
 
 // Import security types from dcrypt-core
 use dcrypt_common::security::{EphemeralSecret, SecureZeroingType};
 
-use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use rand::{CryptoRng, RngCore};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
@@ -32,11 +32,11 @@ impl<H: HashFunction> KdfAlgorithm for HkdfAlgorithm<H> {
     const MIN_SALT_SIZE: usize = 16;
     const DEFAULT_OUTPUT_SIZE: usize = 32;
     const ALGORITHM_ID: &'static str = "HKDF";
-    
+
     fn name() -> String {
         format!("{}-{}", Self::ALGORITHM_ID, H::name())
     }
-    
+
     fn security_level() -> SecurityLevel {
         match H::output_size() * 8 {
             bits if bits >= 512 => SecurityLevel::L256,
@@ -58,7 +58,10 @@ pub struct HkdfParams<const S: usize = 16> {
 
 impl<const S: usize> Default for HkdfParams<S> {
     fn default() -> Self {
-        Self { salt: None, info: None }
+        Self {
+            salt: None,
+            info: None,
+        }
     }
 }
 
@@ -79,47 +82,49 @@ pub struct HkdfOperation<'a, H: HashFunction, const S: usize = 16> {
     length: usize,
 }
 
-impl<'a, H: HashFunction + Clone, const S: usize> KdfOperation<'a, HkdfAlgorithm<H>> for HkdfOperation<'a, H, S>
+impl<'a, H: HashFunction + Clone, const S: usize> KdfOperation<'a, HkdfAlgorithm<H>>
+    for HkdfOperation<'a, H, S>
 where
-    Salt<S>: HkdfCompatible
+    Salt<S>: HkdfCompatible,
 {
     fn with_ikm(mut self, ikm: &'a [u8]) -> Self {
         self.ikm = Some(ikm);
         self
     }
-    
+
     fn with_salt(mut self, salt: &'a [u8]) -> Self {
         self.salt = Some(salt);
         self
     }
-    
+
     fn with_info(mut self, info: &'a [u8]) -> Self {
         self.info = Some(info);
         self
     }
-    
+
     fn with_output_length(mut self, length: usize) -> Self {
         self.length = length;
         self
     }
-    
+
     fn derive(self) -> Result<Vec<u8>> {
-        let ikm = self.ikm.ok_or_else(|| Error::param("ikm", "Input keying material is required"))?;
-        
+        let ikm = self
+            .ikm
+            .ok_or_else(|| Error::param("ikm", "Input keying material is required"))?;
+
         let salt_bytes = self.salt;
         let info_bytes = self.info;
-        
+
         // Fix: Convert Zeroizing<Vec<u8>> to Vec<u8>
-        Hkdf::<H, S>::derive(salt_bytes, ikm, info_bytes, self.length)
-            .map(|result| result.to_vec())
+        Hkdf::<H, S>::derive(salt_bytes, ikm, info_bytes, self.length).map(|result| result.to_vec())
     }
-    
+
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
         // Ensure the requested size matches
         validate::length("HKDF output", self.length, N)?;
-        
+
         let vec = self.derive()?;
-        
+
         // Convert to fixed-size array
         let mut array = [0u8; N];
         array.copy_from_slice(&vec);
@@ -129,14 +134,14 @@ where
 
 impl<H: HashFunction + Clone, const S: usize> Hkdf<H, S>
 where
-    Salt<S>: HkdfCompatible
+    Salt<S>: HkdfCompatible,
 {
     /// HKDF-Extract
     pub fn extract(salt: Option<&[u8]>, ikm: &[u8]) -> Result<Zeroizing<Vec<u8>>> {
         // Convert salt to owned Vec to wrap in EphemeralSecret
         let salt_vec = salt.unwrap_or(&[]).to_vec();
         let secure_salt = EphemeralSecret::new(salt_vec);
-        
+
         // Use HMAC with secure salt
         let result = Hmac::<H>::mac(&secure_salt, ikm)?;
         Ok(Zeroizing::new(result))
@@ -188,13 +193,13 @@ where
         salt: Option<&[u8]>,
         ikm: &[u8],
         info: Option<&[u8]>,
-        length: usize
+        length: usize,
     ) -> Result<Zeroizing<Vec<u8>>> {
         let _ = Hmac::<H>::new(&[])?; // warm-up
-        
+
         // Extract phase - produces PRK
         let prk = Self::extract(salt, ikm)?;
-        
+
         // Expand phase - uses PRK to generate OKM
         Self::expand(&prk, info, length)
     }
@@ -202,11 +207,14 @@ where
 
 impl<H: HashFunction, const S: usize> ParamProvider for Hkdf<H, S>
 where
-    Salt<S>: HkdfCompatible
+    Salt<S>: HkdfCompatible,
 {
     type Params = HkdfParams<S>;
     fn with_params(params: Self::Params) -> Self {
-        Hkdf { _hash_type: PhantomData, params }
+        Hkdf {
+            _hash_type: PhantomData,
+            params,
+        }
     }
     fn params(&self) -> &Self::Params {
         &self.params
@@ -218,28 +226,31 @@ where
 
 impl<H: HashFunction + Clone, const S: usize> KeyDerivationFunction for Hkdf<H, S>
 where
-    Salt<S>: HkdfCompatible
+    Salt<S>: HkdfCompatible,
 {
     type Algorithm = HkdfAlgorithm<H>;
     type Salt = Salt<S>;
-    
+
     fn new() -> Self {
-        Hkdf { _hash_type: PhantomData, params: HkdfParams::default() }
+        Hkdf {
+            _hash_type: PhantomData,
+            params: HkdfParams::default(),
+        }
     }
-    
+
     fn derive_key(
         &self,
         input: &[u8],
         salt: Option<&[u8]>,
         info: Option<&[u8]>,
-        length: usize
+        length: usize,
     ) -> Result<Vec<u8>> {
         let effective_salt = salt.or_else(|| self.params.salt.as_ref().map(|s| s.as_ref()));
         let effective_info = info.or_else(|| self.params.info.as_ref().map(|i| i.as_slice()));
         let result = Self::derive(effective_salt, input, effective_info, length)?;
         Ok(result.to_vec())
     }
-    
+
     // FIXED: Elided lifetime
     fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> {
         HkdfOperation {
@@ -250,12 +261,11 @@ where
             length: Self::Algorithm::DEFAULT_OUTPUT_SIZE,
         }
     }
-    
+
     fn generate_salt<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Salt {
-        Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE)
-            .expect("Salt generation failed")
+        Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE).expect("Salt generation failed")
     }
-    
+
     // Changed from instance method to static method
     fn security_level() -> SecurityLevel {
         match H::output_size() * 8 {
@@ -269,7 +279,7 @@ where
 
 impl<H: HashFunction + Clone, const S: usize> SecureZeroingType for Hkdf<H, S>
 where
-    Salt<S>: HkdfCompatible
+    Salt<S>: HkdfCompatible,
 {
     fn zeroed() -> Self {
         Self {
@@ -277,7 +287,7 @@ where
             params: HkdfParams::default(),
         }
     }
-    
+
     fn secure_clone(&self) -> Self {
         self.clone()
     }

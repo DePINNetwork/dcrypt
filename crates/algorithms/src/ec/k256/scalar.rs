@@ -1,7 +1,7 @@
 //! secp256k1 scalar arithmetic operations
 
 use crate::ec::k256::constants::K256_SCALAR_SIZE;
-use crate::error::{Error, Result, validate};
+use crate::error::{validate, Error, Result};
 use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -11,7 +11,7 @@ pub struct Scalar(SecretBuffer<K256_SCALAR_SIZE>);
 
 impl Scalar {
     /// Create a new scalar from raw bytes.
-    /// 
+    ///
     /// The bytes will be reduced modulo the curve order if necessary.
     /// Returns an error if the resulting scalar would be zero.
     pub fn new(mut data: [u8; K256_SCALAR_SIZE]) -> Result<Self> {
@@ -20,7 +20,7 @@ impl Scalar {
     }
 
     /// Create a scalar from a `SecretBuffer`.
-    /// 
+    ///
     /// The buffer contents will be reduced modulo the curve order if necessary.
     /// Returns an error if the resulting scalar would be zero.
     pub fn from_secret_buffer(buffer: SecretBuffer<K256_SCALAR_SIZE>) -> Result<Self> {
@@ -89,9 +89,8 @@ impl Scalar {
     }
 
     const ORDER: [u8; 32] = [
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
-        0xBA, 0xAE, 0xDC, 0xE6, 0xAF, 0x48, 0xA0, 0x3B,
-        0xBF, 0xD2, 0x5E, 0x8C, 0xD0, 0x36, 0x41, 0x41,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFE, 0xBA, 0xAE, 0xDC, 0xE6, 0xAF, 0x48, 0xA0, 0x3B, 0xBF, 0xD2, 0x5E, 0x8C, 0xD0, 0x36,
+        0x41, 0x41,
     ];
 }

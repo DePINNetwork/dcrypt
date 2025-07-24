@@ -2,22 +2,20 @@
 
 use super::*;
 use crate::traditional::ecdsa::common::SignatureComponents;
-use dcrypt_api::Signature as SignatureTrait;
+use dcrypt_algorithms::hash::sha2::Sha512;
+use dcrypt_algorithms::hash::HashFunction;
 use dcrypt_api::error::Error as ApiError;
+use dcrypt_api::Signature as SignatureTrait;
 use rand::rngs::OsRng;
 use std::fs;
 use std::path::PathBuf;
-use dcrypt_algorithms::hash::sha2::Sha512;
-use dcrypt_algorithms::hash::HashFunction;
 
 /* ------------------------------------------------------------------------- */
 /*                       Helper: canonicalise curve/hash                     */
 /* ------------------------------------------------------------------------- */
 
 fn canon(combo: &str) -> String {
-    combo
-        .to_ascii_uppercase()
-        .replace([' ', '-'], "")
+    combo.to_ascii_uppercase().replace([' ', '-'], "")
 }
 
 // --- Start of Test Vector Parsing Utilities ---
@@ -30,8 +28,12 @@ fn hex_to_fixed_size_bytes<const N: usize>(hex_str: &str) -> Result<[u8; N], Str
         corrected_hex_str.insert(0, '0');
     }
 
-    let bytes_vec = hex::decode(&corrected_hex_str)
-        .map_err(|e| format!("Failed to decode hex string '{}' (corrected: '{}'): {}", hex_str, corrected_hex_str, e))?;
+    let bytes_vec = hex::decode(&corrected_hex_str).map_err(|e| {
+        format!(
+            "Failed to decode hex string '{}' (corrected: '{}'): {}",
+            hex_str, corrected_hex_str, e
+        )
+    })?;
 
     if bytes_vec.len() > N {
         return Err(format!(
@@ -44,10 +46,10 @@ fn hex_to_fixed_size_bytes<const N: usize>(hex_str: &str) -> Result<[u8; N], Str
 
     let mut arr = [0u8; N];
     let padding_len = N.saturating_sub(bytes_vec.len()); // Ensure N is not less than bytes_vec.len()
-    
+
     // Check if bytes_vec can fit into arr starting from padding_len
     if bytes_vec.len() > N - padding_len {
-         return Err(format!(
+        return Err(format!(
             "Decoded hex string '{}' ({} bytes) is too large to fit into the target array of {} bytes after padding.",
             hex_str,
             bytes_vec.len(),
@@ -60,17 +62,21 @@ fn hex_to_fixed_size_bytes<const N: usize>(hex_str: &str) -> Result<[u8; N], Str
 
 // Modified helper for parsing hex strings into Vec<u8> (e.g., for messages, or R/S in DER components)
 fn hex_to_vec_tolerant(hex_str: &str) -> Result<Vec<u8>, String> {
-    if hex_str == "00" { // NIST CAVS specific: "00" often means empty message
+    if hex_str == "00" {
+        // NIST CAVS specific: "00" often means empty message
         return Ok(Vec::new());
     }
     let mut corrected_hex_str = hex_str.to_string();
     if corrected_hex_str.len() % 2 != 0 {
         corrected_hex_str.insert(0, '0');
     }
-    hex::decode(&corrected_hex_str)
-        .map_err(|e| format!("Failed to decode hex string '{}' (corrected: '{}'): {}", hex_str, corrected_hex_str, e))
+    hex::decode(&corrected_hex_str).map_err(|e| {
+        format!(
+            "Failed to decode hex string '{}' (corrected: '{}'): {}",
+            hex_str, corrected_hex_str, e
+        )
+    })
 }
-
 
 #[derive(Debug, PartialEq, Clone)]
 struct KeyPairTestVector {
@@ -102,10 +108,14 @@ fn parse_key_pair_vectors(rsp_content: &str, curve_marker: &str) -> Vec<KeyPairT
     let mut in_section = false;
     let mut current_d: Option<String> = None;
     let mut current_qx: Option<String> = None;
-    
+
     for line in rsp_content.lines() {
         let line = line.trim();
-        if line.starts_with('#') || line.is_empty() || line.starts_with("N =") || line.starts_with("[B.4.2") {
+        if line.starts_with('#')
+            || line.is_empty()
+            || line.starts_with("N =")
+            || line.starts_with("[B.4.2")
+        {
             continue;
         }
         if line == curve_marker {
@@ -146,7 +156,7 @@ fn parse_pkv_vectors(rsp_content: &str, curve_marker: &str) -> Vec<PkvTestVector
     let mut in_section = false;
     let mut current_qx: Option<String> = None;
     let mut current_qy: Option<String> = None;
-    
+
     for line in rsp_content.lines() {
         let line = line.trim();
         if line.starts_with('#') || line.is_empty() {
@@ -170,7 +180,12 @@ fn parse_pkv_vectors(rsp_content: &str, curve_marker: &str) -> Vec<PkvTestVector
             current_qy = Some(line.trim_start_matches("Qy = ").to_string());
         } else if line.starts_with("Result = ") {
             if let (Some(qx_val), Some(qy_val)) = (current_qx.take(), current_qy.take()) {
-                let result_str = line.trim_start_matches("Result = ").chars().next().unwrap_or(' ').to_string();
+                let result_str = line
+                    .trim_start_matches("Result = ")
+                    .chars()
+                    .next()
+                    .unwrap_or(' ')
+                    .to_string();
                 vectors.push(PkvTestVector {
                     qx: qx_val,
                     qy: qy_val,
@@ -198,7 +213,10 @@ fn parse_sig_ver_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigV
         }
 
         if line_trimmed.starts_with('[') && line_trimmed.ends_with(']') {
-            let section_name = line_trimmed.trim_start_matches('[').trim_end_matches(']').to_string();
+            let section_name = line_trimmed
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+                .to_string();
             if section_name.starts_with(target_curve_name) {
                 current_section_curve_sha = Some(section_name.replace(" ", ""));
             } else {
@@ -214,7 +232,10 @@ fn parse_sig_ver_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigV
 
         if let Some(ref section_name_val) = current_section_curve_sha {
             if line_trimmed.starts_with("Msg = ") {
-                current_qx = None; current_qy = None; current_r = None; current_s = None;
+                current_qx = None;
+                current_qy = None;
+                current_r = None;
+                current_s = None;
                 current_msg = Some(line_trimmed.trim_start_matches("Msg = ").to_string());
             } else if line_trimmed.starts_with("Qx = ") {
                 current_qx = Some(line_trimmed.trim_start_matches("Qx = ").to_string());
@@ -225,9 +246,18 @@ fn parse_sig_ver_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigV
             } else if line_trimmed.starts_with("S = ") {
                 current_s = Some(line_trimmed.trim_start_matches("S = ").to_string());
             } else if line_trimmed.starts_with("Result = ") {
-                if let (Some(msg), Some(qx), Some(qy), Some(r_hex), Some(s_hex)) =
-                    (current_msg.take(), current_qx.take(), current_qy.take(), current_r.take(), current_s.take()) {
-                    let result_char = line_trimmed.trim_start_matches("Result = ").chars().next().unwrap_or('?');
+                if let (Some(msg), Some(qx), Some(qy), Some(r_hex), Some(s_hex)) = (
+                    current_msg.take(),
+                    current_qx.take(),
+                    current_qy.take(),
+                    current_r.take(),
+                    current_s.take(),
+                ) {
+                    let result_char = line_trimmed
+                        .trim_start_matches("Result = ")
+                        .chars()
+                        .next()
+                        .unwrap_or('?');
                     vectors.push(SigVerTestVector {
                         curve_sha_combo: section_name_val.clone(),
                         msg,
@@ -238,7 +268,11 @@ fn parse_sig_ver_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigV
                         expected_result: result_char.to_string(),
                     });
                 }
-                current_msg = None; current_qx = None; current_qy = None; current_r = None; current_s = None;
+                current_msg = None;
+                current_qx = None;
+                current_qy = None;
+                current_r = None;
+                current_s = None;
             }
         }
     }
@@ -375,9 +409,15 @@ fn test_hash_edge_cases() {
 #[test]
 fn test_der_malformed() {
     assert!(SignatureComponents::from_der(&[0x30, 0x00]).is_err());
-    assert!(SignatureComponents::from_der(&[0x31, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x01]).is_err());
-    assert!(SignatureComponents::from_der(&[0x30, 0x06, 0x03, 0x01, 0x01, 0x02, 0x01, 0x01]).is_err());
-    assert!(SignatureComponents::from_der(&[0x30, 0x06, 0x02, 0x01, 0x01, 0x03, 0x01, 0x01]).is_err());
+    assert!(
+        SignatureComponents::from_der(&[0x31, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x01]).is_err()
+    );
+    assert!(
+        SignatureComponents::from_der(&[0x30, 0x06, 0x03, 0x01, 0x01, 0x02, 0x01, 0x01]).is_err()
+    );
+    assert!(
+        SignatureComponents::from_der(&[0x30, 0x06, 0x02, 0x01, 0x01, 0x03, 0x01, 0x01]).is_err()
+    );
 }
 
 /* ------------------------------------------------------------------------- */
@@ -387,37 +427,29 @@ fn test_der_malformed() {
 #[test]
 fn test_scalar_arithmetic_basic() {
     let a_bytes = [
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-        0x01, 0x23,
+        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD,
+        0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB,
+        0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89,
+        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67,
+        0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23,
     ];
-    
+
     let b_bytes = [
-        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89,
-        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89,
-        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89,
-        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89,
-        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89,
-        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89,
-        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89,
-        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89,
-        0xAB, 0xCD,
+        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67,
+        0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45,
+        0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23,
+        0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01,
+        0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD,
     ];
-    
+
     let a = ec::Scalar::new(a_bytes).unwrap();
     let b = ec::Scalar::new(b_bytes).unwrap();
-    
+
     let b_inv = b.inv_mod_n().unwrap();
     let ab_inv = a.mul_mod_n(&b_inv).unwrap();
     let result = ab_inv.mul_mod_n(&b).unwrap();
     assert_eq!(result.serialize(), a.serialize());
-    
+
     let a_plus_b = a.add_mod_n(&b).unwrap();
     let result2 = a_plus_b.sub_mod_n(&b).unwrap();
     assert_eq!(result2.serialize(), a.serialize());
@@ -427,25 +459,21 @@ fn test_scalar_arithmetic_basic() {
 fn test_scalar_edge_cases() {
     // P-521 order n - 1
     let n_minus_1 = [
-        0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFA, 0x51, 0x86, 0x87, 0x83, 0xBF, 0x2F,
-        0x96, 0x6B, 0x7F, 0xCC, 0x01, 0x48, 0xF7, 0x09,
-        0xA5, 0xD0, 0x3B, 0xB5, 0xC9, 0xB8, 0x89, 0x9C,
-        0x47, 0xAE, 0xBB, 0x6F, 0xB7, 0x1E, 0x91, 0x38,
-        0x64, 0x08,
+        0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFA, 0x51, 0x86, 0x87, 0x83, 0xBF, 0x2F, 0x96, 0x6B, 0x7F, 0xCC, 0x01,
+        0x48, 0xF7, 0x09, 0xA5, 0xD0, 0x3B, 0xB5, 0xC9, 0xB8, 0x89, 0x9C, 0x47, 0xAE, 0xBB, 0x6F,
+        0xB7, 0x1E, 0x91, 0x38, 0x64, 0x08,
     ];
-    
+
     let max_scalar = ec::Scalar::new(n_minus_1).unwrap();
     let mut one_bytes = [0u8; 66];
     one_bytes[65] = 1;
     let one = ec::Scalar::new(one_bytes).unwrap();
-    
+
     let zero_result = max_scalar.add_mod_n(&one).unwrap();
     assert!(zero_result.is_zero());
-    
+
     let result = one.mul_mod_n(&max_scalar).unwrap();
     assert_eq!(result.serialize(), max_scalar.serialize());
 }
@@ -475,12 +503,17 @@ fn test_modular_inverse_comprehensive() {
     let mut expected_one = [0u8; 66];
     expected_one[65] = 1;
     assert_eq!(product.serialize(), expected_one, "2 * 2_inv should be 1");
-    
-    for _ in 0..5 { // Reduced iterations for faster CI, increase for thorough local testing
+
+    for _ in 0..5 {
+        // Reduced iterations for faster CI, increase for thorough local testing
         let (scalar, _) = ec::generate_keypair(&mut rng).unwrap();
         let inv = scalar.inv_mod_n().unwrap();
         let product_rand = scalar.mul_mod_n(&inv).unwrap();
-        assert_eq!(product_rand.serialize(), expected_one, "random_scalar * random_scalar_inv should be 1");
+        assert_eq!(
+            product_rand.serialize(),
+            expected_one,
+            "random_scalar * random_scalar_inv should be 1"
+        );
     }
 }
 
@@ -492,25 +525,21 @@ fn test_modular_inverse_comprehensive() {
 fn test_cofactor_validation() {
     // Test that n * G = O (point at infinity)
     let n_minus_1_bytes = [
-        0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFA, 0x51, 0x86, 0x87, 0x83, 0xBF, 0x2F,
-        0x96, 0x6B, 0x7F, 0xCC, 0x01, 0x48, 0xF7, 0x09,
-        0xA5, 0xD0, 0x3B, 0xB5, 0xC9, 0xB8, 0x89, 0x9C,
-        0x47, 0xAE, 0xBB, 0x6F, 0xB7, 0x1E, 0x91, 0x38,
-        0x64, 0x08,
+        0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFA, 0x51, 0x86, 0x87, 0x83, 0xBF, 0x2F, 0x96, 0x6B, 0x7F, 0xCC, 0x01,
+        0x48, 0xF7, 0x09, 0xA5, 0xD0, 0x3B, 0xB5, 0xC9, 0xB8, 0x89, 0x9C, 0x47, 0xAE, 0xBB, 0x6F,
+        0xB7, 0x1E, 0x91, 0x38, 0x64, 0x08,
     ];
-    
+
     let n_minus_1 = ec::Scalar::new(n_minus_1_bytes).unwrap();
     let n_minus_1_g = ec::scalar_mult_base_g(&n_minus_1).unwrap();
-    
+
     let mut one_bytes = [0u8; 66];
     one_bytes[65] = 1;
     let one = ec::Scalar::new(one_bytes).unwrap();
     let g = ec::scalar_mult_base_g(&one).unwrap();
-    
+
     let result = n_minus_1_g.add(&g);
     assert!(result.is_identity());
 }
@@ -521,27 +550,27 @@ fn test_cross_validation() {
     for _ in 0..3 {
         let (pk1, sk1) = EcdsaP521::keypair(&mut rng).unwrap();
         let (pk2, sk2) = EcdsaP521::keypair(&mut rng).unwrap();
-        
+
         let msg1 = b"First test message";
         let msg2 = b"Second test message";
-        
+
         let sig1_msg1 = EcdsaP521::sign(msg1, &sk1).unwrap();
         let sig1_msg2 = EcdsaP521::sign(msg2, &sk1).unwrap();
         let sig2_msg1 = EcdsaP521::sign(msg1, &sk2).unwrap();
         let sig2_msg2 = EcdsaP521::sign(msg2, &sk2).unwrap();
-        
+
         // Correct key/message pairs should verify
         assert!(EcdsaP521::verify(msg1, &sig1_msg1, &pk1).is_ok());
         assert!(EcdsaP521::verify(msg2, &sig1_msg2, &pk1).is_ok());
         assert!(EcdsaP521::verify(msg1, &sig2_msg1, &pk2).is_ok());
         assert!(EcdsaP521::verify(msg2, &sig2_msg2, &pk2).is_ok());
-        
+
         // Wrong key should fail
         assert!(EcdsaP521::verify(msg1, &sig1_msg1, &pk2).is_err());
         assert!(EcdsaP521::verify(msg2, &sig1_msg2, &pk2).is_err());
         assert!(EcdsaP521::verify(msg1, &sig2_msg1, &pk1).is_err());
         assert!(EcdsaP521::verify(msg2, &sig2_msg2, &pk1).is_err());
-        
+
         // Wrong message should fail
         assert!(EcdsaP521::verify(msg2, &sig1_msg1, &pk1).is_err());
         assert!(EcdsaP521::verify(msg1, &sig1_msg2, &pk1).is_err());
@@ -553,7 +582,7 @@ fn test_deterministic_k_properties() {
     let mut rng = OsRng;
     let (_, sk) = EcdsaP521::keypair(&mut rng).unwrap();
     let message = b"Test deterministic k";
-    
+
     // Generate multiple signatures to ensure they're different (due to hedging)
     let mut signatures: Vec<EcdsaP521Signature> = Vec::new();
     for _ in 0..5 {
@@ -597,8 +626,12 @@ fn test_p521_keypair_rsp_parsing_and_validation() {
         let qy_expected_bytes_arr = hex_to_fixed_size_bytes::<{ ec::P521_SCALAR_SIZE }>(&vector.qy)
             .unwrap_or_else(|e| panic!("Vector {}: Failed to parse Qy: {}", i, e));
 
-        let d_scalar = ec::Scalar::new(d_bytes_arr)
-            .unwrap_or_else(|e| panic!("Vector {}: Failed to create scalar d from bytes {:?}: {:?}", i, d_bytes_arr, e));
+        let d_scalar = ec::Scalar::new(d_bytes_arr).unwrap_or_else(|e| {
+            panic!(
+                "Vector {}: Failed to create scalar d from bytes {:?}: {:?}",
+                i, d_bytes_arr, e
+            )
+        });
 
         let q_calculated = ec::scalar_mult_base_g(&d_scalar)
             .unwrap_or_else(|e| panic!("Vector {}: Failed to compute Q=dG: {:?}", i, e));
@@ -606,10 +639,16 @@ fn test_p521_keypair_rsp_parsing_and_validation() {
         let qx_calculated_bytes_arr = q_calculated.x_coordinate_bytes();
         let qy_calculated_bytes_arr = q_calculated.y_coordinate_bytes();
 
-        assert_eq!(qx_calculated_bytes_arr, qx_expected_bytes_arr,
-                   "Vector {}: Qx mismatch for d={}", i, vector.d);
-        assert_eq!(qy_calculated_bytes_arr, qy_expected_bytes_arr,
-                   "Vector {}: Qy mismatch for d={}", i, vector.d);
+        assert_eq!(
+            qx_calculated_bytes_arr, qx_expected_bytes_arr,
+            "Vector {}: Qx mismatch for d={}",
+            i, vector.d
+        );
+        assert_eq!(
+            qy_calculated_bytes_arr, qy_expected_bytes_arr,
+            "Vector {}: Qy mismatch for d={}",
+            i, vector.d
+        );
     }
 }
 
@@ -617,12 +656,12 @@ fn test_p521_keypair_rsp_parsing_and_validation() {
 fn test_p521_pkv_rsp_parsing_and_validation() {
     let dir = vectors_dir();
     let pkv_rsp_path = dir.join("PKV.rsp");
-    
+
     if !pkv_rsp_path.exists() {
         eprintln!("PKV.rsp not found, skipping P-521 PKV test");
         return;
     }
-    
+
     let rsp_content = fs::read_to_string(&pkv_rsp_path).unwrap();
     let p521_pkv_vectors = parse_pkv_vectors(&rsp_content, "[P-521]");
 
@@ -644,26 +683,38 @@ fn test_p521_pkv_rsp_parsing_and_validation() {
                     pk_uncompressed[1..(1 + ec::P521_SCALAR_SIZE)].copy_from_slice(&qx_bytes_arr);
                     pk_uncompressed[(1 + ec::P521_SCALAR_SIZE)..].copy_from_slice(&qy_bytes_arr);
                     let public_key_candidate = EcdsaP521PublicKey(pk_uncompressed);
-                    ec::Point::deserialize_uncompressed(&public_key_candidate.0).map_err(ApiError::from)
+                    ec::Point::deserialize_uncompressed(&public_key_candidate.0)
+                        .map_err(ApiError::from)
                 }
                 (Err(e_qx), _) => Err(ApiError::InvalidParameter {
                     context: "P521 PKV Test - Hex decoding Qx",
-                    #[cfg(feature = "std")] message: e_qx,
+                    #[cfg(feature = "std")]
+                    message: e_qx,
                 }),
                 (_, Err(e_qy)) => Err(ApiError::InvalidParameter {
                     context: "P521 PKV Test - Hex decoding Qy",
-                    #[cfg(feature = "std")] message: e_qy,
+                    #[cfg(feature = "std")]
+                    message: e_qy,
                 }),
             };
-            
+
         if vector.expected_result == "P" {
-            assert!(validation_attempt.is_ok(), 
-                "Vector {}: Expected PASS (P), got FAIL for Qx={}, Qy={}. Error: {:?}", 
-                i, vector.qx, vector.qy, validation_attempt.err());
+            assert!(
+                validation_attempt.is_ok(),
+                "Vector {}: Expected PASS (P), got FAIL for Qx={}, Qy={}. Error: {:?}",
+                i,
+                vector.qx,
+                vector.qy,
+                validation_attempt.err()
+            );
         } else {
-            assert!(validation_attempt.is_err(), 
-                "Vector {}: Expected FAIL (F), got PASS for Qx={}, Qy={}", 
-                i, vector.qx, vector.qy);
+            assert!(
+                validation_attempt.is_err(),
+                "Vector {}: Expected FAIL (F), got PASS for Qx={}, Qy={}",
+                i,
+                vector.qx,
+                vector.qy
+            );
         }
     }
 }
@@ -672,20 +723,20 @@ fn test_p521_pkv_rsp_parsing_and_validation() {
 fn test_p521_sigver_rsp_verify() {
     let dir = vectors_dir();
     let sigver_rsp_path = dir.join("SigVer.rsp");
-    
+
     if !sigver_rsp_path.exists() {
         eprintln!("SigVer.rsp not found, skipping P-521 SigVer test");
         return;
     }
-    
+
     let rsp_content = fs::read_to_string(&sigver_rsp_path).unwrap();
     let p521_sigver_vectors = parse_sig_ver_vectors(&rsp_content, "P-521");
-    
+
     if p521_sigver_vectors.is_empty() {
         eprintln!("No P-521 SigVer vectors found");
         return;
     }
-    
+
     let mut correct_hash_pass = 0;
     let mut correct_hash_fail = 0;
     let mut mismatch_hash_correct_fail_originally_p = 0;
@@ -706,7 +757,6 @@ fn test_p521_sigver_rsp_verify() {
         let s_bytes_vec = hex_to_vec_tolerant(&vector.s_hex)
             .unwrap_or_else(|e| panic!("Vector {}: Failed to parse S: {}", i, e));
 
-
         let mut pk_uncompressed = [0u8; ec::P521_POINT_UNCOMPRESSED_SIZE];
         pk_uncompressed[0] = 0x04;
 
@@ -714,7 +764,10 @@ fn test_p521_sigver_rsp_verify() {
         pk_uncompressed[(1 + ec::P521_SCALAR_SIZE)..].copy_from_slice(&qy_bytes_arr);
         let public_key = EcdsaP521PublicKey(pk_uncompressed);
 
-        let sig_components = SignatureComponents { r: r_bytes_vec.clone(), s: s_bytes_vec.clone() };
+        let sig_components = SignatureComponents {
+            r: r_bytes_vec.clone(),
+            s: s_bytes_vec.clone(),
+        };
         let der_signature = EcdsaP521Signature(sig_components.to_der());
 
         let verification_result = EcdsaP521::verify(&msg_bytes, &der_signature, &public_key);
@@ -746,30 +799,51 @@ fn test_p521_sigver_rsp_verify() {
             mismatch_hash_originally_fail_and_failed += 1;
         }
     }
-    
+
     println!("\n--- P-521 SigVer.rsp Test Summary ---");
-    println!("Total P-521 vectors processed: {}", p521_sigver_vectors.len());
+    println!(
+        "Total P-521 vectors processed: {}",
+        p521_sigver_vectors.len()
+    );
     println!("  Vectors with matching hash ({}):", combo_expected_by_impl);
     println!("    Correct PASS: {}", correct_hash_pass);
     println!("    Correct FAIL: {}", correct_hash_fail);
-    println!("  Vectors with mismatched hash (implementation uses {}):", combo_expected_by_impl.split(',').nth(1).unwrap_or("?"));
-    println!("    Correctly FAILED (where original vector was P): {}", mismatch_hash_correct_fail_originally_p);
-    println!("    Correctly FAILED (where original vector was F): {}", mismatch_hash_originally_fail_and_failed);
+    println!(
+        "  Vectors with mismatched hash (implementation uses {}):",
+        combo_expected_by_impl.split(',').nth(1).unwrap_or("?")
+    );
+    println!(
+        "    Correctly FAILED (where original vector was P): {}",
+        mismatch_hash_correct_fail_originally_p
+    );
+    println!(
+        "    Correctly FAILED (where original vector was F): {}",
+        mismatch_hash_originally_fail_and_failed
+    );
     if mismatch_hash_unexpected_pass > 0 {
-        println!("    WARNING: UNEXPECTED PASS with mismatched hash: {}", mismatch_hash_unexpected_pass);
+        println!(
+            "    WARNING: UNEXPECTED PASS with mismatched hash: {}",
+            mismatch_hash_unexpected_pass
+        );
     }
-    
+
     if correct_hash_pass == 0 && correct_hash_fail == 0 && !p521_sigver_vectors.is_empty() {
-         let found_matching_combo = p521_sigver_vectors.iter().any(|v| canon(&v.curve_sha_combo) == canon(combo_expected_by_impl));
-         if !found_matching_combo {
-            eprintln!("Warning: No P-521,SHA512 test vectors were found in the parsed SigVer.rsp data.");
-         } else {
+        let found_matching_combo = p521_sigver_vectors
+            .iter()
+            .any(|v| canon(&v.curve_sha_combo) == canon(combo_expected_by_impl));
+        if !found_matching_combo {
+            eprintln!(
+                "Warning: No P-521,SHA512 test vectors were found in the parsed SigVer.rsp data."
+            );
+        } else {
             eprintln!("Warning: P-521,SHA512 test vectors were found, but none resulted in a PASS or FAIL count. Check test logic.");
-         }
+        }
     }
-    
+
     // Add assertion to fail the test if there were unexpected passes
-    assert_eq!(mismatch_hash_unexpected_pass, 0, 
-        "There were {} unexpected passes with mismatched hashes for P-521.", 
-        mismatch_hash_unexpected_pass);
+    assert_eq!(
+        mismatch_hash_unexpected_pass, 0,
+        "There were {} unexpected passes with mismatched hashes for P-521.",
+        mismatch_hash_unexpected_pass
+    );
 }

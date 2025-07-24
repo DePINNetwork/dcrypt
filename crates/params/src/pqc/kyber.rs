@@ -10,34 +10,34 @@ pub const KYBER_Q: u16 = 3329;
 pub struct Kyber512Params {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Number of polynomials (dimension)
     pub k: usize,
-    
+
     /// Error distribution parameter
     pub eta1: u8,
-    
+
     /// Error distribution parameter
     pub eta2: u8,
-    
+
     /// Number of bits dropped for compression of public key
     pub du: usize,
-    
+
     /// Number of bits dropped for compression of ciphertext
     pub dv: usize,
-    
+
     /// Size of public key in bytes
     pub public_key_size: usize,
-    
+
     /// Size of secret key in bytes
     pub secret_key_size: usize,
-    
+
     /// Size of ciphertext in bytes
     pub ciphertext_size: usize,
-    
+
     /// Size of shared secret in bytes
     pub shared_secret_size: usize,
 }
@@ -61,34 +61,34 @@ pub const KYBER512: Kyber512Params = Kyber512Params {
 pub struct Kyber768Params {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Number of polynomials (dimension)
     pub k: usize,
-    
+
     /// Error distribution parameter
     pub eta1: u8,
-    
+
     /// Error distribution parameter
     pub eta2: u8,
-    
+
     /// Number of bits dropped for compression of public key
     pub du: usize,
-    
+
     /// Number of bits dropped for compression of ciphertext
     pub dv: usize,
-    
+
     /// Size of public key in bytes
     pub public_key_size: usize,
-    
+
     /// Size of secret key in bytes
     pub secret_key_size: usize,
-    
+
     /// Size of ciphertext in bytes
     pub ciphertext_size: usize,
-    
+
     /// Size of shared secret in bytes
     pub shared_secret_size: usize,
 }
@@ -112,34 +112,34 @@ pub const KYBER768: Kyber768Params = Kyber768Params {
 pub struct Kyber1024Params {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Number of polynomials (dimension)
     pub k: usize,
-    
+
     /// Error distribution parameter
     pub eta1: u8,
-    
+
     /// Error distribution parameter
     pub eta2: u8,
-    
+
     /// Number of bits dropped for compression of public key
     pub du: usize,
-    
+
     /// Number of bits dropped for compression of ciphertext
     pub dv: usize,
-    
+
     /// Size of public key in bytes
     pub public_key_size: usize,
-    
+
     /// Size of secret key in bytes
     pub secret_key_size: usize,
-    
+
     /// Size of ciphertext in bytes
     pub ciphertext_size: usize,
-    
+
     /// Size of shared secret in bytes
     pub shared_secret_size: usize,
 }

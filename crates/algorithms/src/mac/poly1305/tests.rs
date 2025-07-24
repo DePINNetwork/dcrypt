@@ -34,9 +34,7 @@ fn test_empty_message() {
 #[test]
 fn test_chunked_vs_single_update() {
     let key = rfc_key();
-    let msg: Vec<u8> =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-            .to_vec();
+    let msg: Vec<u8> = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".to_vec();
     let mut p1 = Poly1305::new(&key).unwrap();
     p1.update(&msg).unwrap();
     let mut p2 = Poly1305::new(&key).unwrap();
@@ -83,12 +81,9 @@ fn test_multi_block_message() {
 #[test]
 fn test_poly1305_rfc8439_vector2() {
     let mut key = [0u8; 32];
-    key[16..32].copy_from_slice(
-        &hex::decode("36e5f6b5c5e06070f0efca96227a863e").unwrap(),
-    );
+    key[16..32].copy_from_slice(&hex::decode("36e5f6b5c5e06070f0efca96227a863e").unwrap());
     let mut p = Poly1305::new(&key).unwrap();
-    let text =
-        b"Any submission to the IETF intended by the Contributor for \
+    let text = b"Any submission to the IETF intended by the Contributor for \
 publication as all or part of an IETF Internet-Draft or RFC";
     p.update(text).unwrap();
     assert_eq!(
@@ -163,9 +158,7 @@ fn test_poly1305_rfc8439_vector8() {
 #[test]
 fn test_poly1305_rfc8439_vector10() {
     let mut key = [0u8; 32];
-    key[..16].copy_from_slice(
-        &hex::decode("01000000000000000400000000000000").unwrap(),
-    );
+    key[..16].copy_from_slice(&hex::decode("01000000000000000400000000000000").unwrap());
     let data = hex::decode(
         "e33594d7505e43b90000000000000000\
          3394d7505e4379cd0100000000000000\
@@ -184,9 +177,7 @@ fn test_poly1305_rfc8439_vector10() {
 #[test]
 fn test_poly1305_rfc8439_vector11() {
     let mut key = [0u8; 32];
-    key[..16].copy_from_slice(
-        &hex::decode("01000000000000000400000000000000").unwrap(),
-    );
+    key[..16].copy_from_slice(&hex::decode("01000000000000000400000000000000").unwrap());
     let data = hex::decode(
         "e33594d7505e43b90000000000000000\
          3394d7505e4379cd0100000000000000\

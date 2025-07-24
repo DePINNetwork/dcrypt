@@ -8,7 +8,7 @@ fn test_shake128_empty_output() {
     let mut xof = ShakeXof128::new();
     let result = xof.squeeze_into_vec(0);
     assert!(result.is_err());
-    
+
     let mut empty_buffer = [];
     let result = xof.squeeze(&mut empty_buffer);
     assert!(result.is_err());
@@ -18,15 +18,15 @@ fn test_shake128_empty_output() {
 fn test_shake256_state_errors() {
     let mut xof = ShakeXof256::new();
     xof.finalize().unwrap();
-    
+
     // Should error when updating after finalization
     let result = xof.update(b"test");
     assert!(matches!(result, Err(Error::Processing { .. })));
-    
+
     // Should work to squeeze after finalization
     let mut output = [0u8; 32];
     assert!(xof.squeeze(&mut output).is_ok());
-    
+
     // Should error when updating after squeezing
     let result = xof.update(b"test");
     assert!(matches!(result, Err(Error::Processing { .. })));
@@ -37,13 +37,13 @@ fn test_shake_reset() {
     let mut xof = ShakeXof128::new();
     xof.update(b"test").unwrap();
     xof.finalize().unwrap();
-    
+
     let mut first_output = [0u8; 32];
     xof.squeeze(&mut first_output).unwrap();
-    
+
     // Reset should clear all state
     xof.reset().unwrap();
-    
+
     // Should be able to update again
     assert!(xof.update(b"test").is_ok());
     assert!(!xof.is_finalized);
@@ -54,24 +54,24 @@ fn test_shake_reset() {
 fn test_shake128_xof_variable_length() {
     // NIST test vectors for SHAKE-128
     let empty_32_expected = "7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26";
-    
+
     let mut xof = ShakeXof128::new();
     xof.update(&[]).unwrap();
     let output = xof.squeeze_into_vec(32).unwrap();
-    
+
     assert_eq!(hex::encode(&output), empty_32_expected);
-    
+
     // Test generating more output
     let output2 = xof.squeeze_into_vec(32).unwrap();
     assert_ne!(output, output2); // Second 32 bytes should be different
-    
+
     // Test with longer input
     let abc_32_expected = "5881092dd818bf5cf8a3ddb793fbcba74097d5c526a6d35f97b83351940f2cc8";
-    
+
     let mut xof = ShakeXof128::new();
     xof.update(b"abc").unwrap();
     let output = xof.squeeze_into_vec(32).unwrap();
-    
+
     assert_eq!(hex::encode(&output), abc_32_expected);
 }
 
@@ -79,23 +79,23 @@ fn test_shake128_xof_variable_length() {
 fn test_shake256_xof_variable_length() {
     // NIST test vectors for SHAKE-256
     let empty_64_expected = "46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762fd75dc4ddd8c0f200cb05019d67b592f6fc821c49479ab48640292eacb3b7c4be";
-    
+
     let mut xof = ShakeXof256::new();
     xof.update(&[]).unwrap();
     let output = xof.squeeze_into_vec(64).unwrap();
-    
+
     assert_eq!(hex::encode(&output), empty_64_expected);
-    
+
     // Test generating more output in multiple calls
     let mut xof = ShakeXof256::new();
     xof.update(&[]).unwrap();
     let output1 = xof.squeeze_into_vec(32).unwrap();
     let output2 = xof.squeeze_into_vec(32).unwrap();
-    
+
     let mut combined = Vec::new();
     combined.extend_from_slice(&output1);
     combined.extend_from_slice(&output2);
-    
+
     assert_eq!(hex::encode(&combined), empty_64_expected);
 }
 
@@ -105,15 +105,15 @@ fn test_xof_reuse_error() {
     let mut xof = ShakeXof256::new();
     xof.update(b"test").unwrap();
     xof.finalize().unwrap();
-    
+
     let result = xof.update(b"more data");
     assert!(result.is_err());
-    
+
     // Test that attempting to update after squeezing fails
     let mut xof = ShakeXof256::new();
     xof.update(b"test").unwrap();
     let _ = xof.squeeze_into_vec(32).unwrap();
-    
+
     let result = xof.update(b"more data");
     assert!(result.is_err());
 }
@@ -124,12 +124,12 @@ fn test_xof_reset() {
     let mut xof = ShakeXof256::new();
     xof.update(b"test").unwrap();
     let output1 = xof.squeeze_into_vec(32).unwrap();
-    
+
     // Reset and process same data
     xof.reset().unwrap();
     xof.update(b"test").unwrap();
     let output2 = xof.squeeze_into_vec(32).unwrap();
-    
+
     // Should get same result after reset
     assert_eq!(output1, output2);
 }
@@ -138,93 +138,114 @@ fn test_xof_reset() {
 fn test_shake_xof_incremental_output() {
     // Test that extracting output incrementally gives the same results as all at once
     let test_data = b"test data for incremental output";
-    
+
     // SHAKE-128
     let mut xof128 = ShakeXof128::new();
     xof128.update(test_data).unwrap();
     xof128.finalize().unwrap();
-    
+
     // Extract 100 bytes total, in two parts
     let part1_128 = xof128.squeeze_into_vec(50).unwrap();
     let part2_128 = xof128.squeeze_into_vec(50).unwrap();
-    
+
     // Extract 100 bytes all at once
     let mut xof128_all = ShakeXof128::new();
     xof128_all.update(test_data).unwrap();
     let all_128 = xof128_all.squeeze_into_vec(100).unwrap();
-    
+
     // Compare
     let mut combined_128 = part1_128.clone();
     combined_128.extend_from_slice(&part2_128);
-    assert_eq!(combined_128, all_128, "SHAKE-128 incremental output doesn't match combined output");
-    
+    assert_eq!(
+        combined_128, all_128,
+        "SHAKE-128 incremental output doesn't match combined output"
+    );
+
     // SHAKE-256
     let mut xof256 = ShakeXof256::new();
     xof256.update(test_data).unwrap();
     xof256.finalize().unwrap();
-    
+
     // Extract 100 bytes total, in two parts
     let part1_256 = xof256.squeeze_into_vec(50).unwrap();
     let part2_256 = xof256.squeeze_into_vec(50).unwrap();
-    
+
     // Extract 100 bytes all at once
     let mut xof256_all = ShakeXof256::new();
     xof256_all.update(test_data).unwrap();
     let all_256 = xof256_all.squeeze_into_vec(100).unwrap();
-    
+
     // Compare
     let mut combined_256 = part1_256.clone();
     combined_256.extend_from_slice(&part2_256);
-    assert_eq!(combined_256, all_256, "SHAKE-256 incremental output doesn't match combined output");
+    assert_eq!(
+        combined_256, all_256,
+        "SHAKE-256 incremental output doesn't match combined output"
+    );
 }
 
 #[test]
 fn debug_shake_implementation() {
     println!("\nDebugging SHAKE implementation:");
-    
+
     // Empty input test
     let empty_input: [u8; 0] = [];
     let mut shake128 = ShakeXof128::new();
     shake128.update(&empty_input).unwrap();
     let shake_empty_result = shake128.squeeze_into_vec(32).unwrap();
-    
-    println!("SHAKE-128 empty input (actual):   {}", hex::encode(&shake_empty_result));
+
+    println!(
+        "SHAKE-128 empty input (actual):   {}",
+        hex::encode(&shake_empty_result)
+    );
     println!("SHAKE-128 empty input (expected): 7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26");
-    
+
     // "abc" input test
     let abc_input = b"abc";
     let mut shake128 = ShakeXof128::new();
     shake128.update(abc_input).unwrap();
     let shake_abc_result = shake128.squeeze_into_vec(32).unwrap();
-    
-    println!("SHAKE-128 'abc' input (actual):   {}", hex::encode(&shake_abc_result));
+
+    println!(
+        "SHAKE-128 'abc' input (actual):   {}",
+        hex::encode(&shake_abc_result)
+    );
     println!("SHAKE-128 'abc' input (expected): 5881092dd818bf5cf8a3ddb793fbcba74097d5c526a6d35f97b83351940f2cc8");
-    
+
     // SHAKE-256 tests
     let mut shake256 = ShakeXof256::new();
     shake256.update(&empty_input).unwrap();
     let shake256_empty_result = shake256.squeeze_into_vec(64).unwrap();
-    
-    println!("\nSHAKE-256 empty input (actual):   {}", hex::encode(&shake256_empty_result));
+
+    println!(
+        "\nSHAKE-256 empty input (actual):   {}",
+        hex::encode(&shake256_empty_result)
+    );
     println!("SHAKE-256 empty input (expected): 46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762fd75dc4ddd8c0f200cb05019d67b592f6fc821c49479ab48640292eacb3b7c4be");
-    
+
     // For debugging
     println!("\nAnalyzing SHAKE state transitions:");
-    
+
     // Empty input to SHAKE-128
     let mut debug_shake = ShakeXof128::new();
     debug_shake.update(&empty_input).unwrap();
-    
+
     // Inspect buffer before finalization
     println!("Before finalize, buffer_idx: {}", debug_shake.buffer_idx);
-    
+
     debug_shake.finalize().unwrap();
-    
+
     // Extract raw buffer state for debugging
     if debug_shake.buffer_idx == 0 {
         println!("After finalize:");
-        println!("  First byte (should be 0x1F): {:02x}", debug_shake.buffer.as_ref()[0]);
-        println!("  Last byte (should be 0x80): {:02x}", debug_shake.buffer.as_ref()[SHAKE128_RATE - 1]);
+        println!(
+            "  First byte (should be 0x1F): {:02x}",
+            debug_shake.buffer.as_ref()[0]
+        );
+        println!(
+            "  Last byte (should be 0x80): {:02x}",
+            debug_shake.buffer.as_ref()[SHAKE128_RATE - 1]
+        );
     }
 }
 
@@ -242,7 +263,10 @@ fn run_shake_xof_tests<X: ExtendableOutputFunction>(filepath: &str, name: &str) 
 
         // Skip zero-length outputs
         if bit_len == 0 || test.output.is_empty() {
-            println!("Skipping test case {}: zero-length output ({} bits)", i, bit_len);
+            println!(
+                "Skipping test case {}: zero-length output ({} bits)",
+                i, bit_len
+            );
             skipped += 1;
             continue;
         }
@@ -333,7 +357,6 @@ fn run_shake_xof_tests<X: ExtendableOutputFunction>(filepath: &str, name: &str) 
     println!("{} tests: {} passed, {} skipped", name, tested, skipped);
 }
 
-
 #[derive(Debug)]
 struct ShakeTestVector {
     len: usize,        // Input length in bits
@@ -346,7 +369,7 @@ fn parse_shake_test_file(filepath: &str) -> Vec<ShakeTestVector> {
     use std::fs::File;
     use std::io::{BufRead, BufReader};
     use std::path::Path;
-    
+
     // Attempt to open the file, return empty vector if not found
     let file = match File::open(Path::new(filepath)) {
         Ok(f) => f,
@@ -356,35 +379,35 @@ fn parse_shake_test_file(filepath: &str) -> Vec<ShakeTestVector> {
             return Vec::new();
         }
     };
-    
+
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
-    
+
     let mut test_vectors = Vec::new();
     let mut current_vector: Option<ShakeTestVector> = None;
     let mut in_test_group = false;
-    
+
     while let Some(Ok(line)) = lines.next() {
         let line = line.trim();
-        
+
         // Skip empty lines and comments
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        
+
         // Detect test group headers like [Keylen = 256]
         if line.starts_with('[') && line.ends_with(']') {
             in_test_group = true;
             continue;
         }
-        
+
         // Only parse lines that start with specific keys
         if let Some(stripped) = line.strip_prefix("Len = ") {
             // Start of a new test case
             if let Some(vector) = current_vector.take() {
                 test_vectors.push(vector);
             }
-            
+
             // Extract bit length
             let len = match stripped.trim().parse::<usize>() {
                 Ok(val) => val,
@@ -393,11 +416,11 @@ fn parse_shake_test_file(filepath: &str) -> Vec<ShakeTestVector> {
                     continue;
                 }
             };
-            
+
             current_vector = Some(ShakeTestVector {
                 len,
                 msg: String::new(),
-                output_len: 0,  // Will be set later
+                output_len: 0, // Will be set later
                 output: String::new(),
             });
         } else if let Some(stripped) = line.strip_prefix("OutLen = ") {
@@ -417,7 +440,7 @@ fn parse_shake_test_file(filepath: &str) -> Vec<ShakeTestVector> {
                 vector.msg = stripped.trim().to_string();
             } else if let Some(stripped) = line.strip_prefix("Output = ") {
                 vector.output = stripped.trim().to_string();
-                
+
                 // If OutLen wasn't specified, derive it from the output hex length
                 if vector.output_len == 0 && !vector.output.is_empty() {
                     // Each hex character represents 4 bits
@@ -428,10 +451,10 @@ fn parse_shake_test_file(filepath: &str) -> Vec<ShakeTestVector> {
                 if let Some(old_vector) = current_vector.take() {
                     test_vectors.push(old_vector);
                 }
-                
+
                 // Start a new vector with default values
                 current_vector = Some(ShakeTestVector {
-                    len: 0,      // Will be set by specific fields
+                    len: 0, // Will be set by specific fields
                     msg: String::new(),
                     output_len: 0,
                     output: String::new(),
@@ -439,14 +462,14 @@ fn parse_shake_test_file(filepath: &str) -> Vec<ShakeTestVector> {
             }
         }
     }
-    
+
     // Add the last test vector if present
     if let Some(vector) = current_vector {
         if !vector.output.is_empty() {
             test_vectors.push(vector);
         }
     }
-    
+
     test_vectors
 }
 
@@ -455,19 +478,19 @@ fn test_shake_nist_variable_output() {
     // Path to the test vector files
     let base_path = env!("CARGO_MANIFEST_DIR");
     let vectors_dir = format!("{}/../dcrypt-test/src/vectors", base_path);
-    
+
     // Path to the variable output test vector files
     let shake128_path = format!("{}/shake/SHAKE128VariableOut.rsp", vectors_dir);
     let shake256_path = format!("{}/shake/SHAKE256VariableOut.rsp", vectors_dir);
-    
+
     // Run XOF tests - specifically with variable output sizes
     run_shake_xof_tests::<ShakeXof128>(&shake128_path, "SHAKE-128");
     run_shake_xof_tests::<ShakeXof256>(&shake256_path, "SHAKE-256");
-    
+
     // Also test short message files which have different output lengths
     let shake128_short_path = format!("{}/shake/SHAKE128ShortMsg.rsp", vectors_dir);
     let shake256_short_path = format!("{}/shake/SHAKE256ShortMsg.rsp", vectors_dir);
-    
+
     run_shake_xof_tests::<ShakeXof128>(&shake128_short_path, "SHAKE-128 (Short)");
     run_shake_xof_tests::<ShakeXof256>(&shake256_short_path, "SHAKE-256 (Short)");
 }

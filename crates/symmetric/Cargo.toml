@@ -44,3 +44,6 @@ byteorder = "1.4"  # Make sure this is included
 subtle = "2.4"   # Make sure constant-time comparison is available
 
 [dev-dependencies]
+
+[package.metadata.release]
+publish = true

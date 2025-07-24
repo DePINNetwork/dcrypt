@@ -7,3 +7,7 @@ description = "Constant values for dcrypt library"
 repository.workspace = true
 license.workspace = true
 publish = true
+
+
+[package.metadata.release]
+publish = true

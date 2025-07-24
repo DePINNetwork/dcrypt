@@ -1,8 +1,8 @@
 // File: dcrypt-sign/src/falcon/mod.rs
 
-use dcrypt_api::{Signature as SignatureTrait, Result};
-use zeroize::Zeroize;
+use dcrypt_api::{Result, Signature as SignatureTrait};
 use rand::{CryptoRng, RngCore};
+use zeroize::Zeroize;
 
 /// Falcon-512 signature scheme
 pub struct Falcon512;
@@ -17,36 +17,50 @@ pub struct FalconSecretKey(pub Vec<u8>);
 pub struct FalconSignature(pub Vec<u8>);
 
 impl AsRef<[u8]> for FalconPublicKey {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for FalconPublicKey {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for FalconSecretKey {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for FalconSecretKey {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for FalconSignature {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for FalconSignature {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl SignatureTrait for Falcon512 {
     type PublicKey = FalconPublicKey;
     type SecretKey = FalconSecretKey;
-    type SignatureData = FalconSignature;  // Changed from 'Signature' to 'SignatureData'
-    type KeyPair = (Self::PublicKey, Self::SecretKey);  // Added this type definition
+    type SignatureData = FalconSignature; // Changed from 'Signature' to 'SignatureData'
+    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added this type definition
 
-    fn name() -> &'static str { "Falcon-512" }
+    fn name() -> &'static str {
+        "Falcon-512"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<Self::KeyPair> {
         // Placeholder implementation
@@ -56,7 +70,7 @@ impl SignatureTrait for Falcon512 {
         rng.fill_bytes(&mut secret_key);
         Ok((FalconPublicKey(public_key), FalconSecretKey(secret_key)))
     }
-    
+
     // Add the missing public_key function
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
@@ -72,7 +86,11 @@ impl SignatureTrait for Falcon512 {
         Ok(FalconSignature(vec![0u8; 666]))
     }
 
-    fn verify(_message: &[u8], _signature: &Self::SignatureData, _public_key: &Self::PublicKey) -> Result<()> {
+    fn verify(
+        _message: &[u8],
+        _signature: &Self::SignatureData,
+        _public_key: &Self::PublicKey,
+    ) -> Result<()> {
         // Placeholder implementation
         Ok(())
     }
@@ -84,10 +102,12 @@ pub struct Falcon1024;
 impl SignatureTrait for Falcon1024 {
     type PublicKey = FalconPublicKey;
     type SecretKey = FalconSecretKey;
-    type SignatureData = FalconSignature;  // Changed from 'Signature' to 'SignatureData'
-    type KeyPair = (Self::PublicKey, Self::SecretKey);  // Added this type definition
+    type SignatureData = FalconSignature; // Changed from 'Signature' to 'SignatureData'
+    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added this type definition
 
-    fn name() -> &'static str { "Falcon-1024" }
+    fn name() -> &'static str {
+        "Falcon-1024"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<Self::KeyPair> {
         // Placeholder implementation
@@ -97,7 +117,7 @@ impl SignatureTrait for Falcon1024 {
         rng.fill_bytes(&mut secret_key);
         Ok((FalconPublicKey(public_key), FalconSecretKey(secret_key)))
     }
-    
+
     // Add the missing public_key function
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
@@ -113,7 +133,11 @@ impl SignatureTrait for Falcon1024 {
         Ok(FalconSignature(vec![0u8; 1280]))
     }
 
-    fn verify(_message: &[u8], _signature: &Self::SignatureData, _public_key: &Self::PublicKey) -> Result<()> {
+    fn verify(
+        _message: &[u8],
+        _signature: &Self::SignatureData,
+        _public_key: &Self::PublicKey,
+    ) -> Result<()> {
         // Placeholder implementation
         Ok(())
     }

@@ -1,17 +1,15 @@
 // Test importing and accessing various constants
 
 // Traditional cryptography constants
-use dcrypt_params::traditional::rsa::{
-    RSA_MODULUS_2048, RSA_MODULUS_4096, RSA_PUBLIC_EXPONENT
-};
-use dcrypt_params::traditional::ed25519::{
-    ED25519_PUBLIC_KEY_SIZE, ED25519_SECRET_KEY_SIZE, ED25519_SIGNATURE_SIZE
-};
 use dcrypt_params::traditional::ecdsa::NIST_P256;
+use dcrypt_params::traditional::ed25519::{
+    ED25519_PUBLIC_KEY_SIZE, ED25519_SECRET_KEY_SIZE, ED25519_SIGNATURE_SIZE,
+};
+use dcrypt_params::traditional::rsa::{RSA_MODULUS_2048, RSA_MODULUS_4096, RSA_PUBLIC_EXPONENT};
 
 // Post-quantum cryptography constants
-use dcrypt_params::pqc::kyber::{KYBER_N, KYBER_Q, KYBER768};
-use dcrypt_params::pqc::dilithium::{DILITHIUM_N, DILITHIUM_Q, DILITHIUM3};
+use dcrypt_params::pqc::dilithium::{DILITHIUM3, DILITHIUM_N, DILITHIUM_Q};
+use dcrypt_params::pqc::kyber::{KYBER768, KYBER_N, KYBER_Q};
 use dcrypt_params::pqc::ntru::NTRU_HPS_2048_509;
 
 // Utility constants

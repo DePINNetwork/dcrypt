@@ -6,16 +6,16 @@
 
 use crate::error::{Error, Result};
 use crate::hash::HashFunction;
+use dcrypt_common::security::{SecretBuffer, SecureZeroingType};
 use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use dcrypt_common::security::{SecretBuffer, SecureZeroingType};
 
 const MAX_BLOCK: usize = 144; // SHA3-224 block size (largest among SHA-2 and SHA-3)
 
 /// Constant-time HMAC implementation.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Hmac<H: HashFunction + Clone> {
-    #[zeroize(skip)]           // hash state contains no secrets
+    #[zeroize(skip)] // hash state contains no secrets
     hash: H,
     ipad: SecretBuffer<MAX_BLOCK>,
     opad: SecretBuffer<MAX_BLOCK>,
@@ -49,11 +49,11 @@ where
 
         // Select either `key` or `hashed` per byte with a mask.
         let mut k_prime = [0u8; MAX_BLOCK];
-        let long = (key.len() > bs) as u8;      // 1 if key > bs
-        let mask = long.wrapping_neg();         // 0xFF when long else 0x00
+        let long = (key.len() > bs) as u8; // 1 if key > bs
+        let mask = long.wrapping_neg(); // 0xFF when long else 0x00
         #[allow(clippy::needless_range_loop)] // We need the index for multiple arrays
         for i in 0..bs {
-            let k  = *key.get(i).unwrap_or(&0);
+            let k = *key.get(i).unwrap_or(&0);
             let hk = hashed.as_ref().get(i).copied().unwrap_or(0);
             k_prime[i] = (hk & mask) | (k & !mask);
         }

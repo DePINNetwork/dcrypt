@@ -13,37 +13,37 @@ pub const SABER_P: u16 = 1024;
 pub struct LightSaberParams {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Encoding modulus
     pub p: u16,
-    
+
     /// Number of polynomials (dimension)
     pub l: usize,
-    
+
     /// Modulus for rounding
     pub t: u16,
-    
+
     /// Bits for compression of A
     pub eq: usize,
-    
+
     /// Bits for compression of B
     pub ep: usize,
-    
+
     /// Bits for compression of s
     pub et: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Ciphertext size in bytes
     pub ciphertext_size: usize,
-    
+
     /// Shared secret size in bytes
     pub shared_secret_size: usize,
 }
@@ -68,37 +68,37 @@ pub const LIGHTSABER: LightSaberParams = LightSaberParams {
 pub struct SaberParams {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Encoding modulus
     pub p: u16,
-    
+
     /// Number of polynomials (dimension)
     pub l: usize,
-    
+
     /// Modulus for rounding
     pub t: u16,
-    
+
     /// Bits for compression of A
     pub eq: usize,
-    
+
     /// Bits for compression of B
     pub ep: usize,
-    
+
     /// Bits for compression of s
     pub et: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Ciphertext size in bytes
     pub ciphertext_size: usize,
-    
+
     /// Shared secret size in bytes
     pub shared_secret_size: usize,
 }
@@ -123,37 +123,37 @@ pub const SABER: SaberParams = SaberParams {
 pub struct FireSaberParams {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Encoding modulus
     pub p: u16,
-    
+
     /// Number of polynomials (dimension)
     pub l: usize,
-    
+
     /// Modulus for rounding
     pub t: u16,
-    
+
     /// Bits for compression of A
     pub eq: usize,
-    
+
     /// Bits for compression of B
     pub ep: usize,
-    
+
     /// Bits for compression of s
     pub et: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Ciphertext size in bytes
     pub ciphertext_size: usize,
-    
+
     /// Shared secret size in bytes
     pub shared_secret_size: usize,
 }

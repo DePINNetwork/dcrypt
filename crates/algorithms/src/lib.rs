@@ -23,11 +23,7 @@ extern crate alloc;
 
 // Error module and re-exports
 pub mod error;
-pub use error::{
-    Error, Result,
-    ResultExt, SecureErrorHandling,
-    validate,
-};
+pub use error::{validate, Error, Result, ResultExt, SecureErrorHandling};
 
 // Block cipher implementations
 pub mod block;
@@ -36,19 +32,15 @@ pub use block::{Aes128, Aes192, Aes256, Cbc, Ctr};
 // Hash function implementations
 pub mod hash;
 pub use hash::{
-    Sha1, Sha224, Sha256, Sha384, Sha512,
-    Sha3_224, Sha3_256, Sha3_384, Sha3_512,
-    Shake128, Shake256, Blake2b, Blake2s,
+    Blake2b, Blake2s, Sha1, Sha224, Sha256, Sha384, Sha3_224, Sha3_256, Sha3_384, Sha3_512, Sha512,
+    Shake128, Shake256,
 };
 
 // AEAD cipher implementations
 #[cfg(feature = "alloc")]
 pub mod aead;
 #[cfg(feature = "alloc")]
-pub use aead::{
-    ChaCha20Poly1305, XChaCha20Poly1305, Gcm,
-    ChaCha20Poly1305Cipher, AeadCipher,
-};
+pub use aead::{AeadCipher, ChaCha20Poly1305, ChaCha20Poly1305Cipher, Gcm, XChaCha20Poly1305};
 
 // MAC implementations
 pub mod mac;
@@ -62,76 +54,61 @@ pub use stream::chacha::chacha20::ChaCha20;
 #[cfg(feature = "alloc")]
 pub mod kdf;
 #[cfg(feature = "alloc")]
-pub use kdf::{
-    Pbkdf2, Hkdf, Argon2,
-    KeyDerivationFunction, PasswordHashFunction
-};
+pub use kdf::{Argon2, Hkdf, KeyDerivationFunction, PasswordHashFunction, Pbkdf2};
 
 // Elliptic Curve primitives
 pub mod ec;
 pub use ec::{
-    // Re-export common EC types
-    P256Point, P256Scalar,
-    P384Point, P384Scalar,
-    P521Point, P521Scalar,
-    
     // Re-export curve-specific modules
-    p256, p384, p521
+    p256,
+    p384,
+    p521,
+    // Re-export common EC types
+    P256Point,
+    P256Scalar,
+    P384Point,
+    P384Scalar,
+    P521Point,
+    P521Scalar,
 };
 
 // Type system
 pub mod types;
 pub use types::{
-    Nonce, Salt, Tag, Digest, SecretBytes,
-    ByteSerializable, FixedSize, ConstantTimeEq,
-    RandomGeneration, SecureZeroingType,
+    ByteSerializable, ConstantTimeEq, Digest, FixedSize, Nonce, RandomGeneration, Salt,
+    SecretBytes, SecureZeroingType, Tag,
 };
 
 // Re-export security types from dcrypt-core
 pub use dcrypt_common::security::{
-    SecretBuffer, SecretVec, EphemeralSecret, ZeroizeGuard,
-    SecureOperation, SecureCompare, SecureOperationExt,
-    SecureOperationBuilder, barrier,
+    barrier, EphemeralSecret, SecretBuffer, SecretVec, SecureCompare, SecureOperation,
+    SecureOperationBuilder, SecureOperationExt, ZeroizeGuard,
 };
 
 // Algorithm types and compatibility traits
 pub use types::{
     // Algorithm marker types
     algorithms::{
-        Aes128 as Aes128Algorithm,
-        Aes256 as Aes256Algorithm,
-        ChaCha20 as ChaCha20Algorithm,
-        ChaCha20Poly1305 as ChaCha20Poly1305Algorithm,
-        Ed25519 as Ed25519Algorithm,
-        X25519 as X25519Algorithm,
-        P521 as P521Algorithm,
+        Aes128 as Aes128Algorithm, Aes256 as Aes256Algorithm, ChaCha20 as ChaCha20Algorithm,
+        ChaCha20Poly1305 as ChaCha20Poly1305Algorithm, Ed25519 as Ed25519Algorithm,
+        P521 as P521Algorithm, X25519 as X25519Algorithm,
     },
-    
+
+    digest::{Blake2bCompatible, Sha256Compatible, Sha512Compatible},
     // Key types
-    key::{SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey},
-    
+    key::{AsymmetricPublicKey, AsymmetricSecretKey, SymmetricKey},
+
     // Compatibility traits for specific algorithms
-    nonce::{
-        ChaCha20Compatible, XChaCha20Compatible,
-        AesGcmCompatible, AesCtrCompatible,
-    },
-    salt::{
-        HkdfCompatible, Pbkdf2Compatible, Argon2Compatible,
-    },
-    digest::{
-        Sha256Compatible, Sha512Compatible, Blake2bCompatible,
-    },
-    tag::{
-        Poly1305Compatible, HmacCompatible, GcmCompatible,
-        ChaCha20Poly1305Compatible,
-    },
+    nonce::{AesCtrCompatible, AesGcmCompatible, ChaCha20Compatible, XChaCha20Compatible},
+    salt::{Argon2Compatible, HkdfCompatible, Pbkdf2Compatible},
+    tag::{ChaCha20Poly1305Compatible, GcmCompatible, HmacCompatible, Poly1305Compatible},
 };
 
 // XOF implementations (if enabled)
 #[cfg(feature = "xof")]
 pub mod xof;
 #[cfg(feature = "xof")]
-pub use xof::{ExtendableOutputFunction, ShakeXof128, ShakeXof256, Blake3Xof};
+pub use xof::{Blake3Xof, ExtendableOutputFunction, ShakeXof128, ShakeXof256};
 
 // **NEW** PQC Math Primitive Modules
 #[cfg(feature = "alloc")] // Polynomial arithmetic often benefits from dynamic allocation
@@ -140,11 +117,11 @@ pub mod poly;
 // Re-export polynomial types for easier access
 #[cfg(feature = "alloc")]
 pub use poly::{
-    prelude,
-    params::{Modulus, NttModulus, DilithiumParams, Kyber256Params},
+    ntt::{montgomery_reduce, CooleyTukeyNtt, InverseNttOperator, NttOperator},
+    params::{DilithiumParams, Kyber256Params, Modulus, NttModulus},
     polynomial::Polynomial,
-    ntt::{NttOperator, InverseNttOperator, CooleyTukeyNtt, montgomery_reduce},
-    sampling::{UniformSampler, CbdSampler, GaussianSampler, DefaultSamplers},
+    prelude,
+    sampling::{CbdSampler, DefaultSamplers, GaussianSampler, UniformSampler},
     serialize::{CoefficientPacker, CoefficientUnpacker, DefaultCoefficientSerde},
 };
 
@@ -153,7 +130,6 @@ pub mod lattice; // Re-exports poly
 
 // Stubs for future PQC math engines
 #[cfg(feature = "alloc")]
-pub mod mq;
-#[cfg(feature = "alloc")]
 pub mod code;
-
+#[cfg(feature = "alloc")]
+pub mod mq;

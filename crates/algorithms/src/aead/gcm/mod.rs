@@ -29,32 +29,32 @@ use alloc::vec::Vec;
 use std::vec::Vec;
 
 use byteorder::{BigEndian, ByteOrder};
-use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
-use subtle::ConstantTimeEq;
-#[cfg(feature = "std")]
-use std::sync::atomic::{compiler_fence, Ordering};
 #[cfg(not(feature = "std"))]
 use portable_atomic::{compiler_fence, Ordering};
+#[cfg(feature = "std")]
+use std::sync::atomic::{compiler_fence, Ordering};
+use subtle::ConstantTimeEq;
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 // Import security types from dcrypt-core - FIXED PATH
 use dcrypt_common::security::{SecretBuffer, SecureZeroingType};
 
 // Fix import paths by using crate:: for internal modules
 use crate::block::BlockCipher;
+use dcrypt_api::traits::symmetric::{DecryptOperation, EncryptOperation, Operation};
 use dcrypt_api::traits::AuthenticatedCipher;
 use dcrypt_api::traits::SymmetricCipher;
-use dcrypt_api::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
 
-use crate::types::SecretBytes;
-use crate::types::Nonce; // Using generic Nonce type
+use crate::error::{validate, Error, Result};
 use crate::types::nonce::AesGcmCompatible; // Import the AesGcmCompatible trait
-use crate::error::{Error, Result, validate};
+use crate::types::Nonce; // Using generic Nonce type
+use crate::types::SecretBytes;
 use dcrypt_api::error::Error as CoreError;
 use dcrypt_api::types::Ciphertext;
 
 // Import the GHASH module
 mod ghash;
-use ghash::{GHash, process_ghash};
+use ghash::{process_ghash, GHash};
 
 // GCM constants
 const GCM_BLOCK_SIZE: usize = 16;
@@ -66,7 +66,7 @@ pub struct Gcm<B: BlockCipher + Zeroize + ZeroizeOnDrop> {
     cipher: B,
     h: SecretBuffer<GCM_BLOCK_SIZE>, // GHASH key (encrypted all-zero block) - now secured
     nonce: Zeroizing<Vec<u8>>,
-    tag_len: usize,           // desired tag length in bytes
+    tag_len: usize, // desired tag length in bytes
 }
 
 /// Operation for GCM encryption operations
@@ -85,9 +85,9 @@ pub struct GcmDecryptOperation<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> {
 
 impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
     /// Creates a new GCM mode instance with default (16-byte) tag.
-    pub fn new<const N: usize>(cipher: B, nonce: &Nonce<N>) -> Result<Self> 
+    pub fn new<const N: usize>(cipher: B, nonce: &Nonce<N>) -> Result<Self>
     where
-        Nonce<N>: AesGcmCompatible
+        Nonce<N>: AesGcmCompatible,
     {
         Self::new_with_tag_len(cipher, nonce, GCM_TAG_SIZE)
     }
@@ -101,31 +101,31 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
         tag_len: usize,
     ) -> Result<Self>
     where
-        Nonce<N>: AesGcmCompatible
+        Nonce<N>: AesGcmCompatible,
     {
         // Ensure block size
         validate::parameter(
             B::block_size() == GCM_BLOCK_SIZE,
             "block_size",
-            "GCM only works with 128-bit block ciphers"
+            "GCM only works with 128-bit block ciphers",
         )?;
 
         validate::parameter(
             !nonce.is_empty() && nonce.len() <= 16,
             "nonce_length",
-            "GCM nonce must be between 1 and 16 bytes"
+            "GCM nonce must be between 1 and 16 bytes",
         )?;
 
         validate::parameter(
             (1..=GCM_TAG_SIZE).contains(&tag_len),
             "tag_length",
-            "GCM tag length must be between 1 and 16 bytes"
+            "GCM tag length must be between 1 and 16 bytes",
         )?;
 
         // Generate GHASH key H (encrypt all-zero block)
         let mut h_bytes = [0u8; GCM_BLOCK_SIZE];
         cipher.encrypt_block(&mut h_bytes)?;
-        
+
         // Wrap the GHASH key in SecretBuffer for secure storage
         let h = SecretBuffer::new(h_bytes);
 
@@ -145,9 +145,12 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
             j0[15] = 1;
         } else {
             // Convert SecretBuffer reference to array reference
-            let h_array: &[u8; GCM_BLOCK_SIZE] = self.h.as_ref().try_into()
+            let h_array: &[u8; GCM_BLOCK_SIZE] = self
+                .h
+                .as_ref()
+                .try_into()
                 .expect("SecretBuffer has correct size");
-            
+
             let mut g = GHash::new(h_array);
             g.update(&self.nonce)?;
             let rem = self.nonce.len() % GCM_BLOCK_SIZE;
@@ -161,7 +164,11 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
     }
 
     /// Generate encryption keystream for CTR mode
-    fn generate_keystream(&self, j0: &[u8; GCM_BLOCK_SIZE], data_len: usize) -> Result<Zeroizing<Vec<u8>>> {
+    fn generate_keystream(
+        &self,
+        j0: &[u8; GCM_BLOCK_SIZE],
+        data_len: usize,
+    ) -> Result<Zeroizing<Vec<u8>>> {
         let num_blocks = data_len.div_ceil(GCM_BLOCK_SIZE);
         let mut keystream = Zeroizing::new(Vec::with_capacity(num_blocks * GCM_BLOCK_SIZE));
 
@@ -188,21 +195,24 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
         ciphertext: &[u8],
     ) -> Result<[u8; GCM_TAG_SIZE]> {
         // Convert SecretBuffer reference to array reference
-        let h_array: &[u8; GCM_BLOCK_SIZE] = self.h.as_ref().try_into()
+        let h_array: &[u8; GCM_BLOCK_SIZE] = self
+            .h
+            .as_ref()
+            .try_into()
             .expect("SecretBuffer has correct size");
-        
+
         // Process the AAD and ciphertext with GHASH
         let mut tag = process_ghash(h_array, aad, ciphertext)?;
-        
+
         // Encrypt the initial counter block
         let mut j0_copy = *j0;
         self.cipher.encrypt_block(&mut j0_copy)?;
-        
+
         // XOR the encrypted counter with the GHASH result
         for i in 0..GCM_TAG_SIZE {
             tag[i] ^= j0_copy[i];
         }
-        
+
         Ok(tag)
     }
 
@@ -235,12 +245,8 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
         associated_data: Option<&[u8]>,
     ) -> Result<Vec<u8>> {
         // Length check is not a secret-dependent branch
-        validate::min_length(
-            "GCM ciphertext",
-            ciphertext.len(),
-            self.tag_len
-        )?;
-        
+        validate::min_length("GCM ciphertext", ciphertext.len(), self.tag_len)?;
+
         let aad = associated_data.unwrap_or(&[]);
         let ciphertext_len = ciphertext.len() - self.tag_len;
         let (ciphertext_data, received_tag) = ciphertext.split_at(ciphertext_len);
@@ -249,23 +255,23 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Gcm<B> {
         let j0 = self.generate_j0()?;
         let full_expected = self.generate_tag(&j0, aad, ciphertext_data)?;
         let expected_tag = &full_expected[..self.tag_len];
-        
+
         // Generate keystream and decrypt data
         let keystream = self.generate_keystream(&j0, ciphertext_len)?;
         let mut plaintext = Zeroizing::new(Vec::with_capacity(ciphertext_len));
         for i in 0..ciphertext_len {
             plaintext.push(ciphertext_data[i] ^ keystream[i]);
         }
-        
+
         // Memory barrier to ensure all decryption operations complete before comparison
         compiler_fence(Ordering::SeqCst);
-        
+
         // Constant-time tag comparison that doesn't leak timing information
         let tag_matches = expected_tag.ct_eq(received_tag);
-        
+
         // Memory barrier to ensure comparison is done before selecting result
         compiler_fence(Ordering::SeqCst);
-        
+
         // Convert the constant-time comparison result to an error if needed
         if tag_matches.unwrap_u8() == 0 {
             // Zeroize the plaintext securely before returning to avoid leaking data
@@ -285,7 +291,7 @@ impl<B: BlockCipher + Clone + Zeroize + ZeroizeOnDrop> SecureZeroingType for Gcm
         // For now, we'll panic if called, as this shouldn't be used directly
         panic!("Cannot create a zeroed GCM instance without a cipher")
     }
-    
+
     fn secure_clone(&self) -> Self {
         self.clone()
     }
@@ -301,15 +307,21 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> AuthenticatedCipher for Gcm<B> {
 impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> SymmetricCipher for Gcm<B> {
     // We can't use B::KEY_SIZE in const generic expressions, so we'll use a different approach
     type Key = SecretBytes<32>; // Using a fixed size for demonstration - adjust based on your needs
-    type Nonce = Nonce<12>;  // Using generic Nonce<12> instead of Nonce12
+    type Nonce = Nonce<12>; // Using generic Nonce<12> instead of Nonce12
     type Ciphertext = Ciphertext;
-    type EncryptOperation<'a> = GcmEncryptOperation<'a, B> where Self: 'a;
-    type DecryptOperation<'a> = GcmDecryptOperation<'a, B> where Self: 'a;
-    
+    type EncryptOperation<'a>
+        = GcmEncryptOperation<'a, B>
+    where
+        Self: 'a;
+    type DecryptOperation<'a>
+        = GcmDecryptOperation<'a, B>
+    where
+        Self: 'a;
+
     fn name() -> &'static str {
         "GCM"
     }
-    
+
     fn encrypt(&self) -> <Self as SymmetricCipher>::EncryptOperation<'_> {
         GcmEncryptOperation {
             cipher: self,
@@ -317,7 +329,7 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> SymmetricCipher for Gcm<B> {
             aad: None,
         }
     }
-    
+
     fn decrypt(&self) -> <Self as SymmetricCipher>::DecryptOperation<'_> {
         GcmDecryptOperation {
             cipher: self,
@@ -325,28 +337,35 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> SymmetricCipher for Gcm<B> {
             aad: None,
         }
     }
-    
-    fn generate_key<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<<Self as SymmetricCipher>::Key, CoreError> {
+
+    fn generate_key<R: rand::RngCore + rand::CryptoRng>(
+        rng: &mut R,
+    ) -> std::result::Result<<Self as SymmetricCipher>::Key, CoreError> {
         let mut key_data = [0u8; 32]; // Using same fixed size as type Key
         rng.fill_bytes(&mut key_data);
         Ok(SecretBytes::new(key_data))
     }
-    
-    fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(rng: &mut R) -> std::result::Result<<Self as SymmetricCipher>::Nonce, CoreError> {
+
+    fn generate_nonce<R: rand::RngCore + rand::CryptoRng>(
+        rng: &mut R,
+    ) -> std::result::Result<<Self as SymmetricCipher>::Nonce, CoreError> {
         let mut nonce_data = [0u8; 12];
         rng.fill_bytes(&mut nonce_data);
         Ok(Nonce::<12>::new(nonce_data)) // Using generic Nonce::<12> instead of Nonce12
     }
-    
-    fn derive_key_from_bytes(bytes: &[u8]) -> std::result::Result<<Self as SymmetricCipher>::Key, CoreError> {
-        if bytes.len() < 32 { // Using same fixed size as type Key
+
+    fn derive_key_from_bytes(
+        bytes: &[u8],
+    ) -> std::result::Result<<Self as SymmetricCipher>::Key, CoreError> {
+        if bytes.len() < 32 {
+            // Using same fixed size as type Key
             return Err(CoreError::InvalidLength {
                 context: "GCM key derivation",
                 expected: 32,
                 actual: bytes.len(),
             });
         }
-        
+
         let mut key_data = [0u8; 32]; // Using same fixed size as type Key
         key_data.copy_from_slice(&bytes[..32]);
         Ok(SecretBytes::new(key_data))
@@ -354,7 +373,9 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> SymmetricCipher for Gcm<B> {
 }
 
 // Implement Operation for GcmEncryptOperation
-impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Ciphertext> for GcmEncryptOperation<'_, B> {
+impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Ciphertext>
+    for GcmEncryptOperation<'_, B>
+{
     fn execute(self) -> std::result::Result<Ciphertext, CoreError> {
         if self.nonce.is_none() {
             return Err(CoreError::InvalidParameter {
@@ -364,28 +385,30 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Ciphertext> for GcmEncr
             });
         }
         let plaintext = b""; // Default empty plaintext
-        
-        let ciphertext = self.cipher.internal_encrypt(
-            plaintext,
-            self.aad,
-        ).map_err(CoreError::from)?;
-        
+
+        let ciphertext = self
+            .cipher
+            .internal_encrypt(plaintext, self.aad)
+            .map_err(CoreError::from)?;
+
         Ok(Ciphertext::new(&ciphertext))
     }
 }
 
 // Implement EncryptOperation for GcmEncryptOperation
-impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> EncryptOperation<'a, Gcm<B>> for GcmEncryptOperation<'a, B> {
+impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> EncryptOperation<'a, Gcm<B>>
+    for GcmEncryptOperation<'a, B>
+{
     fn with_nonce(mut self, nonce: &'a <Gcm<B> as SymmetricCipher>::Nonce) -> Self {
         self.nonce = Some(nonce);
         self
     }
-    
+
     fn with_aad(mut self, aad: &'a [u8]) -> Self {
         self.aad = Some(aad);
         self
     }
-    
+
     fn encrypt(self, plaintext: &'a [u8]) -> std::result::Result<Ciphertext, CoreError> {
         if self.nonce.is_none() {
             return Err(CoreError::InvalidParameter {
@@ -394,12 +417,12 @@ impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> EncryptOperation<'a, Gcm<B>> 
                 message: "Nonce is required for GCM encryption".to_string(),
             });
         }
-        
-        let ciphertext = self.cipher.internal_encrypt(
-            plaintext,
-            self.aad,
-        ).map_err(CoreError::from)?;
-        
+
+        let ciphertext = self
+            .cipher
+            .internal_encrypt(plaintext, self.aad)
+            .map_err(CoreError::from)?;
+
         Ok(Ciphertext::new(&ciphertext))
     }
 }
@@ -416,18 +439,23 @@ impl<B: BlockCipher + Zeroize + ZeroizeOnDrop> Operation<Vec<u8>> for GcmDecrypt
 }
 
 // Implement DecryptOperation for GcmDecryptOperation
-impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> DecryptOperation<'a, Gcm<B>> for GcmDecryptOperation<'a, B> {
+impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> DecryptOperation<'a, Gcm<B>>
+    for GcmDecryptOperation<'a, B>
+{
     fn with_nonce(mut self, nonce: &'a <Gcm<B> as SymmetricCipher>::Nonce) -> Self {
         self.nonce = Some(nonce);
         self
     }
-    
+
     fn with_aad(mut self, aad: &'a [u8]) -> Self {
         self.aad = Some(aad);
         self
     }
-    
-    fn decrypt(self, ciphertext: &'a <Gcm<B> as SymmetricCipher>::Ciphertext) -> std::result::Result<Vec<u8>, CoreError> {
+
+    fn decrypt(
+        self,
+        ciphertext: &'a <Gcm<B> as SymmetricCipher>::Ciphertext,
+    ) -> std::result::Result<Vec<u8>, CoreError> {
         if self.nonce.is_none() {
             return Err(CoreError::InvalidParameter {
                 context: "GCM decryption",
@@ -435,11 +463,10 @@ impl<'a, B: BlockCipher + Zeroize + ZeroizeOnDrop> DecryptOperation<'a, Gcm<B>> 
                 message: "Nonce is required for GCM decryption".to_string(),
             });
         }
-        
-        self.cipher.internal_decrypt(
-            ciphertext.as_ref(),
-            self.aad,
-        ).map_err(CoreError::from)
+
+        self.cipher
+            .internal_decrypt(ciphertext.as_ref(), self.aad)
+            .map_err(CoreError::from)
     }
 }
 

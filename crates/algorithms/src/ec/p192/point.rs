@@ -1,11 +1,13 @@
 //! P-192 elliptic curve point operations
 
 use crate::ec::p192::{
-    constants::{P192_FIELD_ELEMENT_SIZE, P192_POINT_UNCOMPRESSED_SIZE, P192_POINT_COMPRESSED_SIZE},
+    constants::{
+        P192_FIELD_ELEMENT_SIZE, P192_POINT_COMPRESSED_SIZE, P192_POINT_UNCOMPRESSED_SIZE,
+    },
     field::FieldElement,
     scalar::Scalar,
 };
-use crate::error::{Error, Result, validate};
+use crate::error::{validate, Error, Result};
 use subtle::Choice;
 
 /// Format of a serialized elliptic‐curve point
@@ -128,7 +130,10 @@ impl Point {
             return Ok(Self::identity());
         }
         if bytes[0] != 0x04 {
-            return Err(Error::param("P-192 Point", "Invalid prefix for uncompressed"));
+            return Err(Error::param(
+                "P-192 Point",
+                "Invalid prefix for uncompressed",
+            ));
         }
         let mut xb = [0u8; P192_FIELD_ELEMENT_SIZE];
         let mut yb = [0u8; P192_FIELD_ELEMENT_SIZE];
@@ -150,7 +155,11 @@ impl Point {
 
     /// Deserialize from compressed bytes (0x02/0x03 ∥ x) or all‐zeros for identity
     pub fn deserialize_compressed(bytes: &[u8]) -> Result<Self> {
-        validate::length("P-192 Compressed Point", bytes.len(), P192_POINT_COMPRESSED_SIZE)?;
+        validate::length(
+            "P-192 Compressed Point",
+            bytes.len(),
+            P192_POINT_COMPRESSED_SIZE,
+        )?;
         if bytes.iter().all(|&b| b == 0) {
             return Ok(Self::identity());
         }
@@ -160,9 +169,8 @@ impl Point {
         }
         let mut xb = [0u8; P192_FIELD_ELEMENT_SIZE];
         xb.copy_from_slice(&bytes[1..]);
-        let x_fe = FieldElement::from_bytes(&xb).map_err(|_| {
-            Error::param("P-192 Point", "Invalid compressed point: x not in field")
-        })?;
+        let x_fe = FieldElement::from_bytes(&xb)
+            .map_err(|_| Error::param("P-192 Point", "Invalid compressed point: x not in field"))?;
         // Compute rhs = x³ - 3x + b
         let rhs = {
             let x2 = x_fe.square();
@@ -171,16 +179,15 @@ impl Point {
             let b_coeff = FieldElement::from_bytes(&crate::ec::p192::field::B).unwrap();
             x3.add(&a.mul(&x_fe)).add(&b_coeff)
         };
-        let y_candidate = rhs.sqrt().ok_or_else(|| {
-            Error::param("P-192 Point", "Invalid compressed point: no sqrt")
-        })?;
-        let y_final = if (y_candidate.is_odd() && tag == 0x03)
-            || (!y_candidate.is_odd() && tag == 0x02)
-        {
-            y_candidate
-        } else {
-            y_candidate.negate() // p - y (cleaner than FieldElement::zero().sub(&y_candidate))
-        };
+        let y_candidate = rhs
+            .sqrt()
+            .ok_or_else(|| Error::param("P-192 Point", "Invalid compressed point: no sqrt"))?;
+        let y_final =
+            if (y_candidate.is_odd() && tag == 0x03) || (!y_candidate.is_odd() && tag == 0x02) {
+                y_candidate
+            } else {
+                y_candidate.negate() // p - y (cleaner than FieldElement::zero().sub(&y_candidate))
+            };
         Ok(Point {
             is_identity: Choice::from(0),
             x: x_fe,
@@ -337,26 +344,24 @@ impl ProjectivePoint {
         //   α  = 3·(X − δ)·(X + δ)
         let delta = self.z.square();
         let gamma = self.y.square();
-        let beta  = self.x.mul(&gamma);
+        let beta = self.x.mul(&gamma);
 
-        let t1 = self.x.add(&delta);          // X + δ
-        let t2 = self.x.sub(&delta);          // X − δ
-        let mut alpha = t1.mul(&t2);          // (X − δ)(X + δ)
+        let t1 = self.x.add(&delta); // X + δ
+        let t2 = self.x.sub(&delta); // X − δ
+        let mut alpha = t1.mul(&t2); // (X − δ)(X + δ)
         let three = FieldElement::from_u32(3);
-        alpha = alpha.mul(&three);            // ×3
+        alpha = alpha.mul(&three); // ×3
 
         // X₃ = α² − 8·β
         let eight_beta = {
-            let two_beta  = beta.add(&beta);
+            let two_beta = beta.add(&beta);
             let four_beta = two_beta.add(&two_beta);
-            four_beta.add(&four_beta)            // 8·β
+            four_beta.add(&four_beta) // 8·β
         };
         let x3 = alpha.square().sub(&eight_beta);
 
         // Z₃ = (Y + Z)² − γ − δ
-        let z3 = self.y.add(&self.z).square()
-                 .sub(&gamma)
-                 .sub(&delta);
+        let z3 = self.y.add(&self.z).square().sub(&gamma).sub(&delta);
 
         // Y₃ = α·(4·β − X₃) − 8·γ²
         let four_beta = {
@@ -368,9 +373,9 @@ impl ProjectivePoint {
 
         let eight_gamma_sq = {
             let gamma_sq = gamma.square();
-            let two      = gamma_sq.add(&gamma_sq);
-            let four     = two.add(&two);
-            four.add(&four)                          // 8·γ²
+            let two = gamma_sq.add(&gamma_sq);
+            let four = two.add(&two);
+            four.add(&four) // 8·γ²
         };
         let y3 = y3.sub(&eight_gamma_sq);
 

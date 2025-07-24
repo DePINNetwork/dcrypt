@@ -76,24 +76,24 @@
 #[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-use crate::error::{Result, validate, from_primitive_error};
-use dcrypt_algorithms::block::aes::{Aes128, Aes256};
+use crate::error::{from_primitive_error, validate, Result};
 use dcrypt_algorithms::aead::Gcm;
+use dcrypt_algorithms::block::aes::{Aes128, Aes256};
 use dcrypt_algorithms::block::BlockCipher;
 use dcrypt_api::types::SecretBytes;
 // Import the new Nonce type
-use dcrypt_algorithms::types::Nonce;
 use dcrypt_algorithms::error::Error as PrimitiveError;
+use dcrypt_algorithms::types::Nonce;
 
 use crate::aes::keys::{Aes128Key, Aes256Key};
-use crate::cipher::{SymmetricCipher as OurSymmetricCipher, Aead};
+use crate::cipher::{Aead, SymmetricCipher as OurSymmetricCipher};
 
-pub mod types;
 pub mod aes128;
 pub mod aes256;
+pub mod types;
 
 // Re-export GCM-specific types
-pub use types::{GcmNonce, AesCiphertextPackage};
+pub use types::{AesCiphertextPackage, GcmNonce};
 
 /// AES-128-GCM implementation
 pub struct Aes128Gcm {
@@ -106,28 +106,16 @@ pub struct Aes256Gcm {
 }
 
 // Bring in the per-key helper functions
-pub use aes128::{
-    aes128_encrypt, 
-    aes128_decrypt,
-    aes128_encrypt_package, 
-    aes128_decrypt_package
-};
-pub use aes256::{
-    aes256_encrypt, 
-    aes256_decrypt,
-    aes256_encrypt_package, 
-    aes256_decrypt_package
-};
+pub use aes128::{aes128_decrypt, aes128_decrypt_package, aes128_encrypt, aes128_encrypt_package};
+pub use aes256::{aes256_decrypt, aes256_decrypt_package, aes256_encrypt, aes256_encrypt_package};
 
 impl OurSymmetricCipher for Aes128Gcm {
     type Key = Aes128Key;
-    
+
     fn new(key: &Self::Key) -> Result<Self> {
-        Ok(Self { 
-            key: key.clone(),
-        })
+        Ok(Self { key: key.clone() })
     }
-    
+
     fn name() -> &'static str {
         "AES-128-GCM"
     }
@@ -135,7 +123,7 @@ impl OurSymmetricCipher for Aes128Gcm {
 
 impl Aead for Aes128Gcm {
     type Nonce = GcmNonce;
-    
+
     fn encrypt(
         &self,
         nonce: &Self::Nonce,
@@ -144,23 +132,23 @@ impl Aead for Aes128Gcm {
     ) -> Result<Vec<u8>> {
         // Validate nonce length
         validate::length("GCM nonce", nonce.as_bytes().len(), 12)?;
-        
+
         // Convert key bytes to SecretBytes<16>
         let key_bytes = SecretBytes::<16>::from_slice(self.key.as_bytes())?;
-        
+
         let aes = Aes128::new(&key_bytes);
-        
+
         // Convert the GcmNonce to a Nonce<12>
         let primitives_nonce = Nonce::<12>::from_slice(nonce.as_bytes())?;
-        
+
         // Create Gcm instance with proper error handling
         let gcm = Gcm::new(aes, &primitives_nonce)?;
-        
+
         // Use internal_encrypt method directly
         gcm.internal_encrypt(plaintext, aad)
             .map_err(from_primitive_error)
     }
-    
+
     fn decrypt(
         &self,
         nonce: &Self::Nonce,
@@ -169,31 +157,31 @@ impl Aead for Aes128Gcm {
     ) -> Result<Vec<u8>> {
         // Validate nonce length
         validate::length("GCM nonce", nonce.as_bytes().len(), 12)?;
-        
+
         // Convert key bytes to SecretBytes<16>
         let key_bytes = SecretBytes::<16>::from_slice(self.key.as_bytes())?;
-        
+
         let aes = Aes128::new(&key_bytes);
-        
+
         // Convert the GcmNonce to a Nonce<12>
         let primitives_nonce = Nonce::<12>::from_slice(nonce.as_bytes())?;
-        
+
         // Create Gcm instance with proper error handling
         let gcm = Gcm::new(aes, &primitives_nonce)?;
-        
+
         // Use internal_decrypt method directly with better error context
-        gcm.internal_decrypt(ciphertext, aad)
-            .map_err(|e| match e {
-                PrimitiveError::Authentication { .. } => 
-                    dcrypt_api::error::Error::AuthenticationFailed { 
-                        context: "AES-128-GCM",
-                        #[cfg(feature = "std")]
-                        message: "authentication tag verification failed".to_string(),
-                    },
-                _ => from_primitive_error(e),
-            })
+        gcm.internal_decrypt(ciphertext, aad).map_err(|e| match e {
+            PrimitiveError::Authentication { .. } => {
+                dcrypt_api::error::Error::AuthenticationFailed {
+                    context: "AES-128-GCM",
+                    #[cfg(feature = "std")]
+                    message: "authentication tag verification failed".to_string(),
+                }
+            }
+            _ => from_primitive_error(e),
+        })
     }
-    
+
     fn generate_nonce() -> Self::Nonce {
         GcmNonce::generate()
     }
@@ -201,13 +189,11 @@ impl Aead for Aes128Gcm {
 
 impl OurSymmetricCipher for Aes256Gcm {
     type Key = Aes256Key;
-    
+
     fn new(key: &Self::Key) -> Result<Self> {
-        Ok(Self { 
-            key: key.clone(),
-        })
+        Ok(Self { key: key.clone() })
     }
-    
+
     fn name() -> &'static str {
         "AES-256-GCM"
     }
@@ -215,7 +201,7 @@ impl OurSymmetricCipher for Aes256Gcm {
 
 impl Aead for Aes256Gcm {
     type Nonce = GcmNonce;
-    
+
     fn encrypt(
         &self,
         nonce: &Self::Nonce,
@@ -224,23 +210,23 @@ impl Aead for Aes256Gcm {
     ) -> Result<Vec<u8>> {
         // Validate nonce length
         validate::length("GCM nonce", nonce.as_bytes().len(), 12)?;
-        
+
         // Convert key bytes to SecretBytes<32>
         let key_bytes = SecretBytes::<32>::from_slice(self.key.as_bytes())?;
-        
+
         let aes = Aes256::new(&key_bytes);
-        
+
         // Convert the GcmNonce to a Nonce<12>
         let primitives_nonce = Nonce::<12>::from_slice(nonce.as_bytes())?;
-        
+
         // Create Gcm instance with proper error handling
         let gcm = Gcm::new(aes, &primitives_nonce)?;
-        
+
         // Use internal_encrypt method directly
         gcm.internal_encrypt(plaintext, aad)
             .map_err(from_primitive_error)
     }
-    
+
     fn decrypt(
         &self,
         nonce: &Self::Nonce,
@@ -249,31 +235,31 @@ impl Aead for Aes256Gcm {
     ) -> Result<Vec<u8>> {
         // Validate nonce length
         validate::length("GCM nonce", nonce.as_bytes().len(), 12)?;
-        
+
         // Convert key bytes to SecretBytes<32>
         let key_bytes = SecretBytes::<32>::from_slice(self.key.as_bytes())?;
-        
+
         let aes = Aes256::new(&key_bytes);
-        
+
         // Convert the GcmNonce to a Nonce<12>
         let primitives_nonce = Nonce::<12>::from_slice(nonce.as_bytes())?;
-        
+
         // Create Gcm instance with proper error handling
         let gcm = Gcm::new(aes, &primitives_nonce)?;
-        
+
         // Use internal_decrypt method directly with better error context
-        gcm.internal_decrypt(ciphertext, aad)
-            .map_err(|e| match e {
-                PrimitiveError::Authentication { .. } => 
-                    dcrypt_api::error::Error::AuthenticationFailed { 
-                        context: "AES-256-GCM",
-                        #[cfg(feature = "std")]
-                        message: "authentication tag verification failed".to_string(),
-                    },
-                _ => from_primitive_error(e),
-            })
+        gcm.internal_decrypt(ciphertext, aad).map_err(|e| match e {
+            PrimitiveError::Authentication { .. } => {
+                dcrypt_api::error::Error::AuthenticationFailed {
+                    context: "AES-256-GCM",
+                    #[cfg(feature = "std")]
+                    message: "authentication tag verification failed".to_string(),
+                }
+            }
+            _ => from_primitive_error(e),
+        })
     }
-    
+
     fn generate_nonce() -> Self::Nonce {
         GcmNonce::generate()
     }

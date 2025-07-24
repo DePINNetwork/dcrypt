@@ -9,15 +9,15 @@
 ///
 /// ```
 /// # use rand::rngs::OsRng;
-/// use dcrypt_algorithms::kdf::{TypedHkdf, KeyDerivationFunction, KdfOperation}; 
+/// use dcrypt_algorithms::kdf::{TypedHkdf, KeyDerivationFunction, KdfOperation};
 /// use dcrypt_algorithms::hash::Sha256;
-/// 
+///
 /// // Create KDF instance
 /// let kdf = TypedHkdf::<Sha256>::new();
-/// 
+///
 /// // Generate a random salt
 /// let salt = TypedHkdf::<Sha256>::generate_salt(&mut OsRng);
-/// 
+///
 /// // Traditional API
 /// let key1 = kdf.derive_key(
 ///     b"password123",
@@ -25,7 +25,7 @@
 ///     Some(b"context info"),
 ///     32
 /// ).unwrap();
-/// 
+///
 /// // Operation pattern API
 /// let key2 = kdf.builder()
 ///     .with_ikm(b"password123")
@@ -33,14 +33,14 @@
 ///     .with_info(b"context info")
 ///     .with_output_length(32)
 ///     .derive().unwrap();
-/// 
+///
 /// // Derive to fixed-size array
 /// let key3: [u8; 32] = kdf.builder()
 ///     .with_ikm(b"password123")
 ///     .with_salt(salt.as_ref())
 ///     .with_info(b"context info")
 ///     .derive_array().unwrap();
-/// 
+///
 /// assert_eq!(key1, key2);
 /// assert_eq!(&key1, key3.as_ref());
 /// ```
@@ -66,12 +66,12 @@ use rand::{CryptoRng, RngCore};
 
 // Import the new error types
 use crate::error::{Error, Result};
-use crate::types::Salt;
 use crate::hash::HashFunction;
+use crate::types::Salt;
 use zeroize::Zeroize;
 
-pub mod params;
 pub mod common;
+pub mod params;
 
 #[cfg(feature = "alloc")]
 pub mod hkdf;
@@ -82,8 +82,8 @@ pub mod pbkdf2;
 #[cfg(feature = "alloc")]
 pub mod argon2;
 
-pub use params::{ParamProvider, PasswordHash};
 pub use common::SecurityLevel;
+pub use params::{ParamProvider, PasswordHash};
 
 // Re-exports for convenience
 #[cfg(feature = "alloc")]
@@ -93,24 +93,24 @@ pub use hkdf::Hkdf;
 pub use pbkdf2::{Pbkdf2, Pbkdf2Params};
 
 #[cfg(feature = "alloc")]
-pub use argon2::{Argon2, Params as Argon2Params, Algorithm as Argon2Type};
+pub use argon2::{Algorithm as Argon2Type, Argon2, Params as Argon2Params};
 
 /// Marker trait for KDF algorithms
 pub trait KdfAlgorithm {
     /// Minimum salt size in bytes
     const MIN_SALT_SIZE: usize;
-    
+
     /// Default output size in bytes
     const DEFAULT_OUTPUT_SIZE: usize;
-    
+
     /// Static algorithm identifier for compile-time checking
     const ALGORITHM_ID: &'static str;
-    
+
     /// Returns the KDF algorithm name
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
     }
-    
+
     /// Security level provided by this KDF
     fn security_level() -> SecurityLevel;
 }
@@ -119,19 +119,19 @@ pub trait KdfAlgorithm {
 pub trait KdfOperation<'a, A: KdfAlgorithm, T = Vec<u8>>: Sized {
     /// Set the input keying material
     fn with_ikm(self, ikm: &'a [u8]) -> Self;
-    
+
     /// Set the salt
     fn with_salt(self, salt: &'a [u8]) -> Self;
-    
+
     /// Set the info/context data
     fn with_info(self, info: &'a [u8]) -> Self;
-    
+
     /// Set the desired output length
     fn with_output_length(self, length: usize) -> Self;
-    
+
     /// Execute the key derivation
     fn derive(self) -> Result<T>;
-    
+
     /// Execute the key derivation into a fixed-size array
     fn derive_array<const N: usize>(self) -> Result<[u8; N]>;
 }
@@ -140,13 +140,13 @@ pub trait KdfOperation<'a, A: KdfAlgorithm, T = Vec<u8>>: Sized {
 pub trait KeyDerivationFunction {
     /// The algorithm this KDF implements
     type Algorithm: KdfAlgorithm;
-    
+
     /// Salt type with appropriate validation
     type Salt: AsRef<[u8]> + AsMut<[u8]> + Clone;
-    
+
     /// Creates a new instance of the KDF with default parameters
     fn new() -> Self;
-    
+
     /// Derives a key using the KDF parameters
     ///
     /// # Arguments
@@ -158,16 +158,24 @@ pub trait KeyDerivationFunction {
     /// # Returns
     /// The derived key as a byte vector
     #[cfg(feature = "alloc")]
-    fn derive_key(&self, input: &[u8], salt: Option<&[u8]>, info: Option<&[u8]>, length: usize) -> Result<Vec<u8>>;
-    
+    fn derive_key(
+        &self,
+        input: &[u8],
+        salt: Option<&[u8]>,
+        info: Option<&[u8]>,
+        length: usize,
+    ) -> Result<Vec<u8>>;
+
     /// Creates a builder for fluent API usage - FIXED: Elided lifetime
-    fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> where Self: Sized;
-    
+    fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm>
+    where
+        Self: Sized;
+
     /// Returns the security level of the KDF in bits
     fn security_level() -> SecurityLevel {
         Self::Algorithm::security_level()
     }
-    
+
     /// Generate a random salt with appropriate size
     fn generate_salt<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Salt;
 }
@@ -182,11 +190,11 @@ impl<H: HashFunction> KdfAlgorithm for HkdfAlgorithm<H> {
     const MIN_SALT_SIZE: usize = 16;
     const DEFAULT_OUTPUT_SIZE: usize = 32;
     const ALGORITHM_ID: &'static str = "HKDF";
-    
+
     fn name() -> String {
         format!("{}-{}", Self::ALGORITHM_ID, H::name())
     }
-    
+
     fn security_level() -> SecurityLevel {
         match H::output_size() * 8 {
             bits if bits >= 512 => SecurityLevel::L256,
@@ -207,20 +215,26 @@ pub struct TypedHkdf<H: HashFunction + Clone> {
 #[cfg(feature = "alloc")]
 impl<H: HashFunction + Clone> KeyDerivationFunction for TypedHkdf<H> {
     type Algorithm = HkdfAlgorithm<H>;
-    type Salt = Salt<16>;  // Updated to use generic Salt with size
-    
+    type Salt = Salt<16>; // Updated to use generic Salt with size
+
     fn new() -> Self {
         Self {
             inner: hkdf::Hkdf::new(),
             _phantom: PhantomData,
         }
     }
-    
+
     #[cfg(feature = "alloc")]
-    fn derive_key(&self, input: &[u8], salt: Option<&[u8]>, info: Option<&[u8]>, length: usize) -> Result<Vec<u8>> {
+    fn derive_key(
+        &self,
+        input: &[u8],
+        salt: Option<&[u8]>,
+        info: Option<&[u8]>,
+        length: usize,
+    ) -> Result<Vec<u8>> {
         self.inner.derive_key(input, salt, info, length)
     }
-    
+
     // FIXED: Elided lifetime
     fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> {
         HKdfOperation {
@@ -231,11 +245,10 @@ impl<H: HashFunction + Clone> KeyDerivationFunction for TypedHkdf<H> {
             length: Self::Algorithm::DEFAULT_OUTPUT_SIZE,
         }
     }
-    
+
     // FIXED: Removed unnecessary let binding
     fn generate_salt<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Salt {
-        Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE)
-            .expect("Salt generation failed")
+        Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE).expect("Salt generation failed")
     }
 }
 
@@ -255,28 +268,30 @@ impl<'a, H: HashFunction + Clone> KdfOperation<'a, HkdfAlgorithm<H>> for HKdfOpe
         self.ikm = Some(ikm);
         self
     }
-    
+
     fn with_salt(mut self, salt: &'a [u8]) -> Self {
         self.salt = Some(salt);
         self
     }
-    
+
     fn with_info(mut self, info: &'a [u8]) -> Self {
         self.info = Some(info);
         self
     }
-    
+
     fn with_output_length(mut self, length: usize) -> Self {
         self.length = length;
         self
     }
-    
+
     fn derive(self) -> Result<Vec<u8>> {
-        let ikm = self.ikm.ok_or_else(|| Error::param("ikm", "Input keying material is required"))?;
-        
+        let ikm = self
+            .ikm
+            .ok_or_else(|| Error::param("ikm", "Input keying material is required"))?;
+
         self.kdf.derive_key(ikm, self.salt, self.info, self.length)
     }
-    
+
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
         // Ensure the requested size matches
         if self.length != N {
@@ -286,9 +301,9 @@ impl<'a, H: HashFunction + Clone> KdfOperation<'a, HkdfAlgorithm<H>> for HKdfOpe
                 actual: self.length,
             });
         }
-        
+
         let vec = self.derive()?;
-        
+
         // Convert to fixed-size array
         let mut array = [0u8; N];
         array.copy_from_slice(&vec);
@@ -306,11 +321,11 @@ impl<H: HashFunction> KdfAlgorithm for Pbkdf2Algorithm<H> {
     const MIN_SALT_SIZE: usize = 16;
     const DEFAULT_OUTPUT_SIZE: usize = 32;
     const ALGORITHM_ID: &'static str = "PBKDF2";
-    
+
     fn name() -> String {
         format!("{}-{}", Self::ALGORITHM_ID, H::name())
     }
-    
+
     fn security_level() -> SecurityLevel {
         // PBKDF2 security depends on iterations and hash size
         match H::output_size() * 8 {
@@ -332,20 +347,26 @@ pub struct TypedPbkdf2<H: HashFunction + Clone> {
 #[cfg(feature = "alloc")]
 impl<H: HashFunction + Clone> KeyDerivationFunction for TypedPbkdf2<H> {
     type Algorithm = Pbkdf2Algorithm<H>;
-    type Salt = Salt<16>;  // Updated to use generic Salt with size
-    
+    type Salt = Salt<16>; // Updated to use generic Salt with size
+
     fn new() -> Self {
         Self {
             inner: pbkdf2::Pbkdf2::new(),
             _phantom: PhantomData,
         }
     }
-    
+
     #[cfg(feature = "alloc")]
-    fn derive_key(&self, input: &[u8], salt: Option<&[u8]>, info: Option<&[u8]>, length: usize) -> Result<Vec<u8>> {
+    fn derive_key(
+        &self,
+        input: &[u8],
+        salt: Option<&[u8]>,
+        info: Option<&[u8]>,
+        length: usize,
+    ) -> Result<Vec<u8>> {
         self.inner.derive_key(input, salt, info, length)
     }
-    
+
     // FIXED: Elided lifetime
     fn builder(&self) -> impl KdfOperation<'_, Self::Algorithm> {
         Pbkdf2Builder {
@@ -356,11 +377,10 @@ impl<H: HashFunction + Clone> KeyDerivationFunction for TypedPbkdf2<H> {
             length: Self::Algorithm::DEFAULT_OUTPUT_SIZE,
         }
     }
-    
+
     // FIXED: Removed unnecessary let binding
     fn generate_salt<R: RngCore + CryptoRng>(rng: &mut R) -> Self::Salt {
-        Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE)
-            .expect("Salt generation failed")
+        Salt::random_with_size(rng, Self::Algorithm::MIN_SALT_SIZE).expect("Salt generation failed")
     }
 }
 
@@ -390,38 +410,42 @@ impl<'a, H: HashFunction + Clone> KdfOperation<'a, Pbkdf2Algorithm<H>> for Pbkdf
         self.password = Some(password);
         self
     }
-    
+
     fn with_salt(mut self, salt: &'a [u8]) -> Self {
         self.salt = Some(salt);
         self
     }
-    
+
     fn with_info(self, _info: &'a [u8]) -> Self {
         // PBKDF2 doesn't use info, but we implement for API compatibility
         self
     }
-    
+
     fn with_output_length(mut self, length: usize) -> Self {
         self.length = length;
         self
     }
-    
+
     fn derive(self) -> Result<Vec<u8>> {
-        let password = self.password.ok_or_else(|| Error::param("password", "Password is required"))?;
-        let salt = self.salt.ok_or_else(|| Error::param("salt", "Salt is required"))?;
-        
+        let password = self
+            .password
+            .ok_or_else(|| Error::param("password", "Password is required"))?;
+        let salt = self
+            .salt
+            .ok_or_else(|| Error::param("salt", "Salt is required"))?;
+
         // Adjust inner Pbkdf2Params
         let mut params = self.kdf.inner.params().clone();
         params.iterations = self.iterations;
         params.key_length = self.length;
-        
+
         // Use inner implementation
         let mut kdf = self.kdf.inner.clone();
         kdf.set_params(params);
-        
+
         kdf.derive_key(password, Some(salt), None, self.length)
     }
-    
+
     fn derive_array<const N: usize>(self) -> Result<[u8; N]> {
         // Ensure the requested size matches
         if self.length != N {
@@ -431,9 +455,9 @@ impl<'a, H: HashFunction + Clone> KdfOperation<'a, Pbkdf2Algorithm<H>> for Pbkdf
                 actual: self.length,
             });
         }
-        
+
         let vec = self.derive()?;
-        
+
         // Convert to fixed-size array
         let mut array = [0u8; N];
         array.copy_from_slice(&vec);
@@ -445,16 +469,16 @@ impl<'a, H: HashFunction + Clone> KdfOperation<'a, Pbkdf2Algorithm<H>> for Pbkdf
 pub trait PasswordHashFunction: KeyDerivationFunction + ParamProvider {
     /// Password type with zeroizing
     type Password: AsRef<[u8]> + AsMut<[u8]> + Clone + Zeroize;
-    
+
     /// Hashes a password with the configured parameters
     fn hash_password(&self, password: &Self::Password) -> Result<PasswordHash>;
-    
+
     /// Verifies a password against a hash
     fn verify(&self, password: &Self::Password, hash: &PasswordHash) -> Result<bool>;
-    
+
     /// Benchmarks the current parameters on this system
     fn benchmark(&self) -> Duration;
-    
+
     /// Recommends parameters based on a target duration
     fn recommended_params(target_duration: Duration) -> Self::Params;
 }

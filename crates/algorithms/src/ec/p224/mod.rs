@@ -17,13 +17,13 @@ mod point;
 mod scalar;
 
 pub use constants::{
-    P224_SCALAR_SIZE,
+    P224_CIPHERTEXT_SIZE, // Add this
     P224_FIELD_ELEMENT_SIZE,
-    P224_POINT_UNCOMPRESSED_SIZE,
-    P224_POINT_COMPRESSED_SIZE,
-    P224_TAG_SIZE,  // Add this
-    P224_CIPHERTEXT_SIZE,  // Add this
     P224_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE,
+    P224_POINT_COMPRESSED_SIZE,
+    P224_POINT_UNCOMPRESSED_SIZE,
+    P224_SCALAR_SIZE,
+    P224_TAG_SIZE, // Add this
 };
 
 pub use field::FieldElement;
@@ -31,14 +31,14 @@ pub use point::{Point, PointFormat};
 pub use scalar::Scalar;
 
 use crate::error::{Error, Result};
-use crate::kdf::hkdf::Hkdf;
 use crate::hash::sha2::Sha256;
+use crate::kdf::hkdf::Hkdf;
 use crate::kdf::KeyDerivationFunction as KdfTrait;
-use rand::{CryptoRng, RngCore};
 use dcrypt_params::traditional::ecdsa::NIST_P224;
+use rand::{CryptoRng, RngCore};
 
 /// Get the standard base point G of the P-224 curve
-/// 
+///
 /// Returns the generator point specified in the NIST P-224 standard.
 /// This point generates the cyclic subgroup used for ECDH and ECDSA.
 pub fn base_point_g() -> Point {
@@ -47,7 +47,7 @@ pub fn base_point_g() -> Point {
 }
 
 /// Scalar multiplication with the base point: scalar * G
-/// 
+///
 /// Efficiently computes scalar multiplication with the standard generator.
 /// This is the core operation for generating public keys from private keys.
 pub fn scalar_mult_base_g(scalar: &Scalar) -> Result<Point> {
@@ -56,11 +56,11 @@ pub fn scalar_mult_base_g(scalar: &Scalar) -> Result<Point> {
 }
 
 /// Generate a cryptographically secure ECDH keypair
-/// 
+///
 /// Uses rejection sampling to ensure the private key scalar is uniformly
 /// distributed in the range [1, n-1]. The public key is computed as
 /// private_key * G where G is the standard base point.
-/// 
+///
 /// Returns (private_key, public_key) pair suitable for ECDH key agreement.
 pub fn generate_keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<(Scalar, Point)> {
     let mut scalar_bytes = [0u8; P224_SCALAR_SIZE];
@@ -75,7 +75,7 @@ pub fn generate_keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<(Scalar, 
                 // Compute corresponding public key
                 let public_key = scalar_mult_base_g(&private_key)?;
                 return Ok((private_key, public_key));
-            },
+            }
             Err(_) => {
                 // Invalid scalar generated, retry with new random bytes
                 continue;
@@ -85,7 +85,7 @@ pub fn generate_keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<(Scalar, 
 }
 
 /// General scalar multiplication: compute scalar * point
-/// 
+///
 /// Performs scalar multiplication with an arbitrary point on the curve.
 /// Used in ECDH key agreement and signature verification.
 pub fn scalar_mult(scalar: &Scalar, point: &Point) -> Result<Point> {
@@ -98,19 +98,19 @@ pub fn scalar_mult(scalar: &Scalar, point: &Point) -> Result<Point> {
 }
 
 /// Key derivation function for ECDH shared secret using HKDF-SHA256
-/// 
+///
 /// Derives a cryptographically strong shared secret from the ECDH raw output.
 /// Uses HKDF (HMAC-based Key Derivation Function) with SHA-256 as specified
 /// in RFC 5869 for secure key derivation.
-/// 
+///
 /// Parameters:
 /// - ikm: Input key material (raw ECDH output, e.g., x-coordinate)
 /// - info: Optional context information for domain separation
-/// 
+///
 /// Returns a fixed-length derived key suitable for symmetric encryption.
 pub fn kdf_hkdf_sha256_for_ecdh_kem(
     ikm: &[u8],
-    info: Option<&[u8]>
+    info: Option<&[u8]>,
 ) -> Result<[u8; P224_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE]> {
     let hkdf_instance = <Hkdf<Sha256, 16> as KdfTrait>::new();
 
@@ -119,7 +119,7 @@ pub fn kdf_hkdf_sha256_for_ecdh_kem(
         ikm,
         None, // No salt for ECDH applications (uses zero-length salt)
         info, // Context info for domain separation
-        P224_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE
+        P224_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE,
     )?;
 
     // Convert to fixed-size array

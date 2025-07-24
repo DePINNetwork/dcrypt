@@ -10,31 +10,33 @@ use rand::{CryptoRng, RngCore};
 use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-use crate::error::{Result, validate};
-use crate::types::{RandomGeneration, SecureZeroingType, FixedSize, ByteSerializable, ConstantTimeEq as LocalConstantEq};
+use crate::error::{validate, Result};
 use crate::types::sealed::Sealed;
-use crate::types::{ValidKeySize, ValidSecretKeySize, ValidPublicKeySize};
+use crate::types::{
+    ByteSerializable, ConstantTimeEq as LocalConstantEq, FixedSize, RandomGeneration,
+    SecureZeroingType,
+};
+use crate::types::{ValidKeySize, ValidPublicKeySize, ValidSecretKeySize};
 
 // Import security types from dcrypt-core
 use dcrypt_common::security::SecretBuffer;
 
 // Add these imports to fix the "cannot find type" errors
 use crate::types::algorithms::{
-    Aes128, Aes256, ChaCha20, ChaCha20Poly1305,
-    Ed25519, X25519, P256, P384, P521
+    Aes128, Aes256, ChaCha20, ChaCha20Poly1305, Ed25519, P256, P384, P521, X25519,
 };
 
 /// Marker trait for symmetric algorithms
 pub trait SymmetricAlgorithm {
     /// Key size in bytes
     const KEY_SIZE: usize;
-    
+
     /// Block size in bytes (if applicable)
     const BLOCK_SIZE: usize;
-    
+
     /// Algorithm identifier
     const ALGORITHM_ID: &'static str;
-    
+
     /// Algorithm name
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
@@ -45,13 +47,13 @@ pub trait SymmetricAlgorithm {
 pub trait AsymmetricAlgorithm {
     /// Public key size in bytes
     const PUBLIC_KEY_SIZE: usize;
-    
+
     /// Secret key size in bytes
     const SECRET_KEY_SIZE: usize;
-    
+
     /// Algorithm identifier
     const ALGORITHM_ID: &'static str;
-    
+
     /// Algorithm name
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
@@ -85,20 +87,20 @@ where
             _algorithm: PhantomData,
         }
     }
-    
+
     /// Create from a slice, if it has the correct length
     pub fn try_from_slice(bytes: &[u8]) -> Result<Self> {
         validate::length("SymmetricKey::from_slice", bytes.len(), N)?;
-        
+
         let mut data = [0u8; N];
         data.copy_from_slice(bytes);
-        
+
         Ok(Self {
             data: SecretBuffer::new(data),
             _algorithm: PhantomData,
         })
     }
-    
+
     /// Create a zeroed key (not recommended for cryptographic use)
     pub fn zeroed() -> Self {
         Self {
@@ -106,12 +108,12 @@ where
             _algorithm: PhantomData,
         }
     }
-    
+
     /// Get the algorithm name
     pub fn algorithm_name() -> String {
         A::name()
     }
-    
+
     /// Get the key size in bytes
     pub fn key_size() -> usize {
         N
@@ -132,7 +134,7 @@ impl<A: SymmetricAlgorithm, const N: usize> AsMut<[u8]> for SymmetricKey<A, N> {
 
 impl<A: SymmetricAlgorithm, const N: usize> Deref for SymmetricKey<A, N> {
     type Target = [u8];
-    
+
     fn deref(&self) -> &Self::Target {
         self.data.as_ref()
     }
@@ -184,7 +186,7 @@ impl<A: SymmetricAlgorithm + Clone, const N: usize> SecureZeroingType for Symmet
             _algorithm: PhantomData,
         }
     }
-    
+
     fn secure_clone(&self) -> Self {
         Self {
             data: self.data.secure_clone(),
@@ -204,7 +206,7 @@ impl ByteSerializable for SymmetricKey<Aes128, 16> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.as_ref().to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
@@ -214,7 +216,7 @@ impl ByteSerializable for SymmetricKey<Aes256, 32> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.as_ref().to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
@@ -224,7 +226,7 @@ impl ByteSerializable for SymmetricKey<ChaCha20, 32> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.as_ref().to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
@@ -234,7 +236,7 @@ impl ByteSerializable for SymmetricKey<ChaCha20Poly1305, 32> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.as_ref().to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
@@ -268,20 +270,20 @@ where
             _algorithm: PhantomData,
         }
     }
-    
+
     /// Create from a slice, if it has the correct length
     pub fn try_from_slice(bytes: &[u8]) -> Result<Self> {
         validate::length("AsymmetricSecretKey::from_slice", bytes.len(), N)?;
-        
+
         let mut data = [0u8; N];
         data.copy_from_slice(bytes);
-        
+
         Ok(Self {
             data: SecretBuffer::new(data),
             _algorithm: PhantomData,
         })
     }
-    
+
     /// Create a zeroed key (not recommended for cryptographic use)
     pub fn zeroed() -> Self {
         Self {
@@ -289,12 +291,12 @@ where
             _algorithm: PhantomData,
         }
     }
-    
+
     /// Get the algorithm name
     pub fn algorithm_name() -> String {
         A::name()
     }
-    
+
     /// Get the key size in bytes
     pub fn key_size() -> usize {
         N
@@ -315,7 +317,7 @@ impl<A: AsymmetricAlgorithm, const N: usize> AsMut<[u8]> for AsymmetricSecretKey
 
 impl<A: AsymmetricAlgorithm, const N: usize> Deref for AsymmetricSecretKey<A, N> {
     type Target = [u8];
-    
+
     fn deref(&self) -> &Self::Target {
         self.data.as_ref()
     }
@@ -342,14 +344,16 @@ impl<A: AsymmetricAlgorithm, const N: usize> fmt::Debug for AsymmetricSecretKey<
     }
 }
 
-impl<A: AsymmetricAlgorithm + Clone, const N: usize> SecureZeroingType for AsymmetricSecretKey<A, N> {
+impl<A: AsymmetricAlgorithm + Clone, const N: usize> SecureZeroingType
+    for AsymmetricSecretKey<A, N>
+{
     fn zeroed() -> Self {
         Self {
             data: SecretBuffer::zeroed(),
             _algorithm: PhantomData,
         }
     }
-    
+
     fn secure_clone(&self) -> Self {
         Self {
             data: self.data.secure_clone(),
@@ -369,7 +373,7 @@ impl ByteSerializable for AsymmetricSecretKey<Ed25519, 32> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.as_ref().to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
@@ -379,44 +383,47 @@ impl ByteSerializable for AsymmetricSecretKey<X25519, 32> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.as_ref().to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
-impl ByteSerializable for AsymmetricSecretKey<P256, 32> { // Added for P-256
+impl ByteSerializable for AsymmetricSecretKey<P256, 32> {
+    // Added for P-256
     fn to_bytes(&self) -> Vec<u8> {
         self.data.as_ref().to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
-impl ByteSerializable for AsymmetricSecretKey<P384, 48> { // Added for P-384
+impl ByteSerializable for AsymmetricSecretKey<P384, 48> {
+    // Added for P-384
     fn to_bytes(&self) -> Vec<u8> {
         self.data.as_ref().to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
-impl ByteSerializable for AsymmetricSecretKey<P521, 66> { // P-521
+impl ByteSerializable for AsymmetricSecretKey<P521, 66> {
+    // P-521
     fn to_bytes(&self) -> Vec<u8> {
         self.data.as_ref().to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
 /// A public key for a specific asymmetric algorithm
-/// 
+///
 /// Note: Public keys don't need SecretBuffer since they're not secret
 #[derive(Clone)]
 pub struct AsymmetricPublicKey<A: AsymmetricAlgorithm, const N: usize> {
@@ -448,25 +455,25 @@ where
             _algorithm: PhantomData,
         }
     }
-    
+
     /// Create from a slice, if it has the correct length
     pub fn try_from_slice(bytes: &[u8]) -> Result<Self> {
         validate::length("AsymmetricPublicKey::from_slice", bytes.len(), N)?;
-        
+
         let mut data = [0u8; N];
         data.copy_from_slice(bytes);
-        
+
         Ok(Self {
             data,
             _algorithm: PhantomData,
         })
     }
-    
+
     /// Get the algorithm name
     pub fn algorithm_name() -> String {
         A::name()
     }
-    
+
     /// Get the key size in bytes
     pub fn key_size() -> usize {
         N
@@ -487,7 +494,12 @@ impl<A: AsymmetricAlgorithm, const N: usize> AsMut<[u8]> for AsymmetricPublicKey
 
 impl<A: AsymmetricAlgorithm, const N: usize> fmt::Debug for AsymmetricPublicKey<A, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AsymmetricPublicKey<{}>({:?})", A::name(), &self.data[..])
+        write!(
+            f,
+            "AsymmetricPublicKey<{}>({:?})",
+            A::name(),
+            &self.data[..]
+        )
     }
 }
 
@@ -510,7 +522,7 @@ impl ByteSerializable for AsymmetricPublicKey<Ed25519, 32> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
@@ -520,67 +532,73 @@ impl ByteSerializable for AsymmetricPublicKey<X25519, 32> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
-impl ByteSerializable for AsymmetricPublicKey<P256, 65> { // Added for P-256 uncompressed
+impl ByteSerializable for AsymmetricPublicKey<P256, 65> {
+    // Added for P-256 uncompressed
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
-impl ByteSerializable for AsymmetricPublicKey<P256, 33> { // Added for P-256 compressed
+impl ByteSerializable for AsymmetricPublicKey<P256, 33> {
+    // Added for P-256 compressed
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
-impl ByteSerializable for AsymmetricPublicKey<P384, 97> { // Added for P-384 uncompressed
+impl ByteSerializable for AsymmetricPublicKey<P384, 97> {
+    // Added for P-384 uncompressed
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
-impl ByteSerializable for AsymmetricPublicKey<P384, 49> { // Added for P-384 compressed
+impl ByteSerializable for AsymmetricPublicKey<P384, 49> {
+    // Added for P-384 compressed
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
-impl ByteSerializable for AsymmetricPublicKey<P521, 133> { // P-521 uncompressed
+impl ByteSerializable for AsymmetricPublicKey<P521, 133> {
+    // P-521 uncompressed
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }
 }
 
-impl ByteSerializable for AsymmetricPublicKey<P521, 67> { // Added for P-521 compressed
+impl ByteSerializable for AsymmetricPublicKey<P521, 67> {
+    // Added for P-521 compressed
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Self::try_from_slice(bytes)
     }

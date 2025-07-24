@@ -4,22 +4,22 @@
 pub struct McEliece348864Params {
     /// Code length
     pub n: usize,
-    
+
     /// Code dimension
     pub k: usize,
-    
+
     /// Error correction capability
     pub t: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Ciphertext size in bytes
     pub ciphertext_size: usize,
-    
+
     /// Shared secret size in bytes
     pub shared_secret_size: usize,
 }
@@ -39,22 +39,22 @@ pub const MCELIECE_348864: McEliece348864Params = McEliece348864Params {
 pub struct McEliece460896Params {
     /// Code length
     pub n: usize,
-    
+
     /// Code dimension
     pub k: usize,
-    
+
     /// Error correction capability
     pub t: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Ciphertext size in bytes
     pub ciphertext_size: usize,
-    
+
     /// Shared secret size in bytes
     pub shared_secret_size: usize,
 }
@@ -74,22 +74,22 @@ pub const MCELIECE_460896: McEliece460896Params = McEliece460896Params {
 pub struct McEliece6960119Params {
     /// Code length
     pub n: usize,
-    
+
     /// Code dimension
     pub k: usize,
-    
+
     /// Error correction capability
     pub t: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Ciphertext size in bytes
     pub ciphertext_size: usize,
-    
+
     /// Shared secret size in bytes
     pub shared_secret_size: usize,
 }

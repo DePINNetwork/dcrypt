@@ -12,12 +12,10 @@ use alloc::vec::Vec;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use super::ExtendableOutputFunction;
-use crate::error::{Error, Result, validate};
+use crate::error::{validate, Error, Result};
 
 // Import security types from dcrypt-core
-use dcrypt_common::security::{
-    SecretBuffer, EphemeralSecret, SecureZeroingType, barrier
-};
+use dcrypt_common::security::{barrier, EphemeralSecret, SecretBuffer, SecureZeroingType};
 
 // SHAKE constants
 const KECCAK_ROUNDS: usize = 24;
@@ -29,24 +27,40 @@ const SHAKE256_RATE: usize = 136; // 1600 - 2*256 = 1600 - 512 = 1088 bits = 136
 
 // Round constants for Keccak
 const RC: [u64; KECCAK_ROUNDS] = [
-    0x0000000000000001, 0x0000000000008082, 0x800000000000808A, 0x8000000080008000,
-    0x000000000000808B, 0x0000000080000001, 0x8000000080008081, 0x8000000000008009,
-    0x000000000000008A, 0x0000000000000088, 0x0000000080008009, 0x000000008000000A,
-    0x000000008000808B, 0x800000000000008B, 0x8000000000008089, 0x8000000000008003,
-    0x8000000000008002, 0x8000000000000080, 0x000000000000800A, 0x800000008000000A,
-    0x8000000080008081, 0x8000000000008080, 0x0000000080000001, 0x8000000080008008,
+    0x0000000000000001,
+    0x0000000000008082,
+    0x800000000000808A,
+    0x8000000080008000,
+    0x000000000000808B,
+    0x0000000080000001,
+    0x8000000080008081,
+    0x8000000000008009,
+    0x000000000000008A,
+    0x0000000000000088,
+    0x0000000080008009,
+    0x000000008000000A,
+    0x000000008000808B,
+    0x800000000000008B,
+    0x8000000000008089,
+    0x8000000000008003,
+    0x8000000000008002,
+    0x8000000000000080,
+    0x000000000000800A,
+    0x800000008000000A,
+    0x8000000080008081,
+    0x8000000000008080,
+    0x0000000080000001,
+    0x8000000080008008,
 ];
 
 // Rotation offsets
 const RHO: [u32; 24] = [
-    1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 2, 14,
-    27, 41, 56, 8, 25, 43, 62, 18, 39, 61, 20, 44,
+    1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 2, 14, 27, 41, 56, 8, 25, 43, 62, 18, 39, 61, 20, 44,
 ];
 
 // Mapping from index positions to x,y coordinates in the state array
 const PI: [usize; 24] = [
-    10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4,
-    15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1,
+    10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4, 15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1,
 ];
 
 // Helper struct for secure Keccak state operations
@@ -61,7 +75,7 @@ impl SecureKeccakState {
             state: SecretBuffer::zeroed(),
         }
     }
-    
+
     fn from_u64_array(array: [u64; KECCAK_STATE_SIZE]) -> Self {
         let mut bytes = [0u8; 200];
         for (i, &word) in array.iter().enumerate() {
@@ -72,7 +86,7 @@ impl SecureKeccakState {
             state: SecretBuffer::new(bytes),
         }
     }
-    
+
     fn to_u64_array(&self) -> [u64; KECCAK_STATE_SIZE] {
         let mut array = [0u64; KECCAK_STATE_SIZE];
         let bytes = self.state.as_ref();
@@ -91,7 +105,7 @@ impl SecureKeccakState {
         }
         array
     }
-    
+
     fn apply_permutation(&mut self) {
         let mut state_array = self.to_u64_array();
         keccak_f1600(&mut state_array);
@@ -103,7 +117,7 @@ impl SecureZeroingType for SecureKeccakState {
     fn zeroed() -> Self {
         Self::new()
     }
-    
+
     fn secure_clone(&self) -> Self {
         Self {
             state: self.state.secure_clone(),
@@ -160,18 +174,14 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
         // Theta step with secure temporary storage
         let mut c = EphemeralSecret::new([0u64; 5]);
         for x in 0..5 {
-            c.as_mut()[x] = state[x]
-                ^ state[x + 5]
-                ^ state[x + 10]
-                ^ state[x + 15]
-                ^ state[x + 20];
+            c.as_mut()[x] = state[x] ^ state[x + 5] ^ state[x + 10] ^ state[x + 15] ^ state[x + 20];
         }
-        
+
         let mut d = EphemeralSecret::new([0u64; 5]);
         for x in 0..5 {
             d.as_mut()[x] = c.as_ref()[(x + 4) % 5] ^ c.as_ref()[(x + 1) % 5].rotate_left(1);
         }
-        
+
         for y in 0..5 {
             for x in 0..5 {
                 state[x + 5 * y] ^= d.as_ref()[x];
@@ -183,7 +193,7 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
         let mut x = 1;
         let mut y = 0;
         b.as_mut()[0] = state[0];
-        
+
         for i in 0..24 {
             let idx = x + 5 * y;
             b.as_mut()[PI[i]] = state[idx].rotate_left(RHO[i]);
@@ -197,39 +207,34 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
             for x in 0..5 {
                 let idx = x + 5 * y;
                 state[idx] = b.as_ref()[idx]
-                    ^ ((!b.as_ref()[(x + 1) % 5 + 5 * y])
-                        & b.as_ref()[(x + 2) % 5 + 5 * y]);
+                    ^ ((!b.as_ref()[(x + 1) % 5 + 5 * y]) & b.as_ref()[(x + 2) % 5 + 5 * y]);
             }
         }
 
         // Iota step
         state[0] ^= rc;
     }
-    
+
     // Insert memory barrier after permutation
     barrier::compiler_fence_seq_cst();
 }
 
 /// Absorbs data into the sponge state with secure handling
-fn keccak_absorb(
-    state: &mut SecureKeccakState,
-    data: &[u8],
-    rate: usize,
-) {
+fn keccak_absorb(state: &mut SecureKeccakState, data: &[u8], rate: usize) {
     // Get state as u64 array for processing
     let mut state_array = state.to_u64_array();
-    
+
     for (i, &byte) in data.iter().enumerate() {
         let pos = i % rate;
         let byte_idx = pos % 8;
         let word_idx = pos / 8;
         state_array[word_idx] ^= (byte as u64) << (8 * byte_idx);
     }
-    
+
     if !data.is_empty() && data.len() % rate == 0 {
         keccak_f1600(&mut state_array);
     }
-    
+
     // Update secure state
     *state = SecureKeccakState::from_u64_array(state_array);
 }
@@ -262,11 +267,12 @@ impl ExtendableOutputFunction for ShakeXof128 {
         let mut idx = 0;
         if self.buffer_idx > 0 {
             let to_copy = (SHAKE128_RATE - self.buffer_idx).min(data.len());
-            let buffer_slice = &mut self.buffer.as_mut()[self.buffer_idx..self.buffer_idx + to_copy];
+            let buffer_slice =
+                &mut self.buffer.as_mut()[self.buffer_idx..self.buffer_idx + to_copy];
             buffer_slice.copy_from_slice(&data[..to_copy]);
             self.buffer_idx += to_copy;
             idx = to_copy;
-            
+
             if self.buffer_idx == SHAKE128_RATE {
                 keccak_absorb(&mut self.state, self.buffer.as_ref(), SHAKE128_RATE);
                 self.buffer_idx = 0;
@@ -278,7 +284,7 @@ impl ExtendableOutputFunction for ShakeXof128 {
         for i in 0..full_blocks {
             let start = idx + i * SHAKE128_RATE;
             let block = &data[start..start + SHAKE128_RATE];
-            
+
             // Process directly without copying to buffer
             keccak_absorb(&mut self.state, block, SHAKE128_RATE);
         }
@@ -304,7 +310,7 @@ impl ExtendableOutputFunction for ShakeXof128 {
             .copy_from_slice(&self.buffer.as_ref()[..self.buffer_idx]);
         pad_block.as_mut()[self.buffer_idx] ^= 0x1F;
         pad_block.as_mut()[SHAKE128_RATE - 1] ^= 0x80;
-        
+
         keccak_absorb(&mut self.state, pad_block.as_ref(), SHAKE128_RATE);
 
         self.is_finalized = true;
@@ -316,9 +322,9 @@ impl ExtendableOutputFunction for ShakeXof128 {
         validate::parameter(
             !output.is_empty(),
             "output_length",
-            "Output buffer must not be empty"
+            "Output buffer must not be empty",
         )?;
-        
+
         if !self.is_finalized {
             self.finalize()?;
         }
@@ -326,18 +332,18 @@ impl ExtendableOutputFunction for ShakeXof128 {
 
         let mut offset = 0;
         let rate = SHAKE128_RATE;
-        
+
         while offset < output.len() {
             if self.buffer_idx >= rate {
                 self.state.apply_permutation();
                 self.buffer_idx = 0;
             }
-            
+
             if self.buffer_idx == 0 {
                 // Extract state into buffer
                 let state_array = self.state.to_u64_array();
                 let buffer_mut = self.buffer.as_mut();
-                
+
                 for i in 0..(rate / 8) {
                     let lane = state_array[i];
                     for j in 0..8 {
@@ -347,19 +353,18 @@ impl ExtendableOutputFunction for ShakeXof128 {
                     }
                 }
             }
-            
+
             let available = rate - self.buffer_idx;
             let needed = output.len() - offset;
             let to_copy = available.min(needed);
-            
-            output[offset..offset + to_copy].copy_from_slice(
-                &self.buffer.as_ref()[self.buffer_idx..self.buffer_idx + to_copy],
-            );
-            
+
+            output[offset..offset + to_copy]
+                .copy_from_slice(&self.buffer.as_ref()[self.buffer_idx..self.buffer_idx + to_copy]);
+
             offset += to_copy;
             self.buffer_idx += to_copy;
         }
-        
+
         // Memory barrier after squeeze operation
         barrier::compiler_fence_seq_cst();
         Ok(())
@@ -369,9 +374,9 @@ impl ExtendableOutputFunction for ShakeXof128 {
         validate::parameter(
             len > 0,
             "output_length",
-            "Output length must be greater than 0"
+            "Output length must be greater than 0",
         )?;
-        
+
         let mut v = vec![0u8; len];
         self.squeeze(&mut v)?;
         Ok(v)
@@ -415,11 +420,12 @@ impl ExtendableOutputFunction for ShakeXof256 {
         let mut idx = 0;
         if self.buffer_idx > 0 {
             let to_copy = (SHAKE256_RATE - self.buffer_idx).min(data.len());
-            let buffer_slice = &mut self.buffer.as_mut()[self.buffer_idx..self.buffer_idx + to_copy];
+            let buffer_slice =
+                &mut self.buffer.as_mut()[self.buffer_idx..self.buffer_idx + to_copy];
             buffer_slice.copy_from_slice(&data[..to_copy]);
             self.buffer_idx += to_copy;
             idx = to_copy;
-            
+
             if self.buffer_idx == SHAKE256_RATE {
                 keccak_absorb(&mut self.state, self.buffer.as_ref(), SHAKE256_RATE);
                 self.buffer_idx = 0;
@@ -431,7 +437,7 @@ impl ExtendableOutputFunction for ShakeXof256 {
         for i in 0..full_blocks {
             let start = idx + i * SHAKE256_RATE;
             let block = &data[start..start + SHAKE256_RATE];
-            
+
             // Process directly without copying to buffer
             keccak_absorb(&mut self.state, block, SHAKE256_RATE);
         }
@@ -457,7 +463,7 @@ impl ExtendableOutputFunction for ShakeXof256 {
             .copy_from_slice(&self.buffer.as_ref()[..self.buffer_idx]);
         pad_block.as_mut()[self.buffer_idx] ^= 0x1F;
         pad_block.as_mut()[SHAKE256_RATE - 1] ^= 0x80;
-        
+
         keccak_absorb(&mut self.state, pad_block.as_ref(), SHAKE256_RATE);
 
         self.is_finalized = true;
@@ -469,9 +475,9 @@ impl ExtendableOutputFunction for ShakeXof256 {
         validate::parameter(
             !output.is_empty(),
             "output_length",
-            "Output buffer must not be empty"
+            "Output buffer must not be empty",
         )?;
-        
+
         if !self.is_finalized {
             self.finalize()?;
         }
@@ -479,18 +485,18 @@ impl ExtendableOutputFunction for ShakeXof256 {
 
         let mut offset = 0;
         let rate = SHAKE256_RATE;
-        
+
         while offset < output.len() {
             if self.buffer_idx >= rate {
                 self.state.apply_permutation();
                 self.buffer_idx = 0;
             }
-            
+
             if self.buffer_idx == 0 {
                 // Extract state into buffer
                 let state_array = self.state.to_u64_array();
                 let buffer_mut = self.buffer.as_mut();
-                
+
                 for i in 0..(rate / 8) {
                     let lane = state_array[i];
                     for j in 0..8 {
@@ -500,19 +506,18 @@ impl ExtendableOutputFunction for ShakeXof256 {
                     }
                 }
             }
-            
+
             let available = rate - self.buffer_idx;
             let needed = output.len() - offset;
             let to_copy = available.min(needed);
-            
-            output[offset..offset + to_copy].copy_from_slice(
-                &self.buffer.as_ref()[self.buffer_idx..self.buffer_idx + to_copy],
-            );
-            
+
+            output[offset..offset + to_copy]
+                .copy_from_slice(&self.buffer.as_ref()[self.buffer_idx..self.buffer_idx + to_copy]);
+
             offset += to_copy;
             self.buffer_idx += to_copy;
         }
-        
+
         // Memory barrier after squeeze operation
         barrier::compiler_fence_seq_cst();
         Ok(())
@@ -522,9 +527,9 @@ impl ExtendableOutputFunction for ShakeXof256 {
         validate::parameter(
             len > 0,
             "output_length",
-            "Output length must be greater than 0"
+            "Output length must be greater than 0",
         )?;
-        
+
         let mut v = vec![0u8; len];
         self.squeeze(&mut v)?;
         Ok(v)

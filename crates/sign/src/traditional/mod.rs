@@ -8,14 +8,8 @@ pub mod eddsa;
 
 // Re-export ECDSA types
 pub use ecdsa::{
-    EcdsaP256,
-    EcdsaP256PublicKey,
-    EcdsaP256SecretKey,
-    EcdsaP256Signature,
-    EcdsaP384,
-    EcdsaP384PublicKey,
-    EcdsaP384SecretKey,
-    EcdsaP384Signature,
+    EcdsaP256, EcdsaP256PublicKey, EcdsaP256SecretKey, EcdsaP256Signature, EcdsaP384,
+    EcdsaP384PublicKey, EcdsaP384SecretKey, EcdsaP384Signature,
 };
 
 // Re-export EdDSA types

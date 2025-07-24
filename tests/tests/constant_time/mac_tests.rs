@@ -1,10 +1,10 @@
 // tests/constant_time/mac_tests.rs
 // Constant-time tests for MAC (Message Authentication Code) algorithms
 
-use tests::suites::constant_time::config::TestConfig;
-use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
 use dcrypt_algorithms::hash::Sha256;
 use dcrypt_algorithms::mac::hmac::Hmac;
+use tests::suites::constant_time::config::TestConfig;
+use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
 
 #[test]
 fn test_hmac_sha256_constant_time() {
@@ -30,11 +30,11 @@ fn test_hmac_sha256_constant_time() {
 
     // Use instance method instead of associated function
     let analysis = match tester.analyze_constant_time(
-        &t1, 
+        &t1,
         &t2,
         config.mean_ratio_max,
         config.t_stat_threshold,
-        config.combined_score_threshold
+        config.combined_score_threshold,
     ) {
         Ok(result) => result,
         Err(e) => panic!("Analysis error: {}", e),
@@ -42,17 +42,33 @@ fn test_hmac_sha256_constant_time() {
 
     // Output detailed diagnostics with new metrics
     println!("HMAC-SHA256 Timing Analysis:");
-    println!("  Mean times: {:.2} ns vs {:.2} ns", analysis.mean_a, analysis.mean_b);
+    println!(
+        "  Mean times: {:.2} ns vs {:.2} ns",
+        analysis.mean_a, analysis.mean_b
+    );
     println!("  Mean ratio: {:.3}", analysis.mean_ratio);
     println!("  t-statistic: {:.3}", analysis.t_statistic);
-    println!("  p-value: {:.4} (calculated from t-distribution)", analysis.p_value);
-    println!("  Effect size (Cohen's d): {:.3} - {}", 
-            analysis.cohens_d, analysis.effect_size_interpretation);
-    println!("  95% CI for mean difference: ({:.2}, {:.2}) ns", 
-            analysis.confidence_interval.0, analysis.confidence_interval.1);
+    println!(
+        "  p-value: {:.4} (calculated from t-distribution)",
+        analysis.p_value
+    );
+    println!(
+        "  Effect size (Cohen's d): {:.3} - {}",
+        analysis.cohens_d, analysis.effect_size_interpretation
+    );
+    println!(
+        "  95% CI for mean difference: ({:.2}, {:.2}) ns",
+        analysis.confidence_interval.0, analysis.confidence_interval.1
+    );
     println!("  Combined score: {:.3}", analysis.combined_score);
-    println!("  Relative std dev A: {:.3}", analysis.std_dev_a / analysis.mean_a);
-    println!("  Relative std dev B: {:.3}", analysis.std_dev_b / analysis.mean_b);
+    println!(
+        "  Relative std dev A: {:.3}",
+        analysis.std_dev_a / analysis.mean_a
+    );
+    println!(
+        "  Relative std dev B: {:.3}",
+        analysis.std_dev_b / analysis.mean_b
+    );
 
     // Always generate insights for HMAC-SHA256 since it failed in the test run
     let insights = generate_test_insights(&analysis, &config, "HMAC-SHA256");

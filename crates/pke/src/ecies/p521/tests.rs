@@ -1,13 +1,17 @@
 // File: crates/pke/src/ecies/p521/tests.rs
 use super::*;
-use rand::rngs::OsRng;
-use dcrypt_api::error::Error as ApiError; // Alias for clarity
+use dcrypt_api::error::Error as ApiError;
+use rand::rngs::OsRng; // Alias for clarity
 
 #[test]
 fn test_ecies_p521_keypair_generation() {
     let mut rng = OsRng;
     let result = EciesP521::keypair(&mut rng);
-    assert!(result.is_ok(), "Keypair generation failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Keypair generation failed: {:?}",
+        result.err()
+    );
     let (pk, sk) = result.unwrap();
     assert_eq!(pk.as_ref().len(), ec::P521_POINT_UNCOMPRESSED_SIZE);
     assert_eq!(sk.as_ref().len(), ec::P521_SCALAR_SIZE);
@@ -20,11 +24,11 @@ fn test_ecies_p521_encrypt_decrypt_no_aad() {
     let plaintext = b"Hello, ECIES P521!";
     let aad: Option<&[u8]> = None;
 
-    let ciphertext_vec = EciesP521::encrypt(&pk, plaintext, aad, &mut rng)
-        .expect("Encryption failed");
+    let ciphertext_vec =
+        EciesP521::encrypt(&pk, plaintext, aad, &mut rng).expect("Encryption failed");
 
-    let decrypted_plaintext = EciesP521::decrypt(&sk, &ciphertext_vec, aad)
-        .expect("Decryption failed");
+    let decrypted_plaintext =
+        EciesP521::decrypt(&sk, &ciphertext_vec, aad).expect("Decryption failed");
 
     assert_eq!(plaintext, decrypted_plaintext.as_slice());
 }
@@ -37,11 +41,11 @@ fn test_ecies_p521_encrypt_decrypt_with_aad() {
     let aad_data = *b"Some Associated Authenticated Data P521";
     let aad: Option<&[u8]> = Some(&aad_data);
 
-    let ciphertext_vec = EciesP521::encrypt(&pk, plaintext, aad, &mut rng)
-        .expect("Encryption with AAD failed");
+    let ciphertext_vec =
+        EciesP521::encrypt(&pk, plaintext, aad, &mut rng).expect("Encryption with AAD failed");
 
-    let decrypted_plaintext = EciesP521::decrypt(&sk, &ciphertext_vec, aad)
-        .expect("Decryption with AAD failed");
+    let decrypted_plaintext =
+        EciesP521::decrypt(&sk, &ciphertext_vec, aad).expect("Decryption with AAD failed");
 
     assert_eq!(plaintext, decrypted_plaintext.as_slice());
 }
@@ -50,13 +54,14 @@ fn test_ecies_p521_encrypt_decrypt_with_aad() {
 fn test_ecies_p521_decrypt_wrong_key() {
     let mut rng = OsRng;
     let (pk, _sk) = EciesP521::keypair(&mut rng).expect("Keypair generation failed");
-    let (_pk_wrong, sk_wrong) = EciesP521::keypair(&mut rng).expect("Second keypair generation failed");
+    let (_pk_wrong, sk_wrong) =
+        EciesP521::keypair(&mut rng).expect("Second keypair generation failed");
     let plaintext = b"Test with wrong key P521";
     let aad_data = *b"AAD for wrong key test P521";
     let aad: Option<&[u8]> = Some(&aad_data);
 
-    let ciphertext_vec = EciesP521::encrypt(&pk, plaintext, aad, &mut rng)
-        .expect("Encryption failed");
+    let ciphertext_vec =
+        EciesP521::encrypt(&pk, plaintext, aad, &mut rng).expect("Encryption failed");
 
     let result = EciesP521::decrypt(&sk_wrong, &ciphertext_vec, aad);
     assert!(result.is_err(), "Decryption with wrong key should fail");
@@ -77,8 +82,8 @@ fn test_ecies_p521_decrypt_tampered_ciphertext() {
     let aad_data = *b"Tamper test AAD P521";
     let aad: Option<&[u8]> = Some(&aad_data);
 
-    let mut ciphertext_vec = EciesP521::encrypt(&pk, plaintext, aad, &mut rng)
-        .expect("Encryption failed");
+    let mut ciphertext_vec =
+        EciesP521::encrypt(&pk, plaintext, aad, &mut rng).expect("Encryption failed");
 
     if !ciphertext_vec.is_empty() {
         let last_byte_index = ciphertext_vec.len() - 1;
@@ -86,7 +91,10 @@ fn test_ecies_p521_decrypt_tampered_ciphertext() {
     }
 
     let result = EciesP521::decrypt(&sk, &ciphertext_vec, aad);
-    assert!(result.is_err(), "Decryption of tampered ciphertext should fail");
+    assert!(
+        result.is_err(),
+        "Decryption of tampered ciphertext should fail"
+    );
 
     match result.err().unwrap() {
         ApiError::DecryptionFailed { context, .. } => {
@@ -106,8 +114,8 @@ fn test_ecies_p521_decrypt_wrong_aad() {
     let aad2_data = *b"Incorrect AAD P521";
     let aad2: Option<&[u8]> = Some(&aad2_data);
 
-    let ciphertext_vec = EciesP521::encrypt(&pk, plaintext, aad1, &mut rng)
-        .expect("Encryption failed");
+    let ciphertext_vec =
+        EciesP521::encrypt(&pk, plaintext, aad1, &mut rng).expect("Encryption failed");
 
     let result = EciesP521::decrypt(&sk, &ciphertext_vec, aad2);
     assert!(result.is_err(), "Decryption with wrong AAD should fail");
@@ -130,11 +138,17 @@ fn test_ecies_p521_invalid_public_key_for_encryption() {
     let aad: Option<&[u8]> = Some(&aad_data);
 
     let result = EciesP521::encrypt(&invalid_pk, plaintext, aad, &mut rng);
-    assert!(result.is_err(), "Encryption with invalid public key should fail");
-    
+    assert!(
+        result.is_err(),
+        "Encryption with invalid public key should fail"
+    );
+
     match result.err().unwrap() {
-        ApiError::Other { context: "ECIES Encryption", .. } => {} 
-        ApiError::InvalidKey { .. } => {} 
+        ApiError::Other {
+            context: "ECIES Encryption",
+            ..
+        } => {}
+        ApiError::InvalidKey { .. } => {}
         e => panic!("Expected EncryptionFailed or InvalidKey, got {:?}", e),
     }
 }

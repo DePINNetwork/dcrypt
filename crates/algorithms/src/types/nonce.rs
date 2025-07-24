@@ -3,15 +3,18 @@
 //! This module provides a generic nonce type with compile-time size guarantees
 //! for various cryptographic algorithms, ensuring proper type safety and validation.
 
-use rand::{CryptoRng, RngCore};
 use core::fmt;
 use core::ops::{Deref, DerefMut};
-use zeroize::Zeroize;
+use rand::{CryptoRng, RngCore};
 use subtle::ConstantTimeEq;
+use zeroize::Zeroize;
 
-use crate::error::{Result, validate};
-use crate::types::{ConstantTimeEq as LocalConstantEq, RandomGeneration, SecureZeroingType, FixedSize, ByteSerializable};
+use crate::error::{validate, Result};
 use crate::types::sealed::Sealed;
+use crate::types::{
+    ByteSerializable, ConstantTimeEq as LocalConstantEq, FixedSize, RandomGeneration,
+    SecureZeroingType,
+};
 
 /// Generic nonce type with compile-time size guarantee
 #[derive(Clone, Zeroize)]
@@ -27,30 +30,30 @@ impl<const N: usize> Nonce<N> {
     pub fn new(data: [u8; N]) -> Self {
         Self { data }
     }
-    
+
     /// Create a zeroed nonce
     pub fn zeroed() -> Self {
         Self { data: [0u8; N] }
     }
-    
+
     /// Create from a slice, if it has the correct length
     pub fn from_slice(slice: &[u8]) -> Result<Self> {
         // Use the validation helper instead of direct error creation
         validate::length("Nonce", slice.len(), N)?;
-        
+
         let mut data = [0u8; N];
         data.copy_from_slice(slice);
-        
+
         Ok(Self { data })
     }
-    
+
     /// Generate a random nonce
     pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         let mut data = [0u8; N];
         rng.fill_bytes(&mut data);
         Self { data }
     }
-    
+
     /// Get the size of this nonce in bytes
     pub fn size() -> usize {
         N
@@ -71,7 +74,7 @@ impl<const N: usize> AsMut<[u8]> for Nonce<N> {
 
 impl<const N: usize> Deref for Nonce<N> {
     type Target = [u8; N];
-    
+
     fn deref(&self) -> &Self::Target {
         &self.data
     }
@@ -125,7 +128,7 @@ impl<const N: usize> ByteSerializable for Nonce<N> {
     fn to_bytes(&self) -> Vec<u8> {
         self.data.to_vec()
     }
-    
+
     fn from_bytes(bytes: &[u8]) -> crate::error::Result<Self> {
         Self::from_slice(bytes)
     }

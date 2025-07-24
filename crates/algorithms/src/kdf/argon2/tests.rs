@@ -5,23 +5,23 @@ use rand::RngCore; // For fill_bytes
 use std::ops::Deref; // For deref() method on Zeroizing
 
 // RFC-9106 constant inputs --------------------------------------------------
-const PASSWORD: [u8; 32] = [0x01; 32];           // Password[32] 01 01 … 01
-const SALT:     [u8; 16] = [0x02; 16];           // Salt[16]     02 02 … 02
-const SECRET:   [u8;  8] = [0x03;  8];           // Secret[8]    03 03 … 03
-const AD:       [u8; 12] = [0x04; 12];           // AD[12]       04 04 … 04
-const SALT_LEN: usize = 16;                      // All vectors use 16-byte salt
+const PASSWORD: [u8; 32] = [0x01; 32]; // Password[32] 01 01 … 01
+const SALT: [u8; 16] = [0x02; 16]; // Salt[16]     02 02 … 02
+const SECRET: [u8; 8] = [0x03; 8]; // Secret[8]    03 03 … 03
+const AD: [u8; 12] = [0x04; 12]; // AD[12]       04 04 … 04
+const SALT_LEN: usize = 16; // All vectors use 16-byte salt
 
 // Helper to build Params<SALT_LEN> for the three variants -------------------
 fn rfc_params(argon_type: Algorithm) -> Params<SALT_LEN> {
     Params {
         argon_type,
-        memory_cost: 32,          // 32 KiB
-        time_cost: 3,             // 3 passes
-        parallelism: 4,           // 4 lanes
+        memory_cost: 32, // 32 KiB
+        time_cost: 3,    // 3 passes
+        parallelism: 4,  // 4 lanes
         salt: Salt::new(SALT),
         ad: Some(Zeroizing::new(AD.to_vec())),
         secret: Some(Zeroizing::new(SECRET.to_vec())),
-        output_len: 32,           // 32-byte tag
+        output_len: 32, // 32-byte tag
         version: ARGON2_VERSION_1_3,
     }
 }
@@ -29,7 +29,7 @@ fn rfc_params(argon_type: Algorithm) -> Params<SALT_LEN> {
 #[test]
 fn blake2b_argon2_h0_param_block_exact() {
     use crate::hash::blake2::BLAKE2B_IV;
-    
+
     let b = create_blake2b_for_h0();
     // Check that the parameter block for H₀ has inner_length = 0
     // by examining the resulting h[0] after XOR with IV
@@ -42,13 +42,17 @@ fn argon2d_rfc_vector_a1() -> Result<()> {
     let password = SecretVec::from_slice(&PASSWORD);
     let argon2 = Argon2::new_with_params(rfc_params(Algorithm::Argon2d));
     let hash = argon2.hash_password(password.as_ref())?;
-    
+
     println!(">>> argon2d hash = {}", hex::encode(&hash));
 
     let expected_hex = "512b391b6f1162975371d30919734294f868e3be3984f3c1a13a4db9fabe4acb";
     let expected_bytes = hex::decode(expected_hex).expect("Invalid expected hex");
 
-    assert_eq!(hash.as_slice(), expected_bytes.as_slice(), "Argon2d RFC vector mismatch");
+    assert_eq!(
+        hash.as_slice(),
+        expected_bytes.as_slice(),
+        "Argon2d RFC vector mismatch"
+    );
     Ok(())
 }
 
@@ -58,13 +62,17 @@ fn argon2i_rfc_vector_a3() -> Result<()> {
     let password = SecretVec::from_slice(&PASSWORD);
     let argon2 = Argon2::new_with_params(rfc_params(Algorithm::Argon2i));
     let hash = argon2.hash_password(password.as_ref())?;
-    
+
     println!(">>> argon2i hash = {}", hex::encode(&hash));
 
     let expected_hex = "c814d9d1dc7f37aa13f0d77f2494bda1c8de6b016dd388d29952a4c4672b6ce8";
     let expected_bytes = hex::decode(expected_hex).expect("Invalid expected hex");
 
-    assert_eq!(hash.as_slice(), expected_bytes.as_slice(), "Argon2i RFC vector mismatch");
+    assert_eq!(
+        hash.as_slice(),
+        expected_bytes.as_slice(),
+        "Argon2i RFC vector mismatch"
+    );
     Ok(())
 }
 
@@ -74,13 +82,17 @@ fn argon2id_rfc_vector_a5() -> Result<()> {
     let password = SecretVec::from_slice(&PASSWORD);
     let argon2 = Argon2::new_with_params(rfc_params(Algorithm::Argon2id));
     let hash = argon2.hash_password(password.as_ref())?;
-    
+
     println!(">>> argon2id hash = {}", hex::encode(&hash));
 
     let expected_hex = "0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659";
     let expected_bytes = hex::decode(expected_hex).expect("Invalid expected hex");
 
-    assert_eq!(hash.as_slice(), expected_bytes.as_slice(), "Argon2id RFC vector mismatch");
+    assert_eq!(
+        hash.as_slice(),
+        expected_bytes.as_slice(),
+        "Argon2id RFC vector mismatch"
+    );
     Ok(())
 }
 
@@ -105,13 +117,20 @@ fn argon2id_reference_implementation_vector() -> Result<()> {
 
     let argon2 = Argon2::new_with_params(params);
     let hash = argon2.hash_password(password.as_ref())?;
-    
-    println!(">>> argon2id reference implementation hash = {}", hex::encode(&hash));
+
+    println!(
+        ">>> argon2id reference implementation hash = {}",
+        hex::encode(&hash)
+    );
 
     let expected_hex = "d74d7db154b312931625cde5a51f76bc52113b4b0515aa94952203b3cc45b800";
     let expected_bytes = hex::decode(expected_hex).expect("Invalid expected hex");
 
-    assert_eq!(hash.as_slice(), expected_bytes.as_slice(), "Argon2id reference implementation vector mismatch");
+    assert_eq!(
+        hash.as_slice(),
+        expected_bytes.as_slice(),
+        "Argon2id reference implementation vector mismatch"
+    );
     Ok(())
 }
 
@@ -144,15 +163,21 @@ fn argon2id_phc_string_hash_verify() -> Result<()> {
 
     let argon2_hasher = Argon2::new_with_params(params_for_hasher);
     // Explicitly call the trait method to ensure PasswordHash is returned
-    let phc_hash_obj = <Argon2<SALT_LEN> as PasswordHashFunction>::hash_password(&argon2_hasher, &password)?;
-
+    let phc_hash_obj =
+        <Argon2<SALT_LEN> as PasswordHashFunction>::hash_password(&argon2_hasher, &password)?;
 
     assert_eq!(phc_hash_obj.algorithm, "argon2id");
-    assert_eq!(phc_hash_obj.param("v").unwrap().as_str(), ARGON2_VERSION_1_3.to_string().as_str());
+    assert_eq!(
+        phc_hash_obj.param("v").unwrap().as_str(),
+        ARGON2_VERSION_1_3.to_string().as_str()
+    );
     assert_eq!(phc_hash_obj.param("m").unwrap(), "65536");
     assert_eq!(phc_hash_obj.param("t").unwrap(), "2");
     assert_eq!(phc_hash_obj.param("p").unwrap(), "4");
-    assert_eq!(phc_hash_obj.param("data").unwrap(), &base64::engine::general_purpose::STANDARD_NO_PAD.encode(&ad_data_vec));
+    assert_eq!(
+        phc_hash_obj.param("data").unwrap(),
+        &base64::engine::general_purpose::STANDARD_NO_PAD.encode(&ad_data_vec)
+    );
     assert_eq!(phc_hash_obj.salt.deref(), salt_struct.as_ref());
     assert_eq!(phc_hash_obj.hash.len(), 32);
 
@@ -166,27 +191,40 @@ fn argon2id_phc_string_hash_verify() -> Result<()> {
     wrong_pw_bytes[..src_wrong_pw.len()].copy_from_slice(src_wrong_pw);
     let wrong_password = SecretBytes::<32>::new(wrong_pw_bytes);
     let is_invalid = argon2_verifier.verify(&wrong_password, &phc_hash_obj)?;
-    assert!(!is_invalid, "Verification succeeded for an incorrect password");
+    assert!(
+        !is_invalid,
+        "Verification succeeded for an incorrect password"
+    );
 
     let mut tampered_hash_obj = phc_hash_obj.clone();
-    tampered_hash_obj.params.insert("m".to_string(), "32768".to_string());
+    tampered_hash_obj
+        .params
+        .insert("m".to_string(), "32768".to_string());
     let verify_tampered_params_result = argon2_verifier.verify(&password, &tampered_hash_obj)?;
-    assert!(!verify_tampered_params_result, "Verification succeeded with tampered memory cost");
+    assert!(
+        !verify_tampered_params_result,
+        "Verification succeeded with tampered memory cost"
+    );
 
     let mut tampered_salt_hash_obj = phc_hash_obj.clone();
     let mut salt_vec = tampered_salt_hash_obj.salt.to_vec();
     salt_vec[0] ^= 0xff;
     tampered_salt_hash_obj.salt = Zeroizing::new(salt_vec);
     let verify_tampered_salt_result = argon2_verifier.verify(&password, &tampered_salt_hash_obj)?;
-    assert!(!verify_tampered_salt_result, "Verification succeeded with tampered salt");
+    assert!(
+        !verify_tampered_salt_result,
+        "Verification succeeded with tampered salt"
+    );
 
     let mut tampered_hash_val_obj = phc_hash_obj.clone();
     let mut mutable_hash = tampered_hash_val_obj.hash.to_vec();
     mutable_hash[0] ^= 0xff;
     tampered_hash_val_obj.hash = Zeroizing::new(mutable_hash);
     let verify_tampered_hash_result = argon2_verifier.verify(&password, &tampered_hash_val_obj)?;
-    assert!(!verify_tampered_hash_result, "Verification succeeded with tampered hash value");
-
+    assert!(
+        !verify_tampered_hash_result,
+        "Verification succeeded with tampered hash value"
+    );
 
     Ok(())
 }
@@ -199,7 +237,9 @@ fn argon2_builder_overrides_work() -> Result<()> {
 
     let base_kdf_params = Params {
         argon_type: Algorithm::Argon2id,
-        memory_cost: 65536, time_cost: 3, parallelism: 2,
+        memory_cost: 65536,
+        time_cost: 3,
+        parallelism: 2,
         salt: base_salt.clone(),
         ad: Some(Zeroizing::new(b"base_ad".to_vec())),
         secret: Some(Zeroizing::new(b"base_secret".to_vec())),
@@ -216,39 +256,45 @@ fn argon2_builder_overrides_work() -> Result<()> {
     let builder_info = b"builder context info";
     let output_len_override = 64;
 
-    let derived_key_via_builder = base_kdf.builder()
+    let derived_key_via_builder = base_kdf
+        .builder()
         .with_ikm(ikm)
         .with_salt(builder_salt_slice)
         .with_info(builder_info)
         .with_output_length(output_len_override)
         .derive()?;
 
-    assert_eq!(derived_key_via_builder.len(), output_len_override, "Builder derived key length mismatch");
+    assert_eq!(
+        derived_key_via_builder.len(),
+        output_len_override,
+        "Builder derived key length mismatch"
+    );
 
     // For comparison, we must ensure the salt is correctly formed for `manual_kdf`
     let mut manual_salt_data = [0u8; SALT_LEN];
     manual_salt_data.copy_from_slice(builder_salt_slice);
 
-
     let manual_params_for_comparison = Params {
-         argon_type: base_kdf.params.argon_type,
-         memory_cost: base_kdf.params.memory_cost,
-         time_cost: base_kdf.params.time_cost,
-         parallelism: base_kdf.params.parallelism,
-         salt: Salt::<SALT_LEN>::new(manual_salt_data), // Use the overridden salt
-         ad: Some(Zeroizing::new(builder_info.to_vec())), // Use the overridden AD
-         secret: base_kdf.params.secret.clone(), // Secret is not overridden by builder.info()
-         output_len: output_len_override, // Use the overridden length
-         version: base_kdf.params.version,
+        argon_type: base_kdf.params.argon_type,
+        memory_cost: base_kdf.params.memory_cost,
+        time_cost: base_kdf.params.time_cost,
+        parallelism: base_kdf.params.parallelism,
+        salt: Salt::<SALT_LEN>::new(manual_salt_data), // Use the overridden salt
+        ad: Some(Zeroizing::new(builder_info.to_vec())), // Use the overridden AD
+        secret: base_kdf.params.secret.clone(),        // Secret is not overridden by builder.info()
+        output_len: output_len_override,               // Use the overridden length
+        version: base_kdf.params.version,
     };
     let manual_kdf = Argon2::new_with_params(manual_params_for_comparison);
     let manual_derived_key_vec = manual_kdf.hash_password(ikm)?.to_vec(); // hash_password uses ikm as password
 
-    assert_eq!(derived_key_via_builder, manual_derived_key_vec, "Builder derivation differs from manual derivation with same params");
+    assert_eq!(
+        derived_key_via_builder, manual_derived_key_vec,
+        "Builder derivation differs from manual derivation with same params"
+    );
 
     Ok(())
 }
-
 
 #[test]
 fn generate_salt_correct_size() {
@@ -259,16 +305,17 @@ fn generate_salt_correct_size() {
     assert_eq!(salt.as_ref().len(), TEST_SALT_SIZE);
 
     // This part of the test checks Salt::random_with_size directly, which is good.
-    let specific_salt = Salt::<TEST_SALT_SIZE>::random_with_size(&mut rand::rngs::OsRng, TEST_SALT_SIZE).unwrap();
+    let specific_salt =
+        Salt::<TEST_SALT_SIZE>::random_with_size(&mut rand::rngs::OsRng, TEST_SALT_SIZE).unwrap();
     assert_eq!(specific_salt.as_ref().len(), TEST_SALT_SIZE);
 }
 
 #[test]
 fn h_prime_1024_matches_rfc_a1_block0() -> Result<()> {
     // From RFC 9106 Test Vector
-    // For parameters: m=32, t=3, p=4, pwd=32×0x01, salt=16×0x02, 
+    // For parameters: m=32, t=3, p=4, pwd=32×0x01, salt=16×0x02,
     // secret=8×0x03, ad=12×0x04, 32 byte tag
-    
+
     // Construct the pre-hashing buffer for H0 as per RFC 9106
     let mut h0_buffer_vec = Vec::with_capacity(ARGON2_PREHASH_SEED_LENGTH);
     h0_buffer_vec.extend_from_slice(&4u32.to_le_bytes()); // p = 4
@@ -286,21 +333,25 @@ fn h_prime_1024_matches_rfc_a1_block0() -> Result<()> {
     h0_buffer_vec.extend_from_slice(&12u32.to_le_bytes()); // |ad| = 12
     h0_buffer_vec.extend_from_slice(&AD); // ad
     let h0_buffer = Zeroizing::new(h0_buffer_vec);
-    
+
     // Calculate true H0 using standard Blake2b-512 (as per RFC 9106 for H0 itself)
     use crate::hash::blake2::Blake2b; // Make sure Blake2b is in scope
-    // H0 output size is 64 bytes as per RFC 9106
+                                      // H0 output size is 64 bytes as per RFC 9106
     let mut h0_hasher = Blake2b::with_output_size(64);
     h0_hasher.update(&h0_buffer)?;
     let h0_digest = h0_hasher.finalize()?;
     let computed_h0 = Zeroizing::new(h0_digest.as_ref().to_vec());
-    
+
     // This is the correct H0 for the RFC parameters (to be verified against implementation)
     let expected_rfc_h0 = hex::decode(
         "b8819791a0359660bb7709c85fa48f04d5d82c05c5f215ccdb885491717cf757082c28b951be381410b5fc2eb7274033b9fdc7ae672bcaac5d179097a4af3109"
     ).expect("Failed to decode expected RFC H0 hex");
-    
-    assert_eq!(computed_h0.as_slice(), &expected_rfc_h0[..], "Standard Blake2b H0 computation for RFC vector mismatch");
+
+    assert_eq!(
+        computed_h0.as_slice(),
+        &expected_rfc_h0[..],
+        "Standard Blake2b H0 computation for RFC vector mismatch"
+    );
 
     // Seed for B[0][0] uses this computed_h0:
     // B[i][0] = H'(H_0 || ser(0) || ser(i)) for the first pass (i=lane index)
@@ -314,59 +365,69 @@ fn h_prime_1024_matches_rfc_a1_block0() -> Result<()> {
 
     // Generate B[0][0] using the h_prime_variable_output
     let block0 = h_prime_variable_output(&block0_seed_zeroizing, ARGON2_BLOCK_SIZE)?;
-        
+
     // This expected value may need to be updated based on the reference implementation
     // or RFC 9106 if specific example B0 blocks are provided
-    let expected_block0_start = hex::decode(
-        "8a5c6f2c6bea2fdb3426f800be139471"
-    ).expect("Failed to decode expected block0 start hex");
-    
-    assert_eq!(&block0[..16], &expected_block0_start[..], "H' computation for RFC vector block0 mismatch");
-    
+    let expected_block0_start = hex::decode("8a5c6f2c6bea2fdb3426f800be139471")
+        .expect("Failed to decode expected block0 start hex");
+
+    assert_eq!(
+        &block0[..16],
+        &expected_block0_start[..],
+        "H' computation for RFC vector block0 mismatch"
+    );
+
     Ok(())
 }
 
 #[test]
 fn debug_internal_argon2_h_prime() -> Result<()> {
     let data = [1u8; 8];
-    
+
     // Test with small output size (32 bytes)
     let out_32 = h_prime_variable_output(&data, 32)?;
     assert_eq!(out_32.len(), 32, "H' output length mismatch for 32 bytes");
-    
+
     // Test with medium output size (64 bytes)
     let out_64 = h_prime_variable_output(&data, 64)?;
     assert_eq!(out_64.len(), 64, "H' output length mismatch for 64 bytes");
-    
+
     // Test with large output size (1024 bytes)
     let out_1024 = h_prime_variable_output(&data, 1024)?;
-    assert_eq!(out_1024.len(), 1024, "H' output length mismatch for 1024 bytes");
-    
+    assert_eq!(
+        out_1024.len(),
+        1024,
+        "H' output length mismatch for 1024 bytes"
+    );
+
     Ok(())
 }
 
 #[test]
 fn h_prime_final_32_matches_rfc_a1_tag() -> Result<()> {
     // This test will verify the final H' compression for the RFC vector
-    
+
     // Create a sample 1KB block
     let mut final_block_xor = vec![0u8; ARGON2_BLOCK_SIZE];
     // Fill with a pattern
     for (i, byte) in final_block_xor.iter_mut().enumerate() {
         *byte = (i % 256) as u8;
     }
-    
+
     // Apply h_prime_variable_output
     let tag = h_prime_variable_output(&final_block_xor, 32)?;
-    
+
     // Check consistency of our function
     let current_output = h_prime_variable_output(&final_block_xor, 32)?;
-    
-    assert_eq!(tag, current_output, "H' final compression should be consistent");
-    
+
+    assert_eq!(
+        tag, current_output,
+        "H' final compression should be consistent"
+    );
+
     // When we have the actual final_block_xor from RFC 9106, we can use this:
     // let expected_tag = hex::decode("512b391b6f1162975371d30919734294f868e3be3984f3c1a13a4db9fabe4acb").expect("Failed to decode expected tag hex");
     // assert_eq!(tag, expected_tag, "H' final compression for RFC vector tag mismatch");
-    
+
     Ok(())
 }

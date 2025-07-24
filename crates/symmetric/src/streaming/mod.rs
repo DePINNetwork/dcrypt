@@ -3,14 +3,14 @@
 //! This module provides streaming interfaces for encrypting and decrypting
 //! large amounts of data in a memory-efficient way.
 
-use std::io::{Read, Write};
 use crate::error::Result;
+use std::io::{Read, Write};
 
 /// Trait for streaming encryption
 pub trait StreamingEncrypt<W: Write> {
     /// Writes plaintext data to the stream
     fn write(&mut self, data: &[u8]) -> Result<()>;
-    
+
     /// Finalizes the stream, encrypting any remaining data
     fn finalize(self) -> Result<W>;
 }

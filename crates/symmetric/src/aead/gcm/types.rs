@@ -1,8 +1,8 @@
 //! Types specific to GCM mode of operation
 
-use crate::error::{Result, validate, validate_format};
-use rand::{RngCore, rngs::OsRng};
+use crate::error::{validate, validate_format, Result};
 use base64;
+use rand::{rngs::OsRng, RngCore};
 use std::fmt;
 
 /// GCM nonce type (96 bits/12 bytes is the recommended size for GCM)
@@ -14,33 +14,33 @@ impl GcmNonce {
     pub fn new(bytes: [u8; 12]) -> Self {
         Self(bytes)
     }
-    
+
     /// Creates a new random nonce
     pub fn generate() -> Self {
         let mut nonce = [0u8; 12];
         OsRng.fill_bytes(&mut nonce);
         Self(nonce)
     }
-    
+
     /// Returns a reference to the raw nonce bytes
     pub fn as_bytes(&self) -> &[u8; 12] {
         &self.0
     }
-    
+
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
-        let bytes = base64::decode(s)
-            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
-                context: "nonce base64", 
+        let bytes =
+            base64::decode(s).map_err(|_| dcrypt_api::error::Error::SerializationError {
+                context: "nonce base64",
                 #[cfg(feature = "std")]
-                message: "invalid base64 encoding".to_string()
+                message: "invalid base64 encoding".to_string(),
             })?;
-            
+
         validate::length("GCM nonce", bytes.len(), 12)?;
-        
+
         let mut nonce = [0u8; 12];
         nonce.copy_from_slice(&bytes);
-        
+
         Ok(Self(nonce))
     }
 }
@@ -65,41 +65,41 @@ impl AesCiphertextPackage {
     pub fn new(nonce: GcmNonce, ciphertext: Vec<u8>) -> Self {
         Self { nonce, ciphertext }
     }
-    
+
     /// Parses a serialized package
     pub fn from_string(s: &str) -> Result<Self> {
         validate_format(
             s.starts_with("DCRYPT-AES-GCM:"),
             "package deserialization",
-            "invalid package format"
+            "invalid package format",
         )?;
-        
+
         let parts: Vec<&str> = s["DCRYPT-AES-GCM:".len()..].split(':').collect();
         validate_format(
             parts.len() == 2,
             "package deserialization",
-            "expected format: DCRYPT-AES-GCM:<nonce>:<ciphertext>"
+            "expected format: DCRYPT-AES-GCM:<nonce>:<ciphertext>",
         )?;
-        
-        let nonce_bytes = base64::decode(parts[0])
-            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
-                context: "nonce base64", 
+
+        let nonce_bytes =
+            base64::decode(parts[0]).map_err(|_| dcrypt_api::error::Error::SerializationError {
+                context: "nonce base64",
                 #[cfg(feature = "std")]
-                message: "invalid base64 encoding".to_string()
+                message: "invalid base64 encoding".to_string(),
             })?;
-            
+
         validate::length("GCM nonce", nonce_bytes.len(), 12)?;
-        
+
         let mut nonce = [0u8; 12];
         nonce.copy_from_slice(&nonce_bytes);
-        
-        let ciphertext = base64::decode(parts[1])
-            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
-                context: "ciphertext base64", 
+
+        let ciphertext =
+            base64::decode(parts[1]).map_err(|_| dcrypt_api::error::Error::SerializationError {
+                context: "ciphertext base64",
                 #[cfg(feature = "std")]
-                message: "invalid base64 encoding".to_string()
+                message: "invalid base64 encoding".to_string(),
             })?;
-            
+
         Ok(Self {
             nonce: GcmNonce(nonce),
             ciphertext,

@@ -13,18 +13,16 @@ use alloc::{println, vec::Vec};
 
 // Core DCRYPT API traits and types
 use dcrypt_api::error::{Error as CoreError, Result as CoreResult};
-use dcrypt_api::Ciphertext as ApiCiphertext;
+use dcrypt_api::traits::symmetric::{DecryptOperation, EncryptOperation};
 use dcrypt_api::traits::SymmetricCipher as ApiSymmetricCipherTrait; // Import the trait
-use dcrypt_api::traits::symmetric::{EncryptOperation, DecryptOperation}; // Import operation traits
-
+use dcrypt_api::Ciphertext as ApiCiphertext; // Import operation traits
 
 // Algorithms crate components
 use dcrypt_algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
 use dcrypt_algorithms::hash::sha2::Sha256;
 use dcrypt_algorithms::hash::HashFunction; // Import the trait for new, update, finalize
 use dcrypt_algorithms::mac::hmac::Hmac;
-use dcrypt_algorithms::types::{Nonce, Digest, SecretBytes};
-
+use dcrypt_algorithms::types::{Digest, Nonce, SecretBytes};
 
 // Randomness (requires a no_std compatible RNG or specific target features)
 #[cfg(feature = "std")]
@@ -39,15 +37,19 @@ fn main() -> CoreResult<()> {
     println!("\n--- SHA-256 Hashing ---");
     let data_to_hash = b"Hello, DCRYPT no_std!";
     let mut hasher = Sha256::new(); // Now uses HashFunction::new()
-    hasher.update(data_to_hash) // Now uses HashFunction::update()
+    hasher
+        .update(data_to_hash) // Now uses HashFunction::update()
         .map_err(CoreError::from)?;
-    let digest_result = hasher.finalize() // Now uses HashFunction::finalize()
+    let digest_result = hasher
+        .finalize() // Now uses HashFunction::finalize()
         .map_err(CoreError::from)?;
     let digest_bytes: Digest<32> = digest_result;
 
-    println!("Data: {:?}", core::str::from_utf8(data_to_hash).unwrap_or("Invalid UTF-8"));
+    println!(
+        "Data: {:?}",
+        core::str::from_utf8(data_to_hash).unwrap_or("Invalid UTF-8")
+    );
     println!("SHA-256 Digest (hex): {}", digest_bytes.to_hex());
-
 
     // --- MAC with HMAC-SHA256 ---
     #[cfg(feature = "std")]
@@ -58,18 +60,17 @@ fn main() -> CoreResult<()> {
         let mac_key = SecretBytes::<32>::new(key_bytes);
 
         let message_to_mac = b"Authenticated message";
-        let mut hmac = Hmac::<Sha256>::new(mac_key.as_ref())
-            .map_err(CoreError::from)?;
-        hmac.update(message_to_mac)
-            .map_err(CoreError::from)?;
-        let tag_result = hmac.finalize()
-            .map_err(CoreError::from)?;
+        let mut hmac = Hmac::<Sha256>::new(mac_key.as_ref()).map_err(CoreError::from)?;
+        hmac.update(message_to_mac).map_err(CoreError::from)?;
+        let tag_result = hmac.finalize().map_err(CoreError::from)?;
         let tag_bytes: Vec<u8> = tag_result;
 
-        println!("Message: {:?}", core::str::from_utf8(message_to_mac).unwrap_or("Invalid UTF-8"));
+        println!(
+            "Message: {:?}",
+            core::str::from_utf8(message_to_mac).unwrap_or("Invalid UTF-8")
+        );
         println!("HMAC-SHA256 Tag (hex): {}", hex::encode(&tag_bytes));
     }
-
 
     // --- AEAD with ChaCha20Poly1305 ---
     #[cfg(feature = "std")]
@@ -77,7 +78,7 @@ fn main() -> CoreResult<()> {
         println!("\n--- ChaCha20Poly1305 AEAD ---");
         let mut aead_key_bytes = [0u8; 32];
         OsRng.fill_bytes(&mut aead_key_bytes);
-        
+
         let aead_cipher = ChaCha20Poly1305::new(&aead_key_bytes);
 
         let mut aead_nonce_bytes = [0u8; 12];
@@ -88,24 +89,29 @@ fn main() -> CoreResult<()> {
         let aad_data_array = b"Associated Data"; // This is &'static [u8; 15]
         let aad: Option<&[u8; 15]> = Some(aad_data_array);
 
-
         // Encryption using the SymmetricCipher trait's builder pattern
         // Use UFCS to call the trait method
-        let ciphertext_package: ApiCiphertext = 
+        let ciphertext_package: ApiCiphertext =
             <ChaCha20Poly1305 as ApiSymmetricCipherTrait>::encrypt(&aead_cipher)
-            .with_nonce(&aead_nonce)
-            .with_aad(aad.map_or(&[] as &[u8], |a| a as &[u8])) // Convert Option<&[u8;N]> to &[u8]
-            .encrypt(plaintext)?;
-        
-        println!("Plaintext: {:?}", core::str::from_utf8(plaintext).unwrap_or("Invalid UTF-8"));
-        println!("Ciphertext (hex): {}", hex::encode(ciphertext_package.as_ref()));
+                .with_nonce(&aead_nonce)
+                .with_aad(aad.map_or(&[] as &[u8], |a| a as &[u8])) // Convert Option<&[u8;N]> to &[u8]
+                .encrypt(plaintext)?;
+
+        println!(
+            "Plaintext: {:?}",
+            core::str::from_utf8(plaintext).unwrap_or("Invalid UTF-8")
+        );
+        println!(
+            "Ciphertext (hex): {}",
+            hex::encode(ciphertext_package.as_ref())
+        );
 
         // Decryption
-        let decrypted_payload = 
+        let decrypted_payload =
             <ChaCha20Poly1305 as ApiSymmetricCipherTrait>::decrypt(&aead_cipher)
-            .with_nonce(&aead_nonce)
-            .with_aad(aad.map_or(&[] as &[u8], |a| a as &[u8])) // Convert Option<&[u8;N]> to &[u8]
-            .decrypt(&ciphertext_package)?;
+                .with_nonce(&aead_nonce)
+                .with_aad(aad.map_or(&[] as &[u8], |a| a as &[u8])) // Convert Option<&[u8;N]> to &[u8]
+                .decrypt(&ciphertext_package)?;
 
         assert_eq!(plaintext, decrypted_payload.as_slice());
         println!("Decryption successful!");

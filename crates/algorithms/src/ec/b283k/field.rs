@@ -1,8 +1,8 @@
 //! sect283k1 binary field arithmetic GF(2^283)
 //! Irreducible polynomial: x^283 + x^12 + x^7 + x^5 + 1
 
-use crate::error::{Error, Result};
 use crate::ec::b283k::constants::B283K_FIELD_ELEMENT_SIZE;
+use crate::error::{Error, Result};
 
 /// A field element in GF(2^283) represented by 5 u64 limbs (320 bits).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -10,10 +10,7 @@ pub struct FieldElement(pub(crate) [u64; 5]);
 
 impl FieldElement {
     // The irreducible polynomial for sect283k1: f(x) = x^283 + x^12 + x^7 + x^5 + 1
-    const REDUCER: [u64; 5] = [
-        1 << 12 | 1 << 7 | 1 << 5 | 1,
-        0, 0, 0, 0
-    ];
+    const REDUCER: [u64; 5] = [1 << 12 | 1 << 7 | 1 << 5 | 1, 0, 0, 0, 0];
 
     /// The additive identity element (zero).
     pub fn zero() -> Self {
@@ -24,9 +21,9 @@ impl FieldElement {
     pub fn one() -> Self {
         FieldElement([1, 0, 0, 0, 0])
     }
-    
+
     /// Create a field element from its canonical byte representation.
-    /// 
+    ///
     /// The bytes are interpreted as a big-endian representation of the field element.
     pub fn from_bytes(bytes: &[u8; B283K_FIELD_ELEMENT_SIZE]) -> Result<Self> {
         let mut limbs = [0u64; 5];
@@ -37,17 +34,20 @@ impl FieldElement {
         limbs[2] = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
         limbs[1] = u64::from_be_bytes(bytes[20..28].try_into().unwrap());
         limbs[0] = u64::from_be_bytes(bytes[28..36].try_into().unwrap());
-        
+
         // Verify that the highest bits are zero (only 283 bits should be used)
         if limbs[4] & !((1u64 << 27) - 1) != 0 {
-            return Err(Error::param("FieldElement B283k", "Value exceeds field size"));
+            return Err(Error::param(
+                "FieldElement B283k",
+                "Value exceeds field size",
+            ));
         }
-        
+
         Ok(FieldElement(limbs))
     }
 
     /// Convert this field element to its canonical byte representation.
-    /// 
+    ///
     /// The bytes are a big-endian representation of the field element.
     pub fn to_bytes(&self) -> [u8; B283K_FIELD_ELEMENT_SIZE] {
         let mut bytes = [0u8; B283K_FIELD_ELEMENT_SIZE];
@@ -68,7 +68,7 @@ impl FieldElement {
     }
 
     /// Add two field elements in GF(2^283).
-    /// 
+    ///
     /// In binary fields, addition is performed using XOR.
     pub fn add(&self, other: &Self) -> Self {
         let mut res = [0u64; 5];
@@ -79,7 +79,7 @@ impl FieldElement {
     }
 
     /// Multiply two field elements in GF(2^283).
-    /// 
+    ///
     /// Uses the irreducible polynomial for reduction.
     pub fn mul(&self, other: &Self) -> Self {
         let mut res = FieldElement::zero();
@@ -92,7 +92,7 @@ impl FieldElement {
             }
             b = b.shr1();
             a = a.shl1();
-            
+
             // After shifting left, check if bit 283 is set
             // Bit 283 is at position 27 in limb[4] (since 283 = 256 + 27)
             if (a.0[4] >> 27) & 1 == 1 {
@@ -111,7 +111,7 @@ impl FieldElement {
     }
 
     /// Compute the multiplicative inverse of a field element.
-    /// 
+    ///
     /// Uses Fermat's Little Theorem: a^(2^m - 2) = a^(-1) in GF(2^m).
     /// Returns an error if the element is zero.
     pub fn invert(&self) -> Result<Self> {
@@ -127,9 +127,9 @@ impl FieldElement {
         res = res.square();
         Ok(res)
     }
-    
+
     /// Compute the square root of a field element.
-    /// 
+    ///
     /// In binary fields of characteristic 2, sqrt(x) = x^(2^(m-1)).
     pub fn sqrt(&self) -> Self {
         // sqrt(x) = x^(2^(m-1))
@@ -145,25 +145,25 @@ impl FieldElement {
         let mut r = [0u64; 5];
         r[0] = self.0[0] << 1;
         for i in 1..5 {
-            r[i] = (self.0[i] << 1) | (self.0[i-1] >> 63);
+            r[i] = (self.0[i] << 1) | (self.0[i - 1] >> 63);
         }
         // Ensure we don't have bits beyond position 282
         r[4] &= (1u64 << 28) - 1; // Allow up to bit 283 for overflow detection
         FieldElement(r)
     }
-    
+
     // Shift right by 1
     fn shr1(&self) -> Self {
         let mut r = [0u64; 5];
         for i in 0..4 {
-            r[i] = (self.0[i] >> 1) | (self.0[i+1] << 63);
+            r[i] = (self.0[i] >> 1) | (self.0[i + 1] << 63);
         }
         r[4] = self.0[4] >> 1;
         FieldElement(r)
     }
-    
+
     /// Get the trace of the element.
-    /// 
+    ///
     /// The trace is Tr(z) = z + z^2 + z^4 + ... + z^(2^(m-1)).
     /// For compressed points, it's used to disambiguate the y-coordinate.
     pub fn trace(&self) -> u64 {

@@ -4,28 +4,28 @@
 pub struct SphincsSha256Params {
     /// Security level in bits
     pub security: usize,
-    
+
     /// Height of the hypertree
     pub h: usize,
-    
+
     /// Number of layers in the hypertree
     pub d: usize,
-    
+
     /// Winternitz parameter
     pub w: usize,
-    
+
     /// Number of FORS trees
     pub k: usize,
-    
+
     /// Height of FORS trees
     pub t: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Signature size in bytes
     pub signature_size: usize,
 }
@@ -86,28 +86,28 @@ pub const SPHINCS_SHA256_192F: SphincsSha256Params = SphincsSha256Params {
 pub struct SphincsShakeParams {
     /// Security level in bits
     pub security: usize,
-    
+
     /// Height of the hypertree
     pub h: usize,
-    
+
     /// Number of layers in the hypertree
     pub d: usize,
-    
+
     /// Winternitz parameter
     pub w: usize,
-    
+
     /// Number of FORS trees
     pub k: usize,
-    
+
     /// Height of FORS trees
     pub t: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Signature size in bytes
     pub signature_size: usize,
 }

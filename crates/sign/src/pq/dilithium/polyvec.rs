@@ -6,14 +6,14 @@
 //!
 //! The polynomial type MUST use the algorithms version to get correct NTT scaling factors!
 
-use dcrypt_algorithms::poly::polynomial::Polynomial;
+use crate::error::Error as SignError;
+use core::marker::PhantomData;
+use dcrypt_algorithms::error::Result as AlgoResult;
 use dcrypt_algorithms::poly::params::{DilithiumParams, Modulus};
+use dcrypt_algorithms::poly::polynomial::Polynomial;
 use dcrypt_algorithms::xof::shake::ShakeXof128;
 use dcrypt_algorithms::xof::ExtendableOutputFunction;
-use dcrypt_algorithms::error::Result as AlgoResult;
-use crate::error::{Error as SignError};
 use dcrypt_params::pqc::dilithium::DilithiumSchemeParams;
-use core::marker::PhantomData;
 use zeroize::Zeroize;
 
 // Montgomery reduce is available from algorithms::poly::ntt when needed
@@ -74,7 +74,10 @@ impl<P: DilithiumSchemeParams> PolyVecL<P> {
         for _ in 0..P::L_DIM {
             polys.push(Polynomial::<DilithiumParams>::zero());
         }
-        Self { polys, _params: PhantomData }
+        Self {
+            polys,
+            _params: PhantomData,
+        }
     }
 
     /// Apply forward NTT in‐place to every polynomial.
@@ -103,7 +106,10 @@ impl<P: DilithiumSchemeParams> PolyVecK<P> {
         for _ in 0..P::K_DIM {
             polys.push(Polynomial::<DilithiumParams>::zero());
         }
-        Self { polys, _params: PhantomData }
+        Self {
+            polys,
+            _params: PhantomData,
+        }
     }
 
     /// Apply forward NTT in‐place.
@@ -143,11 +149,11 @@ impl<P: DilithiumSchemeParams> PolyVecK<P> {
     }
 
     /// Subtract with centered result in (-q/2, q/2]
-    /// 
+    ///
     /// This method performs subtraction where the result is kept in the centered range
     /// (-q/2, q/2] rather than the standard [0, q) range. This is critical for the
     /// hint mechanism in Dilithium to work correctly.
-    /// 
+    ///
     /// The centered subtraction ensures that:
     /// - Small negative differences remain small (e.g., -19000 stays -19000)
     /// - The norm check sees the correct values
@@ -157,15 +163,13 @@ impl<P: DilithiumSchemeParams> PolyVecK<P> {
         for i in 0..P::K_DIM {
             for j in 0..dcrypt_params::pqc::dilithium::DILITHIUM_N {
                 let diff = centered_sub(self.polys[i].coeffs[j], other.polys[i].coeffs[j]);
-                result.polys[i].coeffs[j] = 
+                result.polys[i].coeffs[j] =
                     ((diff as i64).rem_euclid(DilithiumParams::Q as i64)) as u32;
             }
         }
         result
     }
 }
-
-
 
 /// Matrix‐vector multiply: Â (K×L) × vec_l̂ (L). All in NTT domain.
 /// Returns a K‐vector in NTT domain.

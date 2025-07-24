@@ -1,5 +1,5 @@
 //! Constants for Module-Lattice-Based Digital Signature Algorithm (ML-DSA)
-//! 
+//!
 //! This module implements the parameter sets defined in FIPS 204 (August 2024)
 //! "Module-Lattice-Based Digital Signature Standard"
 //! https://doi.org/10.6028/NIST.FIPS.204
@@ -38,7 +38,7 @@ pub trait DilithiumSchemeParams: Send + Sync + 'static {
     /// Classical security parameter λ in bits
     /// ML-DSA-44: λ = 128, ML-DSA-65: λ = 192, ML-DSA-87: λ = 256
     const LAMBDA: usize;
-    
+
     /// Challenge hash size in bytes (λ/4)
     /// ML-DSA-44: 32 bytes, ML-DSA-65: 48 bytes, ML-DSA-87: 64 bytes
     const CHALLENGE_BYTES: usize;
@@ -68,7 +68,7 @@ pub trait DilithiumSchemeParams: Send + Sync + 'static {
     const SECRET_KEY_BYTES: usize;
     /// Signature size in bytes
     const SIGNATURE_SIZE: usize;
-    
+
     // Seed sizes (FIPS 204, Section 5.1)
     /// Seed size for matrix A generation (ρ)
     const SEED_RHO_BYTES: usize = 32;
@@ -85,7 +85,7 @@ pub trait DilithiumSchemeParams: Send + Sync + 'static {
     /// Bits for packing w₁ coefficients
     /// FIPS 204, Algorithm 28: b = bitlen((q-1)/(2·γ₂) − 1)
     const W1_BITS: usize;
-    
+
     /// Number of bits used when packing each z-coefficient in signatures
     /// This is determined by the range [-γ₁+β, γ₁-β] which requires:
     /// - ML-DSA-44: 18 bits (since 2·(γ₁-β) < 2¹⁸)
@@ -98,31 +98,31 @@ pub trait DilithiumSchemeParams: Send + Sync + 'static {
 pub struct Dilithium2Params {
     /// Polynomial degree n = 256
     pub n: usize,
-    
+
     /// Modulus q = 8380417
     pub q: u32,
-    
+
     /// Dropped bits d = 13
     pub d: u32,
-    
+
     /// Matrix dimension k = 4 (rows)
     pub k: usize,
-    
+
     /// Matrix dimension ℓ = 4 (columns)
     pub l: usize,
-    
+
     /// Infinity norm bound η = 2
     pub eta: u32,
-    
+
     /// Challenge weight τ = 39
     pub tau: usize,
-    
+
     /// Public key size = 1312 bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size = 2560 bytes (includes 32-byte K seed)
     pub secret_key_size: usize,
-    
+
     /// Signature size = 2420 bytes
     pub signature_size: usize,
 }
@@ -138,8 +138,8 @@ pub const DILITHIUM2: Dilithium2Params = Dilithium2Params {
     eta: 2,
     tau: 39,
     public_key_size: 1312,
-    secret_key_size: 2560,  // FIPS 204 final: includes 32-byte K seed
-    signature_size: 2420,    // Updated: 32 + 2304 + 80 + 4 = 2420 bytes
+    secret_key_size: 2560, // FIPS 204 final: includes 32-byte K seed
+    signature_size: 2420,  // Updated: 32 + 2304 + 80 + 4 = 2420 bytes
 };
 
 impl DilithiumSchemeParams for Dilithium2Params {
@@ -147,15 +147,15 @@ impl DilithiumSchemeParams for Dilithium2Params {
     const D_PARAM: u32 = 13;
     const K_DIM: usize = 4;
     const L_DIM: usize = 4;
-    const LAMBDA: usize = 128;  // Classical security parameter
-    const CHALLENGE_BYTES: usize = 32;  // λ/4 = 128/4 = 32
+    const LAMBDA: usize = 128; // Classical security parameter
+    const CHALLENGE_BYTES: usize = 32; // λ/4 = 128/4 = 32
     const ETA_S1S2: u32 = 2;
-    const GAMMA1_PARAM: u32 = 1 << 17;  // 2¹⁷ = 131072
-    const GAMMA1_BITS: usize = 18;      // ceil(log₂(2·2¹⁷)) = 18
-    // γ₂ = (q − 1)/88 = 95232 (FIPS 204, Table 1, ML-DSA-44)
+    const GAMMA1_PARAM: u32 = 1 << 17; // 2¹⁷ = 131072
+    const GAMMA1_BITS: usize = 18; // ceil(log₂(2·2¹⁷)) = 18
+                                   // γ₂ = (q − 1)/88 = 95232 (FIPS 204, Table 1, ML-DSA-44)
     const GAMMA2_PARAM: u32 = (DILITHIUM_Q - 1) / 88; // = 95232
-    const BETA_PARAM: u32 = 78;         // β = τ·η = 39·2 = 78
-    // FIXED: OMEGA must be 80 for ML-DSA-44 per FIPS 204 Table 1
+    const BETA_PARAM: u32 = 78; // β = τ·η = 39·2 = 78
+                                // FIXED: OMEGA must be 80 for ML-DSA-44 per FIPS 204 Table 1
     const OMEGA_PARAM: u32 = 80;
     const TAU_PARAM: usize = 39;
     const PUBLIC_KEY_BYTES: usize = 1312;
@@ -166,7 +166,7 @@ impl DilithiumSchemeParams for Dilithium2Params {
     // The decompose algorithm can produce r₁ ∈ [0, 44], giving 45 values
     // bitlen(44) = 6 bits (can represent 0-63)
     const W1_BITS: usize = 6;
-    
+
     // Number of bits for packing z coefficients
     // Range [-γ₁+β, γ₁-β] = [-131072+78, 131072-78] = [-130994, 130994]
     // Maximum absolute value: 130994 < 2¹⁷, so 2·130994 < 2¹⁸
@@ -179,31 +179,31 @@ impl DilithiumSchemeParams for Dilithium2Params {
 pub struct Dilithium3Params {
     /// Polynomial degree n = 256
     pub n: usize,
-    
+
     /// Modulus q = 8380417
     pub q: u32,
-    
+
     /// Dropped bits d = 13
     pub d: u32,
-    
+
     /// Matrix dimension k = 6 (rows)
     pub k: usize,
-    
+
     /// Matrix dimension ℓ = 5 (columns)
     pub l: usize,
-    
+
     /// Infinity norm bound η = 4
     pub eta: u32,
-    
+
     /// Challenge weight τ = 49
     pub tau: usize,
-    
+
     /// Public key size = 1952 bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size = 4032 bytes (includes 32-byte K seed)
     pub secret_key_size: usize,
-    
+
     /// Signature size = 3309 bytes
     pub signature_size: usize,
 }
@@ -219,8 +219,8 @@ pub const DILITHIUM3: Dilithium3Params = Dilithium3Params {
     eta: 4,
     tau: 49,
     public_key_size: 1952,
-    secret_key_size: 4032,  // FIPS 204 final: includes 32-byte K seed
-    signature_size: 3309,    // FIPS 204 final value
+    secret_key_size: 4032, // FIPS 204 final: includes 32-byte K seed
+    signature_size: 3309,  // FIPS 204 final value
 };
 
 impl DilithiumSchemeParams for Dilithium3Params {
@@ -228,15 +228,15 @@ impl DilithiumSchemeParams for Dilithium3Params {
     const D_PARAM: u32 = 13;
     const K_DIM: usize = 6;
     const L_DIM: usize = 5;
-    const LAMBDA: usize = 192;  // Classical security parameter
-    const CHALLENGE_BYTES: usize = 48;  // λ/4 = 192/4 = 48
+    const LAMBDA: usize = 192; // Classical security parameter
+    const CHALLENGE_BYTES: usize = 48; // λ/4 = 192/4 = 48
     const ETA_S1S2: u32 = 4;
-    const GAMMA1_PARAM: u32 = 1 << 19;  // 2¹⁹ = 524288
-    const GAMMA1_BITS: usize = 20;      // ceil(log₂(2·2¹⁹)) = 20
-    // CORRECTED: γ₂ = (q − 1)/32 = 261888 (FIPS 204, Table 1, ML-DSA-65)
+    const GAMMA1_PARAM: u32 = 1 << 19; // 2¹⁹ = 524288
+    const GAMMA1_BITS: usize = 20; // ceil(log₂(2·2¹⁹)) = 20
+                                   // CORRECTED: γ₂ = (q − 1)/32 = 261888 (FIPS 204, Table 1, ML-DSA-65)
     const GAMMA2_PARAM: u32 = (DILITHIUM_Q - 1) / 32; // = 261888
-    const BETA_PARAM: u32 = 196;        // β = τ·η = 49·4 = 196
-    // CORRECTED: OMEGA must be 55 for ML-DSA-65 per FIPS 204 Table 1
+    const BETA_PARAM: u32 = 196; // β = τ·η = 49·4 = 196
+                                 // CORRECTED: OMEGA must be 55 for ML-DSA-65 per FIPS 204 Table 1
     const OMEGA_PARAM: u32 = 55;
     const TAU_PARAM: usize = 49;
     const PUBLIC_KEY_BYTES: usize = 1952;
@@ -247,7 +247,7 @@ impl DilithiumSchemeParams for Dilithium3Params {
     // The decompose algorithm can produce r₁ ∈ [0, 16], giving 17 values
     // bitlen(16) = 5 bits (can represent 0-31)
     const W1_BITS: usize = 5;
-    
+
     // Number of bits for packing z coefficients
     // Range [-γ₁+β, γ₁-β] = [-524288+196, 524288-196] = [-524092, 524092]
     // Maximum absolute value: 524092 < 2¹⁹, so 2·524092 < 2²⁰
@@ -260,31 +260,31 @@ impl DilithiumSchemeParams for Dilithium3Params {
 pub struct Dilithium5Params {
     /// Polynomial degree n = 256
     pub n: usize,
-    
+
     /// Modulus q = 8380417
     pub q: u32,
-    
+
     /// Dropped bits d = 13
     pub d: u32,
-    
+
     /// Matrix dimension k = 8 (rows)
     pub k: usize,
-    
+
     /// Matrix dimension ℓ = 7 (columns)
     pub l: usize,
-    
+
     /// Infinity norm bound η = 2
     pub eta: u32,
-    
+
     /// Challenge weight τ = 60
     pub tau: usize,
-    
+
     /// Public key size = 2592 bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size = 4896 bytes (includes 32-byte K seed)
     pub secret_key_size: usize,
-    
+
     /// Signature size = 4627 bytes
     pub signature_size: usize,
 }
@@ -300,8 +300,8 @@ pub const DILITHIUM5: Dilithium5Params = Dilithium5Params {
     eta: 2,
     tau: 60,
     public_key_size: 2592,
-    secret_key_size: 4896,  // FIPS 204 final: includes 32-byte K seed
-    signature_size: 4627,    // FIPS 204 final value
+    secret_key_size: 4896, // FIPS 204 final: includes 32-byte K seed
+    signature_size: 4627,  // FIPS 204 final value
 };
 
 impl DilithiumSchemeParams for Dilithium5Params {
@@ -309,16 +309,16 @@ impl DilithiumSchemeParams for Dilithium5Params {
     const D_PARAM: u32 = 13;
     const K_DIM: usize = 8;
     const L_DIM: usize = 7;
-    const LAMBDA: usize = 256;  // Classical security parameter
-    const CHALLENGE_BYTES: usize = 64;  // λ/4 = 256/4 = 64
+    const LAMBDA: usize = 256; // Classical security parameter
+    const CHALLENGE_BYTES: usize = 64; // λ/4 = 256/4 = 64
     const ETA_S1S2: u32 = 2;
-    const GAMMA1_PARAM: u32 = 1 << 19;  // 2¹⁹ = 524288
-    const GAMMA1_BITS: usize = 20;      // ceil(log₂(2·2¹⁹)) = 20
-    // γ₂ = (q − 1)/32 = 261888 (FIPS 204, Table 1, ML-DSA-87)
+    const GAMMA1_PARAM: u32 = 1 << 19; // 2¹⁹ = 524288
+    const GAMMA1_BITS: usize = 20; // ceil(log₂(2·2¹⁹)) = 20
+                                   // γ₂ = (q − 1)/32 = 261888 (FIPS 204, Table 1, ML-DSA-87)
     const GAMMA2_PARAM: u32 = (DILITHIUM_Q - 1) / 32; // = 261888
-    // β = τ·η = 60·2 = 120 (FIPS 204, Table 1, ML-DSA-87)
-    const BETA_PARAM: u32 = 120;  // Corrected from earlier drafts
-    // FIPS 204, Table 1 specifies Ω = 75 for ML-DSA-87.
+                                                      // β = τ·η = 60·2 = 120 (FIPS 204, Table 1, ML-DSA-87)
+    const BETA_PARAM: u32 = 120; // Corrected from earlier drafts
+                                 // FIPS 204, Table 1 specifies Ω = 75 for ML-DSA-87.
     const OMEGA_PARAM: u32 = 75;
     const TAU_PARAM: usize = 60;
     const PUBLIC_KEY_BYTES: usize = 2592;
@@ -328,7 +328,7 @@ impl DilithiumSchemeParams for Dilithium5Params {
     // The decompose algorithm can produce r₁ ∈ [0, 16], giving 17 values
     // bitlen(16) = 5 bits (can represent 0-31)
     const W1_BITS: usize = 5;
-    
+
     // Number of bits for packing z coefficients
     // Range [-γ₁+β, γ₁-β] = [-524288+120, 524288-120] = [-524168, 524168]
     // Maximum absolute value: 524168 < 2¹⁹, so 2·524168 < 2²⁰

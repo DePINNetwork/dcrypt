@@ -7,11 +7,10 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::String, vec::Vec, format};
+use alloc::{format, string::String, vec::Vec};
 
 #[cfg(feature = "std")]
-use std::{string::String, vec::Vec, format};
-
+use std::{format, string::String, vec::Vec};
 
 /// Converts a hexadecimal string to a byte vector.
 ///
@@ -44,8 +43,10 @@ pub fn bytes_to_hex(b: &[u8]) -> String {
 /// # Returns
 /// A `Result` containing the byte vector on success, or an error message string on failure.
 pub fn base64_to_bytes(s: &str) -> Result<Vec<u8>, String> {
-    use base64::{Engine as _, engine::general_purpose::STANDARD};
-    STANDARD.decode(s).map_err(|e| format!("Base64 decoding failed for input string '{}': {}", s, e))
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    STANDARD
+        .decode(s)
+        .map_err(|e| format!("Base64 decoding failed for input string '{}': {}", s, e))
 }
 
 /// Converts a byte slice to a Base64 encoded string.
@@ -57,7 +58,7 @@ pub fn base64_to_bytes(s: &str) -> Result<Vec<u8>, String> {
 /// # Returns
 /// The Base64 encoded string representation of the byte slice.
 pub fn bytes_to_base64(b: &[u8]) -> String {
-    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
     STANDARD.encode(b)
 }
 
@@ -69,8 +70,13 @@ pub fn bytes_to_base64(b: &[u8]) -> String {
 /// # Returns
 /// A `Result` containing the byte vector on success, or an error message string on failure.
 pub fn base64url_nopad_to_bytes(s: &str) -> Result<Vec<u8>, String> {
-    use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
-    URL_SAFE_NO_PAD.decode(s).map_err(|e| format!("Base64 (URL-safe, no pad) decoding failed for '{}': {}", s, e))
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+    URL_SAFE_NO_PAD.decode(s).map_err(|e| {
+        format!(
+            "Base64 (URL-safe, no pad) decoding failed for '{}': {}",
+            s, e
+        )
+    })
 }
 
 /// Converts a byte slice to a Base64 encoded string (URL-safe, no padding).
@@ -81,10 +87,9 @@ pub fn base64url_nopad_to_bytes(s: &str) -> Result<Vec<u8>, String> {
 /// # Returns
 /// The URL-safe Base64 encoded string representation (no padding) of the byte slice.
 pub fn bytes_to_base64url_nopad(b: &[u8]) -> String {
-    use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
     URL_SAFE_NO_PAD.encode(b)
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -119,11 +124,14 @@ mod tests {
         assert_eq!(base64_to_bytes("").unwrap(), Vec::<u8>::new());
 
         assert!(base64_to_bytes("invalid base64 char !@#").is_err());
-        assert!(base64_to_bytes("SGVsbG8sIERCWVBUISEgVGhpcyBpcyBhIHRlc3Qgc3RyaW5nLg").is_err(), "Missing padding should fail strict decode");
-         // A slightly more lenient decoder might accept it, but `base64` crate's standard engine is strict.
+        assert!(
+            base64_to_bytes("SGVsbG8sIERCWVBUISEgVGhpcyBpcyBhIHRlc3Qgc3RyaW5nLg").is_err(),
+            "Missing padding should fail strict decode"
+        );
+        // A slightly more lenient decoder might accept it, but `base64` crate's standard engine is strict.
     }
 
-     #[test]
+    #[test]
     fn test_base64url_nopad_conversions() {
         // Example from RFC 4648 for base64url
         let bytes1 = vec![0xfb, 0xfb, 0xff]; // \xfb\xfb\xff
@@ -136,11 +144,17 @@ mod tests {
         let base64url_nopad_string = "TWFueSBoYW5kcyBtYWtlIGxpZ2h0IHdvcmsu"; // Standard would be "TWFueSBoYW5kcyBtYWtlIGxpZ2h0IHdvcmsu" (same here)
 
         assert_eq!(bytes_to_base64url_nopad(bytes), base64url_nopad_string);
-        assert_eq!(base64url_nopad_to_bytes(base64url_nopad_string).unwrap(), bytes);
+        assert_eq!(
+            base64url_nopad_to_bytes(base64url_nopad_string).unwrap(),
+            bytes
+        );
 
         assert_eq!(bytes_to_base64url_nopad(&[]), "");
         assert_eq!(base64url_nopad_to_bytes("").unwrap(), Vec::<u8>::new());
 
-        assert!(base64url_nopad_to_bytes("invalid base64 char +/=").is_err(), "Standard chars should fail URL-safe");
+        assert!(
+            base64url_nopad_to_bytes("invalid base64 char +/=").is_err(),
+            "Standard chars should fail URL-safe"
+        );
     }
 }

@@ -1,13 +1,13 @@
 //! P-224 scalar arithmetic operations
 
 use crate::ec::p224::constants::P224_SCALAR_SIZE;
-use crate::error::{Error, Result, validate};
+use crate::error::{validate, Error, Result};
 use dcrypt_common::security::SecretBuffer;
-use zeroize::{Zeroize, ZeroizeOnDrop};
 use dcrypt_params::traditional::ecdsa::NIST_P224;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// P-224 scalar value for use in elliptic curve operations
-/// 
+///
 /// Represents integers modulo the curve order n. Used for private keys
 /// and scalar multiplication. Automatically zeroized on drop for security.
 #[derive(Clone, Zeroize, ZeroizeOnDrop, Debug)]
@@ -15,7 +15,7 @@ pub struct Scalar(SecretBuffer<P224_SCALAR_SIZE>);
 
 impl Scalar {
     /// Create a scalar from raw bytes with modular reduction
-    /// 
+    ///
     /// Ensures the scalar is in the valid range [1, n-1] where n is the curve order.
     /// Performs modular reduction if the input is >= n.
     /// Returns an error if the result would be zero (invalid for cryptographic use).
@@ -25,7 +25,7 @@ impl Scalar {
     }
 
     /// Internal constructor that allows zero values
-    /// 
+    ///
     /// Used for intermediate arithmetic operations where zero is a valid result.
     /// Should NOT be used for secret keys, nonces, or final signature components.
     fn from_bytes_unchecked(bytes: [u8; P224_SCALAR_SIZE]) -> Self {
@@ -33,7 +33,7 @@ impl Scalar {
     }
 
     /// Create a scalar from an existing SecretBuffer
-    /// 
+    ///
     /// Performs the same validation and reduction as `new()` but starts
     /// from a SecretBuffer instead of a raw byte array.
     pub fn from_secret_buffer(buffer: SecretBuffer<P224_SCALAR_SIZE>) -> Result<Self> {
@@ -50,7 +50,7 @@ impl Scalar {
     }
 
     /// Serialize the scalar to a byte array
-    /// 
+    ///
     /// Returns the scalar in big-endian byte representation.
     /// The output is suitable for storage or transmission.
     pub fn serialize(&self) -> [u8; P224_SCALAR_SIZE] {
@@ -60,7 +60,7 @@ impl Scalar {
     }
 
     /// Deserialize a scalar from bytes with validation
-    /// 
+    ///
     /// Parses bytes as a big-endian scalar value and ensures it's
     /// in the valid range for P-224 operations.
     pub fn deserialize(bytes: &[u8]) -> Result<Self> {
@@ -73,7 +73,7 @@ impl Scalar {
     }
 
     /// Check if the scalar represents zero
-    /// 
+    ///
     /// Constant-time check to determine if the scalar is the
     /// additive identity (which is invalid for most cryptographic operations).
     pub fn is_zero(&self) -> bool {
@@ -85,7 +85,7 @@ impl Scalar {
     #[inline(always)]
     fn to_le_limbs(bytes_be: &[u8; 28]) -> [u32; 7] {
         let mut limbs = [0u32; 7];
-        
+
         // Read big-endian bytes directly into little-endian limbs
         // bytes[0..4] is most significant, goes to limbs[6]
         // bytes[24..28] is least significant, goes to limbs[0]
@@ -106,7 +106,7 @@ impl Scalar {
     #[inline(always)]
     fn limbs_to_be(limbs: &[u32; 7]) -> [u8; 28] {
         let mut out = [0u8; 28];
-        
+
         // Write little-endian limbs to big-endian bytes
         // limbs[6] is most significant, goes to bytes[0..4]
         // limbs[0] is least significant, goes to bytes[24..28]
@@ -122,34 +122,34 @@ impl Scalar {
     pub fn add_mod_n(&self, other: &Self) -> Result<Self> {
         let self_limbs = Self::to_le_limbs(&self.serialize());
         let other_limbs = Self::to_le_limbs(&other.serialize());
-        
+
         let mut r = [0u32; 7];
         let mut carry = 0u64;
-        
+
         // Plain 224-bit add
         for (i, result) in r.iter_mut().enumerate() {
             let tmp = self_limbs[i] as u64 + other_limbs[i] as u64 + carry;
             *result = tmp as u32;
             carry = tmp >> 32;
         }
-        
+
         // If we overflowed OR r >= n, subtract n once
         if carry == 1 || Self::geq(&r, &Self::N_LIMBS) {
             Self::sub_in_place(&mut r, &Self::N_LIMBS);
         }
-        
+
         // Use unchecked constructor to allow zero in intermediate arithmetic
         Ok(Self::from_bytes_unchecked(Self::limbs_to_be(&r)))
     }
-    
+
     /// Subtract two scalars modulo the curve order n
     pub fn sub_mod_n(&self, other: &Self) -> Result<Self> {
         let self_limbs = Self::to_le_limbs(&self.serialize());
         let other_limbs = Self::to_le_limbs(&other.serialize());
-        
+
         let mut r = [0u32; 7];
         let mut borrow = 0i64;
-        
+
         for (i, result) in r.iter_mut().enumerate() {
             let tmp = self_limbs[i] as i64 - other_limbs[i] as i64 - borrow;
             if tmp < 0 {
@@ -160,7 +160,7 @@ impl Scalar {
                 borrow = 0;
             }
         }
-        
+
         if borrow == 1 {
             // Result was negative → add n back
             let mut c = 0u64;
@@ -170,35 +170,36 @@ impl Scalar {
                 c = tmp >> 32;
             }
         }
-        
+
         // Use unchecked constructor to allow zero in intermediate arithmetic
         Ok(Self::from_bytes_unchecked(Self::limbs_to_be(&r)))
     }
-    
+
     /// Multiply two scalars modulo the curve order n
-    /// 
+    ///
     /// Uses constant-time double-and-add algorithm for correctness and security.
     /// Processes bits from MSB to LSB to ensure correct powers of 2.
     pub fn mul_mod_n(&self, other: &Self) -> Result<Self> {
         // Start with zero (additive identity)
         let mut acc = Self::from_bytes_unchecked([0u8; P224_SCALAR_SIZE]);
-        
+
         // Process each bit from MSB to LSB
         for byte in other.serialize() {
-            for i in (0..8).rev() {  // MSB first within each byte
+            for i in (0..8).rev() {
+                // MSB first within each byte
                 // Double the accumulator: acc = acc * 2 (mod n)
                 acc = acc.add_mod_n(&acc)?;
-                
+
                 // If bit is set, add self: acc = acc + self (mod n)
                 if (byte >> i) & 1 == 1 {
                     acc = acc.add_mod_n(self)?;
                 }
             }
         }
-        
+
         Ok(acc)
     }
-    
+
     /// Compute multiplicative inverse modulo n using Fermat's little theorem
     /// a^(-1) ≡ a^(n-2) (mod n).  Left-to-right binary exponentiation.
     pub fn inv_mod_n(&self) -> Result<Self> {
@@ -209,7 +210,7 @@ impl Scalar {
 
         // Step 1: form exponent = n-2
         let mut exp = NIST_P224.n; // big-endian [u8;28]
-        // subtract 2 with borrow
+                                   // subtract 2 with borrow
         let mut borrow = 2u16;
         for i in (0..P224_SCALAR_SIZE).rev() {
             let v = exp[i] as i16 - (borrow as i16);
@@ -250,7 +251,7 @@ impl Scalar {
     }
 
     /// Compute the additive inverse (negation) modulo n
-    /// 
+    ///
     /// Returns -self mod n, which is equivalent to n - self when self != 0
     /// Returns 0 when self is 0
     pub fn negate(&self) -> Self {
@@ -258,12 +259,12 @@ impl Scalar {
         if self.is_zero() {
             return Self::from_bytes_unchecked([0u8; P224_SCALAR_SIZE]);
         }
-        
+
         // Otherwise compute n - self
         let n_limbs = Self::N_LIMBS;
         let self_limbs = Self::to_le_limbs(&self.serialize());
         let mut res = [0u32; 7];
-        
+
         // Subtract self from n
         let mut borrow = 0i64;
         for (i, result) in res.iter_mut().enumerate() {
@@ -276,20 +277,20 @@ impl Scalar {
                 borrow = 0;
             }
         }
-        
+
         // No borrow should occur since self < n
         debug_assert_eq!(borrow, 0);
-        
+
         Self::from_bytes_unchecked(Self::limbs_to_be(&res))
     }
 
     // Private helper methods
 
     /// Reduce scalar modulo the curve order n using constant-time arithmetic
-    /// 
+    ///
     /// The curve order n for P-224 is:
     /// n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF16A2E0B8F03E13DD29455C5C2A3D
-    /// 
+    ///
     /// Algorithm:
     /// 1. Check if input is zero (invalid)
     /// 2. Compare with curve order using constant-time comparison
@@ -297,17 +298,17 @@ impl Scalar {
     /// 4. Verify result is still non-zero
     fn reduce_scalar_bytes(bytes: &mut [u8; P224_SCALAR_SIZE]) -> Result<()> {
         let order = &NIST_P224.n;
-    
+
         // Reject zero scalars immediately
         if bytes.iter().all(|&b| b == 0) {
             return Err(Error::param("P-224 Scalar", "Scalar cannot be zero"));
         }
-    
+
         // Constant-time comparison with curve order
         // We want to check: is bytes >= order?
         let mut gt = 0u8; // set if bytes > order
         let mut lt = 0u8; // set if bytes < order
-    
+
         for i in 0..P224_SCALAR_SIZE {
             let x = bytes[i];
             let y = order[i];
@@ -315,12 +316,12 @@ impl Scalar {
             lt |= ((x < y) as u8) & (!gt);
         }
         let ge = gt | ((!lt) & 1); // ge = gt || eq (if not less, then greater or equal)
-    
+
         if ge == 1 {
             // If scalar >= order, perform modular reduction
             let mut borrow = 0u16;
             let mut temp_bytes = *bytes;
-    
+
             for i in (0..P224_SCALAR_SIZE).rev() {
                 let diff = (temp_bytes[i] as i16) - (order[i] as i16) - (borrow as i16);
                 if diff < 0 {
@@ -331,32 +332,44 @@ impl Scalar {
                     borrow = 0;
                 }
             }
-    
+
             *bytes = temp_bytes;
         }
-    
+
         // Check for zero after reduction
         if bytes.iter().all(|&b| b == 0) {
-            return Err(Error::param("P-224 Scalar", "Reduction resulted in zero scalar"));
+            return Err(Error::param(
+                "P-224 Scalar",
+                "Reduction resulted in zero scalar",
+            ));
         }
-    
+
         Ok(())
     }
-    
+
     // Helper constants - stored in little-endian limb order
     const N_LIMBS: [u32; 7] = [
-        0x5C5C_2A3D, 0x13DD_2945, 0xE0B8_F03E, 0xFFFF_16A2,
-        0xFFFF_FFFF, 0xFFFF_FFFF, 0xFFFF_FFFF,
+        0x5C5C_2A3D,
+        0x13DD_2945,
+        0xE0B8_F03E,
+        0xFFFF_16A2,
+        0xFFFF_FFFF,
+        0xFFFF_FFFF,
+        0xFFFF_FFFF,
     ];
 
     /// Compare two limb arrays for greater-than-or-equal
     #[inline(always)]
     fn geq(a: &[u32; 7], b: &[u32; 7]) -> bool {
         for i in (0..7).rev() {
-            if a[i] > b[i] { return true; }
-            if a[i] < b[i] { return false; }
+            if a[i] > b[i] {
+                return true;
+            }
+            if a[i] < b[i] {
+                return false;
+            }
         }
-        true  // equal
+        true // equal
     }
 
     /// Subtract b from a in-place
@@ -365,10 +378,10 @@ impl Scalar {
         let mut borrow = 0u64;
         for (i, elem) in a.iter_mut().enumerate() {
             let tmp = (*elem as u64)
-                     .wrapping_sub(b[i] as u64)
-                     .wrapping_sub(borrow);
+                .wrapping_sub(b[i] as u64)
+                .wrapping_sub(borrow);
             *elem = tmp as u32;
-            borrow = (tmp >> 63) & 1;  // 1 if we wrapped
+            borrow = (tmp >> 63) & 1; // 1 if we wrapped
         }
     }
 }

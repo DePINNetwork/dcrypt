@@ -11,41 +11,16 @@ pub mod p384;
 pub mod p521;
 
 // Re-export P-192 types // Added P-192 exports
-pub use p192::{
-    EcdsaP192,
-    EcdsaP192PublicKey,
-    EcdsaP192SecretKey,
-    EcdsaP192Signature
-};
+pub use p192::{EcdsaP192, EcdsaP192PublicKey, EcdsaP192SecretKey, EcdsaP192Signature};
 
 // Re-export P-224 types
-pub use p224::{
-    EcdsaP224,
-    EcdsaP224PublicKey,
-    EcdsaP224SecretKey,
-    EcdsaP224Signature
-};
+pub use p224::{EcdsaP224, EcdsaP224PublicKey, EcdsaP224SecretKey, EcdsaP224Signature};
 
 // Re-export P-256 types
-pub use p256::{
-    EcdsaP256,
-    EcdsaP256PublicKey,
-    EcdsaP256SecretKey,
-    EcdsaP256Signature
-};
+pub use p256::{EcdsaP256, EcdsaP256PublicKey, EcdsaP256SecretKey, EcdsaP256Signature};
 
 // Re-export P-384 types
-pub use p384::{
-    EcdsaP384,
-    EcdsaP384PublicKey,
-    EcdsaP384SecretKey,
-    EcdsaP384Signature
-};
+pub use p384::{EcdsaP384, EcdsaP384PublicKey, EcdsaP384SecretKey, EcdsaP384Signature};
 
 // Re-export P-521 types
-pub use p521::{
-    EcdsaP521,
-    EcdsaP521PublicKey,
-    EcdsaP521SecretKey,
-    EcdsaP521Signature
-};
+pub use p521::{EcdsaP521, EcdsaP521PublicKey, EcdsaP521SecretKey, EcdsaP521Signature};

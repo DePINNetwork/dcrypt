@@ -30,3 +30,6 @@ zeroize = { workspace = true }
 rand = { workspace = true }
 hex = "0.4.3"
 base64 = "0.22.1" 
+
+[package.metadata.release]
+publish = true

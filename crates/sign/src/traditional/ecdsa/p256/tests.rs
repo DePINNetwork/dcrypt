@@ -2,13 +2,13 @@
 
 use super::*; // Imports items from the parent module (p256/mod.rs)
 use crate::traditional::ecdsa::common::SignatureComponents; // For DER parsing tests
-use dcrypt_api::Signature as SignatureTrait;
+use dcrypt_algorithms::hash::sha2::Sha256;
+use dcrypt_algorithms::hash::HashFunction;
 use dcrypt_api::error::Error as ApiError; // Use the API error type
+use dcrypt_api::Signature as SignatureTrait;
 use rand::rngs::OsRng;
 use std::fs;
 use std::path::PathBuf;
-use dcrypt_algorithms::hash::sha2::Sha256;
-use dcrypt_algorithms::hash::HashFunction;
 
 /* ------------------------------------------------------------------------- */
 /*                       Helper: canonicalise curve/hash                     */
@@ -18,8 +18,8 @@ use dcrypt_algorithms::hash::HashFunction;
 /// `P-256,SHA-256`, `P-256,Sha256`, `P-256, SHA256`, … all compare equal.
 fn canon(combo: &str) -> String {
     combo
-        .to_ascii_uppercase()   // SHA256 == sha256
-        .replace([' ', '-'], "")// drop spaces and hyphens
+        .to_ascii_uppercase() // SHA256 == sha256
+        .replace([' ', '-'], "") // drop spaces and hyphens
 }
 
 // --- Start of Test Vector Parsing Utilities ---
@@ -63,7 +63,6 @@ struct SigVerTestVector {
     expected_result: String, // "P" or "F"
 }
 
-
 // Parser function for KeyPair.rsp
 fn parse_key_pair_vectors(rsp_content: &str, curve_marker: &str) -> Vec<KeyPairTestVector> {
     let mut vectors = Vec::new();
@@ -74,7 +73,11 @@ fn parse_key_pair_vectors(rsp_content: &str, curve_marker: &str) -> Vec<KeyPairT
     for line in rsp_content.lines() {
         let line = line.trim();
         // Skip comments, empty lines, and metadata lines like N= or [B.4.2...]
-        if line.starts_with('#') || line.is_empty() || line.starts_with("N =") || line.starts_with("[B.4.2") {
+        if line.starts_with('#')
+            || line.is_empty()
+            || line.starts_with("N =")
+            || line.starts_with("[B.4.2")
+        {
             continue;
         }
 
@@ -91,7 +94,7 @@ fn parse_key_pair_vectors(rsp_content: &str, curve_marker: &str) -> Vec<KeyPairT
             // Moved to a new curve section or end of relevant sections
             break;
         }
-        
+
         // If we are not in the target section yet, skip other lines.
         if !in_section {
             continue;
@@ -102,7 +105,8 @@ fn parse_key_pair_vectors(rsp_content: &str, curve_marker: &str) -> Vec<KeyPairT
             current_d = Some(line.trim_start_matches("d = ").to_string());
             current_qx = None; // Reset Qx and Qy for the new d
         } else if line.starts_with("Qx = ") {
-            if current_d.is_some() { // Qx should follow d
+            if current_d.is_some() {
+                // Qx should follow d
                 current_qx = Some(line.trim_start_matches("Qx = ").to_string());
             }
         } else if line.starts_with("Qy = ") {
@@ -154,7 +158,12 @@ fn parse_pkv_vectors(rsp_content: &str, curve_marker: &str) -> Vec<PkvTestVector
             current_qy = Some(line.trim_start_matches("Qy = ").to_string());
         } else if line.starts_with("Result = ") {
             if let (Some(qx_val), Some(qy_val)) = (current_qx.take(), current_qy.take()) {
-                let result_str = line.trim_start_matches("Result = ").chars().next().unwrap_or(' ').to_string();
+                let result_str = line
+                    .trim_start_matches("Result = ")
+                    .chars()
+                    .next()
+                    .unwrap_or(' ')
+                    .to_string();
                 vectors.push(PkvTestVector {
                     qx: qx_val,
                     qy: qy_val,
@@ -166,9 +175,11 @@ fn parse_pkv_vectors(rsp_content: &str, curve_marker: &str) -> Vec<PkvTestVector
     vectors
 }
 
-
 // Parser for SigGen_TruncatedSHAs.rsp (treating it as SigVer)
-fn parse_sig_gen_truncated_sha_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigGenVector> {
+fn parse_sig_gen_truncated_sha_vectors(
+    rsp_content: &str,
+    target_curve_name: &str,
+) -> Vec<SigGenVector> {
     let mut vectors = Vec::new();
     let mut current_section_curve_sha: Option<String> = None;
     let mut current_msg: Option<String> = None;
@@ -183,8 +194,12 @@ fn parse_sig_gen_truncated_sha_vectors(rsp_content: &str, target_curve_name: &st
         }
 
         if line_trimmed.starts_with('[') && line_trimmed.ends_with(']') {
-            let section_name = line_trimmed.trim_start_matches('[').trim_end_matches(']').to_string();
-            if section_name.starts_with(target_curve_name) { // e.g., "P-256"
+            let section_name = line_trimmed
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+                .to_string();
+            if section_name.starts_with(target_curve_name) {
+                // e.g., "P-256"
                 current_section_curve_sha = Some(section_name);
             } else {
                 current_section_curve_sha = None;
@@ -203,8 +218,12 @@ fn parse_sig_gen_truncated_sha_vectors(rsp_content: &str, target_curve_name: &st
             } else if line_trimmed.starts_with("R = ") {
                 current_r = Some(line_trimmed.trim_start_matches("R = ").to_string());
             } else if line_trimmed.starts_with("S = ") {
-                if let (Some(msg), Some(qx), Some(qy), Some(r_hex)) =
-                    (current_msg.take(), current_qx.take(), current_qy.take(), current_r.take()) {
+                if let (Some(msg), Some(qx), Some(qy), Some(r_hex)) = (
+                    current_msg.take(),
+                    current_qx.take(),
+                    current_qy.take(),
+                    current_r.take(),
+                ) {
                     let s_hex = line_trimmed.trim_start_matches("S = ").to_string();
                     vectors.push(SigGenVector {
                         curve_sha_combo: section_name.clone(),
@@ -238,7 +257,10 @@ fn parse_sig_ver_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigV
         }
 
         if line_trimmed.starts_with('[') && line_trimmed.ends_with(']') {
-            let section_name = line_trimmed.trim_start_matches('[').trim_end_matches(']').to_string();
+            let section_name = line_trimmed
+                .trim_start_matches('[')
+                .trim_end_matches(']')
+                .to_string();
             if section_name.starts_with(target_curve_name) {
                 // Normalize spaces, e.g., "[P-256, SHA256]" -> "P-256,SHA256"
                 current_section_curve_sha = Some(section_name.replace(" ", ""));
@@ -257,7 +279,10 @@ fn parse_sig_ver_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigV
         if let Some(ref section_name_val) = current_section_curve_sha {
             if line_trimmed.starts_with("Msg = ") {
                 // Start of a new vector, clear previous partial data for safety
-                current_qx = None; current_qy = None; current_r = None; current_s = None;
+                current_qx = None;
+                current_qy = None;
+                current_r = None;
+                current_s = None;
                 current_msg = Some(line_trimmed.trim_start_matches("Msg = ").to_string());
             } else if line_trimmed.starts_with("Qx = ") {
                 current_qx = Some(line_trimmed.trim_start_matches("Qx = ").to_string());
@@ -268,9 +293,18 @@ fn parse_sig_ver_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigV
             } else if line_trimmed.starts_with("S = ") {
                 current_s = Some(line_trimmed.trim_start_matches("S = ").to_string());
             } else if line_trimmed.starts_with("Result = ") {
-                if let (Some(msg), Some(qx), Some(qy), Some(r_hex), Some(s_hex)) =
-                    (current_msg.take(), current_qx.take(), current_qy.take(), current_r.take(), current_s.take()) {
-                    let result_char = line_trimmed.trim_start_matches("Result = ").chars().next().unwrap_or('?');
+                if let (Some(msg), Some(qx), Some(qy), Some(r_hex), Some(s_hex)) = (
+                    current_msg.take(),
+                    current_qx.take(),
+                    current_qy.take(),
+                    current_r.take(),
+                    current_s.take(),
+                ) {
+                    let result_char = line_trimmed
+                        .trim_start_matches("Result = ")
+                        .chars()
+                        .next()
+                        .unwrap_or('?');
                     vectors.push(SigVerTestVector {
                         curve_sha_combo: section_name_val.clone(),
                         msg,
@@ -281,14 +315,17 @@ fn parse_sig_ver_vectors(rsp_content: &str, target_curve_name: &str) -> Vec<SigV
                         expected_result: result_char.to_string(),
                     });
                 }
-                 // Reset all fields for the next potential vector within the same section
-                current_msg = None; current_qx = None; current_qy = None; current_r = None; current_s = None;
+                // Reset all fields for the next potential vector within the same section
+                current_msg = None;
+                current_qx = None;
+                current_qy = None;
+                current_r = None;
+                current_s = None;
             }
         }
     }
     vectors
 }
-
 
 /// Returns the path to the test vectors directory.
 fn vectors_dir() -> PathBuf {
@@ -305,14 +342,14 @@ fn vectors_dir() -> PathBuf {
 
 // Helper to convert hex string to byte vector
 fn hex_to_bytes(hex_str: &str) -> Vec<u8> {
-    if hex_str == "00" { // Special case for Msg = 00 (empty message)
+    if hex_str == "00" {
+        // Special case for Msg = 00 (empty message)
         return Vec::new();
     }
     hex::decode(hex_str).expect("Failed to decode hex string")
 }
 
 // --- End of Test Vector Parsing Utilities ---
-
 
 /* ------------------------------------------------------------------------- */
 /*                          ORIGINAL BASIC TESTS                             */
@@ -424,27 +461,34 @@ fn test_hash_edge_cases() {
     let hash = hasher.finalize().unwrap();
     let mut h_bytes = [0u8; 32];
     h_bytes.copy_from_slice(hash.as_ref());
-    ec::Scalar::new(h_bytes)
-        .expect("Empty message hash should create valid scalar");
+    ec::Scalar::new(h_bytes).expect("Empty message hash should create valid scalar");
 }
 
 #[test]
 fn test_der_malformed() {
     assert!(SignatureComponents::from_der(&[0x30, 0x00]).is_err());
-    assert!(SignatureComponents::from_der(&[0x31, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x01]).is_err());
-    assert!(SignatureComponents::from_der(&[0x30, 0x06, 0x03, 0x01, 0x01, 0x02, 0x01, 0x01]).is_err());
-    assert!(SignatureComponents::from_der(&[0x30, 0x06, 0x02, 0x01, 0x01, 0x03, 0x01, 0x01]).is_err());
+    assert!(
+        SignatureComponents::from_der(&[0x31, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x01]).is_err()
+    );
+    assert!(
+        SignatureComponents::from_der(&[0x30, 0x06, 0x03, 0x01, 0x01, 0x02, 0x01, 0x01]).is_err()
+    );
+    assert!(
+        SignatureComponents::from_der(&[0x30, 0x06, 0x02, 0x01, 0x01, 0x03, 0x01, 0x01]).is_err()
+    );
 }
 
 #[test]
 fn test_scalar_arithmetic_basic() {
     let a_bytes = [
-        0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
-        0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
+        0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde,
+        0xf0, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
+        0xde, 0xf0,
     ];
     let b_bytes = [
-        0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89,
-        0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89,
+        0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67,
+        0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45,
+        0x67, 0x89,
     ];
     let a = ec::Scalar::new(a_bytes).unwrap();
     let b = ec::Scalar::new(b_bytes).unwrap();
@@ -460,11 +504,13 @@ fn test_scalar_arithmetic_basic() {
 #[test]
 fn test_scalar_edge_cases() {
     let n_minus_1 = [
-        0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x00,0x00, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-        0xBC,0xE6,0xFA,0xAD,0xA7,0x17,0x9E,0x84, 0xF3,0xB9,0xCA,0xC2,0xFC,0x63,0x25,0x50,
+        0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xBC, 0xE6, 0xFA, 0xAD, 0xA7, 0x17, 0x9E, 0x84, 0xF3, 0xB9, 0xCA, 0xC2, 0xFC, 0x63,
+        0x25, 0x50,
     ];
     let max_scalar = ec::Scalar::new(n_minus_1).unwrap();
-    let mut one_bytes = [0u8; 32]; one_bytes[31] = 1;
+    let mut one_bytes = [0u8; 32];
+    one_bytes[31] = 1;
     let one = ec::Scalar::new(one_bytes).unwrap();
     let zero_result = max_scalar.add_mod_n(&one).unwrap();
     assert!(zero_result.is_zero());
@@ -475,11 +521,13 @@ fn test_scalar_edge_cases() {
 #[test]
 fn test_modular_inverse_comprehensive() {
     let mut rng = OsRng;
-    let mut two_bytes = [0u8; 32]; two_bytes[31] = 2;
+    let mut two_bytes = [0u8; 32];
+    two_bytes[31] = 2;
     let two = ec::Scalar::new(two_bytes).unwrap();
     let two_inv = two.inv_mod_n().unwrap();
     let product = two.mul_mod_n(&two_inv).unwrap();
-    let mut expected_one = [0u8; 32]; expected_one[31] = 1;
+    let mut expected_one = [0u8; 32];
+    expected_one[31] = 1;
     assert_eq!(product.serialize(), expected_one);
     for _ in 0..5 {
         let (scalar, _) = ec::generate_keypair(&mut rng).unwrap();
@@ -488,8 +536,9 @@ fn test_modular_inverse_comprehensive() {
         assert_eq!(product_rand.serialize(), expected_one);
     }
     let n_minus_1 = [
-        0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x00,0x00, 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-        0xBC,0xE6,0xFA,0xAD,0xA7,0x17,0x9E,0x84, 0xF3,0xB9,0xCA,0xC2,0xFC,0x63,0x25,0x50,
+        0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xBC, 0xE6, 0xFA, 0xAD, 0xA7, 0x17, 0x9E, 0x84, 0xF3, 0xB9, 0xCA, 0xC2, 0xFC, 0x63,
+        0x25, 0x50,
     ];
     let max_scalar = ec::Scalar::new(n_minus_1).unwrap();
     let max_inv = max_scalar.inv_mod_n().unwrap();
@@ -503,17 +552,21 @@ fn test_modular_inverse_comprehensive() {
 #[test]
 fn test_scalar_endianness() {
     let test_bytes = [
-        0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,
-        0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f,0x20,
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e,
+        0x1f, 0x20,
     ];
     let scalar = ec::Scalar::new(test_bytes).unwrap();
     assert_eq!(test_bytes, scalar.serialize());
-    let mut one_bytes = [0u8; 32]; one_bytes[31] = 1;
+    let mut one_bytes = [0u8; 32];
+    one_bytes[31] = 1;
     let one = ec::Scalar::new(one_bytes).unwrap();
     let scalar_plus_one = scalar.add_mod_n(&one).unwrap();
-    let mut expected = test_bytes; expected[31] += 1;
+    let mut expected = test_bytes;
+    expected[31] += 1;
     assert_eq!(scalar_plus_one.serialize(), expected);
-    let mut two_bytes = [0u8; 32]; two_bytes[31] = 2;
+    let mut two_bytes = [0u8; 32];
+    two_bytes[31] = 2;
     let two = ec::Scalar::new(two_bytes).unwrap();
     let scalar_times_two = scalar.mul_mod_n(&two).unwrap();
     let scalar_doubled = scalar.add_mod_n(&scalar).unwrap();
@@ -558,22 +611,45 @@ fn test_p256_keypair_rsp_parsing_and_validation() {
 
     let p256_vectors = parse_key_pair_vectors(&rsp_content, "[P-256]");
 
-    assert_eq!(p256_vectors.len(), 10, "Should parse 10 P-256 test vectors from KeyPair.rsp");
+    assert_eq!(
+        p256_vectors.len(),
+        10,
+        "Should parse 10 P-256 test vectors from KeyPair.rsp"
+    );
 
     for (i, vector) in p256_vectors.iter().enumerate() {
         let d_bytes_vec = hex_to_bytes(&vector.d);
         let qx_expected_bytes = hex_to_bytes(&vector.qx);
         let qy_expected_bytes = hex_to_bytes(&vector.qy);
 
-        assert_eq!(d_bytes_vec.len(), ec::P256_SCALAR_SIZE, "P-256 d byte length for vector {}", i);
-        assert_eq!(qx_expected_bytes.len(), ec::P256_SCALAR_SIZE, "P-256 Qx byte length for vector {}", i);
-        assert_eq!(qy_expected_bytes.len(), ec::P256_SCALAR_SIZE, "P-256 Qy byte length for vector {}", i);
+        assert_eq!(
+            d_bytes_vec.len(),
+            ec::P256_SCALAR_SIZE,
+            "P-256 d byte length for vector {}",
+            i
+        );
+        assert_eq!(
+            qx_expected_bytes.len(),
+            ec::P256_SCALAR_SIZE,
+            "P-256 Qx byte length for vector {}",
+            i
+        );
+        assert_eq!(
+            qy_expected_bytes.len(),
+            ec::P256_SCALAR_SIZE,
+            "P-256 Qy byte length for vector {}",
+            i
+        );
 
         let mut d_bytes_arr = [0u8; ec::P256_SCALAR_SIZE];
         d_bytes_arr.copy_from_slice(&d_bytes_vec);
 
-        let d_scalar = ec::Scalar::new(d_bytes_arr)
-            .unwrap_or_else(|e| panic!("Vector {}: Failed to create scalar d from bytes {:?}: {:?}", i, d_bytes_vec, e));
+        let d_scalar = ec::Scalar::new(d_bytes_arr).unwrap_or_else(|e| {
+            panic!(
+                "Vector {}: Failed to create scalar d from bytes {:?}: {:?}",
+                i, d_bytes_vec, e
+            )
+        });
 
         let q_calculated = ec::scalar_mult_base_g(&d_scalar)
             .unwrap_or_else(|e| panic!("Vector {}: Failed to compute Q=dG: {:?}", i, e));
@@ -581,13 +657,22 @@ fn test_p256_keypair_rsp_parsing_and_validation() {
         let qx_calculated_bytes = q_calculated.x_coordinate_bytes();
         let qy_calculated_bytes = q_calculated.y_coordinate_bytes();
 
-        assert_eq!(qx_calculated_bytes.as_slice(), qx_expected_bytes.as_slice(),
-                   "Vector {}: Qx mismatch for d={}", i, vector.d);
-        assert_eq!(qy_calculated_bytes.as_slice(), qy_expected_bytes.as_slice(),
-                   "Vector {}: Qy mismatch for d={}", i, vector.d);
+        assert_eq!(
+            qx_calculated_bytes.as_slice(),
+            qx_expected_bytes.as_slice(),
+            "Vector {}: Qx mismatch for d={}",
+            i,
+            vector.d
+        );
+        assert_eq!(
+            qy_calculated_bytes.as_slice(),
+            qy_expected_bytes.as_slice(),
+            "Vector {}: Qy mismatch for d={}",
+            i,
+            vector.d
+        );
     }
 }
-
 
 /* ------------------------------------------------------------------------- */
 /*                         PKV.RSP PARSING TESTS                             */
@@ -597,7 +682,11 @@ fn test_p256_keypair_rsp_parsing_and_validation() {
 fn test_p256_pkv_rsp_parsing_and_validation() {
     let dir = vectors_dir();
     let pkv_rsp_path = dir.join("PKV.rsp");
-    assert!(pkv_rsp_path.exists(), "PKV.rsp not found at {}", pkv_rsp_path.display());
+    assert!(
+        pkv_rsp_path.exists(),
+        "PKV.rsp not found at {}",
+        pkv_rsp_path.display()
+    );
     let rsp_content = fs::read_to_string(&pkv_rsp_path).unwrap();
     let p256_pkv_vectors = parse_pkv_vectors(&rsp_content, "[P-256]");
 
@@ -613,41 +702,54 @@ fn test_p256_pkv_rsp_parsing_and_validation() {
         // The error type from `ec::Point::deserialize_uncompressed` is likely `algorithms::error::Error`
         // or an error type specific to `algorithms::ec::p256` that converts to `algorithms::error::Error`.
         // We'll use `ApiError` here as that's what the higher-level functions expect to map from.
-        let validation_attempt: Result<ec::Point, ApiError> =
-            if let (Ok(qx_bytes), Ok(qy_bytes)) = (qx_bytes_res, qy_bytes_res) {
-                if qx_bytes.len() == ec::P256_SCALAR_SIZE && qy_bytes.len() == ec::P256_SCALAR_SIZE {
-                    pk_uncompressed[1..(1 + ec::P256_SCALAR_SIZE)].copy_from_slice(&qx_bytes);
-                    pk_uncompressed[(1 + ec::P256_SCALAR_SIZE)..].copy_from_slice(&qy_bytes);
-                    let public_key_candidate = EcdsaP256PublicKey(pk_uncompressed);
-                    // `ec::Point::deserialize_uncompressed` returns `Result<_, algorithms::ec::p256::EcError>`
-                    // We need to map this to `ApiError` if the test relies on `ApiError` directly.
-                    // However, it's better to use the direct error from the EC module for this specific test.
-                    // Let's assume `ec::Point::deserialize_uncompressed` returns `Result<_, SomeEcError>`
-                    // and `ApiError::from(SomeEcError)` exists.
-                    ec::Point::deserialize_uncompressed(&public_key_candidate.0).map_err(ApiError::from)
-                } else {
-                    Err(ApiError::InvalidLength {
-                        context: "P256 PKV Test - Qx/Qy hex length",
-                        expected: ec::P256_SCALAR_SIZE * 2, // Heuristic, not precise
-                        actual: qx_bytes.len() + qy_bytes.len()
-                    })
-                }
+        let validation_attempt: Result<ec::Point, ApiError> = if let (Ok(qx_bytes), Ok(qy_bytes)) =
+            (qx_bytes_res, qy_bytes_res)
+        {
+            if qx_bytes.len() == ec::P256_SCALAR_SIZE && qy_bytes.len() == ec::P256_SCALAR_SIZE {
+                pk_uncompressed[1..(1 + ec::P256_SCALAR_SIZE)].copy_from_slice(&qx_bytes);
+                pk_uncompressed[(1 + ec::P256_SCALAR_SIZE)..].copy_from_slice(&qy_bytes);
+                let public_key_candidate = EcdsaP256PublicKey(pk_uncompressed);
+                // `ec::Point::deserialize_uncompressed` returns `Result<_, algorithms::ec::p256::EcError>`
+                // We need to map this to `ApiError` if the test relies on `ApiError` directly.
+                // However, it's better to use the direct error from the EC module for this specific test.
+                // Let's assume `ec::Point::deserialize_uncompressed` returns `Result<_, SomeEcError>`
+                // and `ApiError::from(SomeEcError)` exists.
+                ec::Point::deserialize_uncompressed(&public_key_candidate.0).map_err(ApiError::from)
             } else {
-                Err(ApiError::InvalidParameter {
-                    context: "P256 PKV Test - Hex decoding",
-                    #[cfg(feature = "std")]
-                    message: "Hex decoding failed for Qx or Qy".to_string()
+                Err(ApiError::InvalidLength {
+                    context: "P256 PKV Test - Qx/Qy hex length",
+                    expected: ec::P256_SCALAR_SIZE * 2, // Heuristic, not precise
+                    actual: qx_bytes.len() + qy_bytes.len(),
                 })
-            };
+            }
+        } else {
+            Err(ApiError::InvalidParameter {
+                context: "P256 PKV Test - Hex decoding",
+                #[cfg(feature = "std")]
+                message: "Hex decoding failed for Qx or Qy".to_string(),
+            })
+        };
 
         if vector.expected_result == "P" {
-            assert!(validation_attempt.is_ok(), "Vector {}: Expected PASS (P), got FAIL for Qx={}, Qy={}. Error: {:?}", i, vector.qx, vector.qy, validation_attempt.err());
+            assert!(
+                validation_attempt.is_ok(),
+                "Vector {}: Expected PASS (P), got FAIL for Qx={}, Qy={}. Error: {:?}",
+                i,
+                vector.qx,
+                vector.qy,
+                validation_attempt.err()
+            );
         } else {
-            assert!(validation_attempt.is_err(), "Vector {}: Expected FAIL (F), got PASS for Qx={}, Qy={}", i, vector.qx, vector.qy);
+            assert!(
+                validation_attempt.is_err(),
+                "Vector {}: Expected FAIL (F), got PASS for Qx={}, Qy={}",
+                i,
+                vector.qx,
+                vector.qy
+            );
         }
     }
 }
-
 
 /* ------------------------------------------------------------------------- */
 /*            SIGGEN_TRUNCATEDSHAS.RSP (AS SIGVER) PARSING TESTS             */
@@ -657,11 +759,18 @@ fn test_p256_pkv_rsp_parsing_and_validation() {
 fn test_p256_siggen_truncated_shas_rsp_verify() {
     let dir = vectors_dir();
     let siggen_rsp_path = dir.join("SigGen_TruncatedSHAs.rsp");
-    assert!(siggen_rsp_path.exists(), "SigGen_TruncatedSHAs.rsp not found at {}", siggen_rsp_path.display());
+    assert!(
+        siggen_rsp_path.exists(),
+        "SigGen_TruncatedSHAs.rsp not found at {}",
+        siggen_rsp_path.display()
+    );
     let rsp_content = fs::read_to_string(&siggen_rsp_path).unwrap();
 
     let p256_siggen_vectors = parse_sig_gen_truncated_sha_vectors(&rsp_content, "P-256");
-    assert!(!p256_siggen_vectors.is_empty(), "No P-256 SigGen vectors parsed for truncated SHAs");
+    assert!(
+        !p256_siggen_vectors.is_empty(),
+        "No P-256 SigGen vectors parsed for truncated SHAs"
+    );
 
     for (i, vector) in p256_siggen_vectors.iter().enumerate() {
         let msg_bytes = hex_to_bytes(&vector.msg);
@@ -676,7 +785,10 @@ fn test_p256_siggen_truncated_shas_rsp_verify() {
         pk_uncompressed[(1 + ec::P256_SCALAR_SIZE)..].copy_from_slice(&qy_bytes);
         let public_key = EcdsaP256PublicKey(pk_uncompressed);
 
-        let sig_components = SignatureComponents { r: r_bytes_vec, s: s_bytes_vec };
+        let sig_components = SignatureComponents {
+            r: r_bytes_vec,
+            s: s_bytes_vec,
+        };
         let der_signature = EcdsaP256Signature(sig_components.to_der());
 
         let verification_result = EcdsaP256::verify(&msg_bytes, &der_signature, &public_key);
@@ -684,7 +796,9 @@ fn test_p256_siggen_truncated_shas_rsp_verify() {
         // EcdsaP256::verify uses Sha256 internally.
         // These test vectors are generated with SHA-512/224 or SHA-512/256.
         // Thus, our current EcdsaP256::verify *should* fail these signatures due to hash mismatch.
-        if vector.curve_sha_combo == "P-256,SHA-512224" || vector.curve_sha_combo == "P-256,SHA-512256" {
+        if vector.curve_sha_combo == "P-256,SHA-512224"
+            || vector.curve_sha_combo == "P-256,SHA-512256"
+        {
             assert!(verification_result.is_err(),
                 "Vector {}: Expected FAIL for {} (due to hash mismatch with current EcdsaP256::verify, which uses Sha256), but it passed.\nMsg: {}",
                 i, vector.curve_sha_combo, vector.msg);
@@ -699,7 +813,7 @@ fn test_p256_siggen_truncated_shas_rsp_verify() {
             // If the file had, for instance, a "P-256,SHA256" vector, this assertion would be:
             // assert!(verification_result.is_ok(), "Vector {}: Expected PASS for {}, got {:?}\nMsg: {}", i, vector.curve_sha_combo, verification_result.err(), vector.msg);
             // But given the file name, we expect all P-256 vectors here to be for truncated SHAs.
-             eprintln!("Warning: Unexpected curve/SHA combo {} in SigGen_TruncatedSHAs.rsp for P-256 test vector {}", vector.curve_sha_combo, i);
+            eprintln!("Warning: Unexpected curve/SHA combo {} in SigGen_TruncatedSHAs.rsp for P-256 test vector {}", vector.curve_sha_combo, i);
         }
     }
 }
@@ -712,11 +826,18 @@ fn test_p256_siggen_truncated_shas_rsp_verify() {
 fn test_p256_sigver_rsp_verify() {
     let dir = vectors_dir();
     let sigver_rsp_path = dir.join("SigVer.rsp");
-    assert!(sigver_rsp_path.exists(), "SigVer.rsp not found at {}", sigver_rsp_path.display());
+    assert!(
+        sigver_rsp_path.exists(),
+        "SigVer.rsp not found at {}",
+        sigver_rsp_path.display()
+    );
     let rsp_content = fs::read_to_string(&sigver_rsp_path).unwrap();
 
     let p256_sigver_vectors = parse_sig_ver_vectors(&rsp_content, "P-256");
-    assert!(!p256_sigver_vectors.is_empty(), "No P-256 SigVer vectors parsed from SigVer.rsp");
+    assert!(
+        !p256_sigver_vectors.is_empty(),
+        "No P-256 SigVer vectors parsed from SigVer.rsp"
+    );
 
     let mut correct_hash_pass = 0;
     let mut correct_hash_fail = 0;
@@ -739,8 +860,8 @@ fn test_p256_sigver_rsp_verify() {
         // Ensure Qx and Qy have correct length before trying to use them
         if qx_bytes.len() != ec::P256_SCALAR_SIZE || qy_bytes.len() != ec::P256_SCALAR_SIZE {
             if vector.expected_result == "F" {
-                 mismatch_hash_originally_fail_and_failed +=1; 
-                continue; 
+                mismatch_hash_originally_fail_and_failed += 1;
+                continue;
             } else {
                 panic!("Vector {}: Qx/Qy length invalid ({} / {}) for P-256 vector that expects PASS. Qx: {}, Qy: {}", 
                     i, qx_bytes.len(), qy_bytes.len(), vector.qx, vector.qy);
@@ -751,7 +872,10 @@ fn test_p256_sigver_rsp_verify() {
         pk_uncompressed[(1 + ec::P256_SCALAR_SIZE)..].copy_from_slice(&qy_bytes);
         let public_key = EcdsaP256PublicKey(pk_uncompressed);
 
-        let sig_components = SignatureComponents { r: r_bytes_vec.clone(), s: s_bytes_vec.clone() };
+        let sig_components = SignatureComponents {
+            r: r_bytes_vec.clone(),
+            s: s_bytes_vec.clone(),
+        };
         let der_signature = EcdsaP256Signature(sig_components.to_der());
 
         let verification_result = EcdsaP256::verify(&msg_bytes, &der_signature, &public_key);
@@ -763,7 +887,8 @@ fn test_p256_sigver_rsp_verify() {
                     "Vector {} ({}): Expected PASS (matching hash), got FAIL: {:?}\nMsg: {}\nR: {}\nS: {}",
                     i, vector.curve_sha_combo, verification_result.err(), vector.msg, vector.r_hex, vector.s_hex);
                 correct_hash_pass += 1;
-            } else { // Expected "F"
+            } else {
+                // Expected "F"
                 assert!(verification_result.is_err(),
                     "Vector {} ({}): Expected FAIL (matching hash), got PASS\nMsg: {}\nR: {}\nS: {}",
                     i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex);
@@ -783,20 +908,41 @@ fn test_p256_sigver_rsp_verify() {
                 i, vector.curve_sha_combo, vector.msg, vector.r_hex, vector.s_hex
             );
         } else {
-            mismatch_hash_originally_fail_and_failed +=1;
+            mismatch_hash_originally_fail_and_failed += 1;
         }
     }
     println!("\n--- P-256 SigVer.rsp Test Summary ---");
-    println!("Total P-256 vectors processed: {}", p256_sigver_vectors.len());
+    println!(
+        "Total P-256 vectors processed: {}",
+        p256_sigver_vectors.len()
+    );
     println!("  Vectors with matching hash ({}):", combo_expected_by_impl);
     println!("    Correct PASS: {}", correct_hash_pass);
     println!("    Correct FAIL: {}", correct_hash_fail);
-    println!("  Vectors with mismatched hash (implementation uses {}):", combo_expected_by_impl.split(',').nth(1).unwrap_or("?"));
-    println!("    Correctly FAILED (where original vector was P): {}", mismatch_hash_correct_fail_originally_p);
-    println!("    Correctly FAILED (where original vector was F): {}", mismatch_hash_originally_fail_and_failed);
+    println!(
+        "  Vectors with mismatched hash (implementation uses {}):",
+        combo_expected_by_impl.split(',').nth(1).unwrap_or("?")
+    );
+    println!(
+        "    Correctly FAILED (where original vector was P): {}",
+        mismatch_hash_correct_fail_originally_p
+    );
+    println!(
+        "    Correctly FAILED (where original vector was F): {}",
+        mismatch_hash_originally_fail_and_failed
+    );
     if mismatch_hash_unexpected_pass > 0 {
-        println!("    WARNING: UNEXPECTED PASS with mismatched hash: {}", mismatch_hash_unexpected_pass);
+        println!(
+            "    WARNING: UNEXPECTED PASS with mismatched hash: {}",
+            mismatch_hash_unexpected_pass
+        );
     }
-    assert!(correct_hash_pass > 0, "No P-256,SHA256 PASS vectors were successfully tested from SigVer.rsp.");
-    assert_eq!(mismatch_hash_unexpected_pass, 0, "There were unexpected passes with mismatched hashes for P-256.");
+    assert!(
+        correct_hash_pass > 0,
+        "No P-256,SHA256 PASS vectors were successfully tested from SigVer.rsp."
+    );
+    assert_eq!(
+        mismatch_hash_unexpected_pass, 0,
+        "There were unexpected passes with mismatched hashes for P-256."
+    );
 }

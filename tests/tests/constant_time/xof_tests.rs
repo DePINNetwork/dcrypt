@@ -1,9 +1,9 @@
 // tests/constant_time/xof_tests.rs
 // Constant-time tests for XOF (Extendable Output Function) algorithms
 
+use dcrypt_algorithms::xof::{Blake3Xof, ExtendableOutputFunction, ShakeXof256};
 use tests::suites::constant_time::config::TestConfig;
-use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
-use dcrypt_algorithms::xof::{ExtendableOutputFunction, ShakeXof256, Blake3Xof};
+use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
 
 #[test]
 fn test_shake256_constant_time() {
@@ -11,28 +11,28 @@ fn test_shake256_constant_time() {
     let data_zeros = [0u8; 136]; // SHAKE-256 rate block size
     let data_ones = [1u8; 136];
     let output_len = 64;
-    
+
     for _ in 0..config.num_warmup {
         let _ = ShakeXof256::generate(&data_zeros, output_len);
         let _ = ShakeXof256::generate(&data_ones, output_len);
     }
-    
+
     let tester = TimingTester::new(config.num_samples, config.num_iterations);
-    
-    let t1 = tester.measure(|| { 
-        let _ = ShakeXof256::generate(&data_zeros, output_len); 
+
+    let t1 = tester.measure(|| {
+        let _ = ShakeXof256::generate(&data_zeros, output_len);
     });
-    let t2 = tester.measure(|| { 
-        let _ = ShakeXof256::generate(&data_ones, output_len); 
+    let t2 = tester.measure(|| {
+        let _ = ShakeXof256::generate(&data_ones, output_len);
     });
-    
+
     // Use instance method instead of associated function
     let analysis = match tester.analyze_constant_time(
-        &t1, 
+        &t1,
         &t2,
         config.mean_ratio_max,
         config.t_stat_threshold,
-        config.combined_score_threshold
+        config.combined_score_threshold,
     ) {
         Ok(result) => result,
         Err(e) => panic!("Analysis error: {}", e),
@@ -40,17 +40,33 @@ fn test_shake256_constant_time() {
 
     // Output detailed diagnostics with new metrics
     println!("SHAKE-256 Timing Analysis:");
-    println!("  Mean times: {:.2} ns vs {:.2} ns", analysis.mean_a, analysis.mean_b);
+    println!(
+        "  Mean times: {:.2} ns vs {:.2} ns",
+        analysis.mean_a, analysis.mean_b
+    );
     println!("  Mean ratio: {:.3}", analysis.mean_ratio);
     println!("  t-statistic: {:.3}", analysis.t_statistic);
-    println!("  p-value: {:.4} (calculated from t-distribution)", analysis.p_value);
-    println!("  Effect size (Cohen's d): {:.3} - {}", 
-            analysis.cohens_d, analysis.effect_size_interpretation);
-    println!("  95% CI for mean difference: ({:.2}, {:.2}) ns", 
-            analysis.confidence_interval.0, analysis.confidence_interval.1);
+    println!(
+        "  p-value: {:.4} (calculated from t-distribution)",
+        analysis.p_value
+    );
+    println!(
+        "  Effect size (Cohen's d): {:.3} - {}",
+        analysis.cohens_d, analysis.effect_size_interpretation
+    );
+    println!(
+        "  95% CI for mean difference: ({:.2}, {:.2}) ns",
+        analysis.confidence_interval.0, analysis.confidence_interval.1
+    );
     println!("  Combined score: {:.3}", analysis.combined_score);
-    println!("  Relative std dev A: {:.3}", analysis.std_dev_a / analysis.mean_a);
-    println!("  Relative std dev B: {:.3}", analysis.std_dev_b / analysis.mean_b);
+    println!(
+        "  Relative std dev A: {:.3}",
+        analysis.std_dev_a / analysis.mean_a
+    );
+    println!(
+        "  Relative std dev B: {:.3}",
+        analysis.std_dev_b / analysis.mean_b
+    );
 
     // Generate insights for failed tests or in verbose mode
     if !analysis.is_constant_time || std::env::var("VERBOSE").is_ok() {
@@ -104,11 +120,11 @@ fn test_blake3_xof_constant_time() {
 
     // Use instance method instead of associated function
     let analysis = match tester.analyze_constant_time(
-        &t1, 
+        &t1,
         &t2,
         config.mean_ratio_max,
         config.t_stat_threshold,
-        config.combined_score_threshold
+        config.combined_score_threshold,
     ) {
         Ok(result) => result,
         Err(e) => panic!("Analysis error: {}", e),
@@ -116,17 +132,33 @@ fn test_blake3_xof_constant_time() {
 
     // Output detailed diagnostics with new metrics
     println!("BLAKE3-XOF Timing Analysis:");
-    println!("  Mean times: {:.2} ns vs {:.2} ns", analysis.mean_a, analysis.mean_b);
+    println!(
+        "  Mean times: {:.2} ns vs {:.2} ns",
+        analysis.mean_a, analysis.mean_b
+    );
     println!("  Mean ratio: {:.3}", analysis.mean_ratio);
     println!("  t-statistic: {:.3}", analysis.t_statistic);
-    println!("  p-value: {:.4} (calculated from t-distribution)", analysis.p_value);
-    println!("  Effect size (Cohen's d): {:.3} - {}", 
-            analysis.cohens_d, analysis.effect_size_interpretation);
-    println!("  95% CI for mean difference: ({:.2}, {:.2}) ns", 
-            analysis.confidence_interval.0, analysis.confidence_interval.1);
+    println!(
+        "  p-value: {:.4} (calculated from t-distribution)",
+        analysis.p_value
+    );
+    println!(
+        "  Effect size (Cohen's d): {:.3} - {}",
+        analysis.cohens_d, analysis.effect_size_interpretation
+    );
+    println!(
+        "  95% CI for mean difference: ({:.2}, {:.2}) ns",
+        analysis.confidence_interval.0, analysis.confidence_interval.1
+    );
     println!("  Combined score: {:.3}", analysis.combined_score);
-    println!("  Relative std dev A: {:.3}", analysis.std_dev_a / analysis.mean_a);
-    println!("  Relative std dev B: {:.3}", analysis.std_dev_b / analysis.mean_b);
+    println!(
+        "  Relative std dev A: {:.3}",
+        analysis.std_dev_a / analysis.mean_a
+    );
+    println!(
+        "  Relative std dev B: {:.3}",
+        analysis.std_dev_b / analysis.mean_b
+    );
 
     // Generate insights for failed tests or in verbose mode
     if !analysis.is_constant_time || std::env::var("VERBOSE").is_ok() {

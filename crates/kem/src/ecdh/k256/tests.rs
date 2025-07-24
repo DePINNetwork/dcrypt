@@ -1,7 +1,7 @@
 // File: crates/kem/src/ecdh/k256/tests.rs
 use super::*;
-use dcrypt_api::Kem;
 use dcrypt_algorithms::ec::k256 as ec_k256;
+use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 
 #[test]
@@ -12,7 +12,8 @@ fn test_k256_kem_basic_flow() {
     let (recipient_pk, recipient_sk) = EcdhK256::keypair(&mut rng).unwrap();
 
     // Encapsulate
-    let (ciphertext, shared_secret_sender) = EcdhK256::encapsulate(&mut rng, &recipient_pk).unwrap();
+    let (ciphertext, shared_secret_sender) =
+        EcdhK256::encapsulate(&mut rng, &recipient_pk).unwrap();
 
     // Decapsulate
     let shared_secret_recipient = EcdhK256::decapsulate(&recipient_sk, &ciphertext).unwrap();
@@ -25,10 +26,19 @@ fn test_k256_kem_basic_flow() {
     );
 
     // Verify key and ciphertext sizes
-    assert_eq!(recipient_pk.as_ref().len(), ec_k256::K256_POINT_COMPRESSED_SIZE);
+    assert_eq!(
+        recipient_pk.as_ref().len(),
+        ec_k256::K256_POINT_COMPRESSED_SIZE
+    );
     assert_eq!(recipient_sk.as_ref().len(), ec_k256::K256_SCALAR_SIZE);
-    assert_eq!(ciphertext.as_ref().len(), ec_k256::K256_POINT_COMPRESSED_SIZE);
-    assert_eq!(shared_secret_sender.as_ref().len(), ec_k256::K256_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE);
+    assert_eq!(
+        ciphertext.as_ref().len(),
+        ec_k256::K256_POINT_COMPRESSED_SIZE
+    );
+    assert_eq!(
+        shared_secret_sender.as_ref().len(),
+        ec_k256::K256_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE
+    );
 }
 
 #[test]
@@ -40,7 +50,8 @@ fn test_k256_kem_wrong_secret_key() {
     let (_, wrong_sk) = EcdhK256::keypair(&mut rng).unwrap();
 
     // Encapsulate to first recipient
-    let (ciphertext, shared_secret_sender) = EcdhK256::encapsulate(&mut rng, &recipient_pk).unwrap();
+    let (ciphertext, shared_secret_sender) =
+        EcdhK256::encapsulate(&mut rng, &recipient_pk).unwrap();
 
     // Try to decapsulate with wrong secret key
     let shared_secret_wrong = EcdhK256::decapsulate(&wrong_sk, &ciphertext).unwrap();
@@ -69,7 +80,8 @@ fn test_k256_kem_invalid_public_key() {
 fn test_k256_kem_tampered_ciphertext() {
     let mut rng = OsRng;
     let (public_key, secret_key) = EcdhK256::keypair(&mut rng).expect("Keypair generation failed");
-    let (mut ciphertext, shared_secret_sender) = EcdhK256::encapsulate(&mut rng, &public_key).expect("Encapsulation failed");
+    let (mut ciphertext, shared_secret_sender) =
+        EcdhK256::encapsulate(&mut rng, &public_key).expect("Encapsulation failed");
 
     // Tamper with the ciphertext
     ciphertext.0[5] ^= 0xff;
@@ -78,11 +90,18 @@ fn test_k256_kem_tampered_ciphertext() {
 
     match decapsulate_result {
         Ok(ss_receiver) => {
-            assert_ne!(shared_secret_sender.as_ref(), ss_receiver.as_ref(), "Shared secret should differ for tampered ciphertext if decapsulation succeeds.");
+            assert_ne!(
+                shared_secret_sender.as_ref(),
+                ss_receiver.as_ref(),
+                "Shared secret should differ for tampered ciphertext if decapsulation succeeds."
+            );
         }
         Err(e) => {
             // It's also acceptable for decapsulation to fail if the point becomes invalid
-            println!("Decapsulation failed as expected for tampered ciphertext: {:?}", e);
+            println!(
+                "Decapsulation failed as expected for tampered ciphertext: {:?}",
+                e
+            );
         }
     }
 }

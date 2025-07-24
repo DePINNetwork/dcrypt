@@ -7,13 +7,13 @@
 //! for key derivation according to RFC 9180 (HPKE).
 //! This implementation uses compressed point format.
 
-use dcrypt_api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
-use dcrypt_common::security::SecretBuffer;
-use zeroize::{Zeroize, ZeroizeOnDrop};
-use rand::{CryptoRng, RngCore};
+use super::KEM_KDF_VERSION;
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p192 as ec;
-use super::KEM_KDF_VERSION;
+use dcrypt_api::{error::Error as ApiError, Kem, Key as ApiKey, Result as ApiResult};
+use dcrypt_common::security::SecretBuffer;
+use rand::{CryptoRng, RngCore};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// ECDH KEM with P-192 curve
 pub struct EcdhP192;
@@ -35,14 +35,46 @@ pub struct EcdhP192SharedSecret(ApiKey);
 pub struct EcdhP192Ciphertext([u8; ec::P192_POINT_COMPRESSED_SIZE]);
 
 // AsRef/AsMut implementations
-impl AsRef<[u8]> for EcdhP192PublicKey { fn as_ref(&self) -> &[u8] { &self.0 } }
-impl AsMut<[u8]> for EcdhP192PublicKey { fn as_mut(&mut self) -> &mut [u8] { &mut self.0 } }
-impl AsRef<[u8]> for EcdhP192SecretKey { fn as_ref(&self) -> &[u8] { self.0.as_ref() } }
-impl AsMut<[u8]> for EcdhP192SecretKey { fn as_mut(&mut self) -> &mut [u8] { self.0.as_mut() } }
-impl AsRef<[u8]> for EcdhP192SharedSecret { fn as_ref(&self) -> &[u8] { self.0.as_ref() } }
-impl AsMut<[u8]> for EcdhP192SharedSecret { fn as_mut(&mut self) -> &mut [u8] { self.0.as_mut() } }
-impl AsRef<[u8]> for EcdhP192Ciphertext { fn as_ref(&self) -> &[u8] { &self.0 } }
-impl AsMut<[u8]> for EcdhP192Ciphertext { fn as_mut(&mut self) -> &mut [u8] { &mut self.0 } }
+impl AsRef<[u8]> for EcdhP192PublicKey {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+impl AsMut<[u8]> for EcdhP192PublicKey {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
+impl AsRef<[u8]> for EcdhP192SecretKey {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+impl AsMut<[u8]> for EcdhP192SecretKey {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+impl AsRef<[u8]> for EcdhP192SharedSecret {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+impl AsMut<[u8]> for EcdhP192SharedSecret {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+impl AsRef<[u8]> for EcdhP192Ciphertext {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+impl AsMut<[u8]> for EcdhP192Ciphertext {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
 
 impl Kem for EcdhP192 {
     type PublicKey = EcdhP192PublicKey;
@@ -51,18 +83,24 @@ impl Kem for EcdhP192 {
     type Ciphertext = EcdhP192Ciphertext;
     type KeyPair = (Self::PublicKey, Self::SecretKey);
 
-    fn name() -> &'static str { "ECDH-P192" }
+    fn name() -> &'static str {
+        "ECDH-P192"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> ApiResult<Self::KeyPair> {
-        let (sk_scalar, pk_point) = ec::generate_keypair(rng)
-            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        let (sk_scalar, pk_point) =
+            ec::generate_keypair(rng).map_err(|e| ApiError::from(KemError::from(e)))?;
         let public_key = EcdhP192PublicKey(pk_point.serialize_compressed());
         let secret_key = EcdhP192SecretKey(sk_scalar.as_secret_buffer().clone());
         Ok((public_key, secret_key))
     }
 
-    fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey { keypair.0.clone() }
-    fn secret_key(keypair: &Self::KeyPair) -> Self::SecretKey { keypair.1.clone() }
+    fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
+        keypair.0.clone()
+    }
+    fn secret_key(keypair: &Self::KeyPair) -> Self::SecretKey {
+        keypair.1.clone()
+    }
 
     fn encapsulate<R: CryptoRng + RngCore>(
         rng: &mut R,
@@ -78,8 +116,8 @@ impl Kem for EcdhP192 {
             });
         }
 
-        let (ephemeral_scalar, ephemeral_point) = ec::generate_keypair(rng)
-            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        let (ephemeral_scalar, ephemeral_point) =
+            ec::generate_keypair(rng).map_err(|e| ApiError::from(KemError::from(e)))?;
         let ciphertext = EcdhP192Ciphertext(ephemeral_point.serialize_compressed());
 
         let shared_point = ec::scalar_mult(&ephemeral_scalar, &pk_r_point)
@@ -93,9 +131,8 @@ impl Kem for EcdhP192 {
         }
         let x_coord_bytes = shared_point.x_coordinate_bytes();
 
-        let mut kdf_ikm = Vec::with_capacity(
-            ec::P192_FIELD_ELEMENT_SIZE + 2 * ec::P192_POINT_COMPRESSED_SIZE
-        );
+        let mut kdf_ikm =
+            Vec::with_capacity(ec::P192_FIELD_ELEMENT_SIZE + 2 * ec::P192_POINT_COMPRESSED_SIZE);
         kdf_ikm.extend_from_slice(&x_coord_bytes);
         kdf_ikm.extend_from_slice(&ephemeral_point.serialize_compressed());
         kdf_ikm.extend_from_slice(&public_key_recipient.0);
@@ -135,12 +172,11 @@ impl Kem for EcdhP192 {
             });
         }
         let x_coord_bytes = shared_point.x_coordinate_bytes();
-        let q_r_point = ec::scalar_mult_base_g(&sk_r_scalar)
-            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        let q_r_point =
+            ec::scalar_mult_base_g(&sk_r_scalar).map_err(|e| ApiError::from(KemError::from(e)))?;
 
-        let mut kdf_ikm = Vec::with_capacity(
-            ec::P192_FIELD_ELEMENT_SIZE + 2 * ec::P192_POINT_COMPRESSED_SIZE
-        );
+        let mut kdf_ikm =
+            Vec::with_capacity(ec::P192_FIELD_ELEMENT_SIZE + 2 * ec::P192_POINT_COMPRESSED_SIZE);
         kdf_ikm.extend_from_slice(&x_coord_bytes);
         kdf_ikm.extend_from_slice(&ciphertext_ephemeral_pk.0);
         kdf_ikm.extend_from_slice(&q_r_point.serialize_compressed());

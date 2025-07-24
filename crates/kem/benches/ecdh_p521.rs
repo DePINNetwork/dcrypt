@@ -1,86 +1,85 @@
 // File: crates/kem/benches/ecdh_p521.rs
 //! Benchmarks for ECDH-KEM with P-521 curve
 
-use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
-use dcrypt_kem::ecdh::p521::{EcdhP521, EcdhP521PublicKey, EcdhP521SecretKey};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use dcrypt_api::Kem;
+use dcrypt_kem::ecdh::p521::{EcdhP521, EcdhP521PublicKey, EcdhP521SecretKey};
 use rand::rngs::OsRng;
 
 fn bench_p521_keypair(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P521");
-    
+
     group.bench_function("keypair_generation", |b| {
         let mut rng = OsRng;
-        b.iter(|| {
-            EcdhP521::keypair(&mut rng).unwrap()
-        });
+        b.iter(|| EcdhP521::keypair(&mut rng).unwrap());
     });
-    
+
     group.finish();
 }
 
 fn bench_p521_encapsulate(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P521");
     let mut rng = OsRng;
-    
+
     // Generate a recipient keypair for the benchmark
     let (recipient_pk, _) = EcdhP521::keypair(&mut rng).unwrap();
-    
+
     group.bench_function("encapsulate", |b| {
-        b.iter(|| {
-            EcdhP521::encapsulate(&mut rng, &recipient_pk).unwrap()
-        });
+        b.iter(|| EcdhP521::encapsulate(&mut rng, &recipient_pk).unwrap());
     });
-    
+
     group.finish();
 }
 
 fn bench_p521_decapsulate(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P521");
     let mut rng = OsRng;
-    
+
     // Generate a recipient keypair and ciphertext for the benchmark
     let (recipient_pk, recipient_sk) = EcdhP521::keypair(&mut rng).unwrap();
     let (ciphertext, _) = EcdhP521::encapsulate(&mut rng, &recipient_pk).unwrap();
-    
+
     group.bench_function("decapsulate", |b| {
-        b.iter(|| {
-            EcdhP521::decapsulate(&recipient_sk, &ciphertext).unwrap()
-        });
+        b.iter(|| EcdhP521::decapsulate(&recipient_sk, &ciphertext).unwrap());
     });
-    
+
     group.finish();
 }
 
 fn bench_p521_roundtrip(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P521");
     let mut rng = OsRng;
-    
+
     // Generate a recipient keypair for the benchmark
     let (recipient_pk, recipient_sk) = EcdhP521::keypair(&mut rng).unwrap();
-    
+
     group.bench_function("full_roundtrip", |b| {
         b.iter(|| {
-            let (ciphertext, shared_secret_sender) = EcdhP521::encapsulate(&mut rng, &recipient_pk).unwrap();
-            let shared_secret_recipient = EcdhP521::decapsulate(&recipient_sk, &ciphertext).unwrap();
-            assert_eq!(shared_secret_sender.as_ref(), shared_secret_recipient.as_ref());
+            let (ciphertext, shared_secret_sender) =
+                EcdhP521::encapsulate(&mut rng, &recipient_pk).unwrap();
+            let shared_secret_recipient =
+                EcdhP521::decapsulate(&recipient_sk, &ciphertext).unwrap();
+            assert_eq!(
+                shared_secret_sender.as_ref(),
+                shared_secret_recipient.as_ref()
+            );
         });
     });
-    
+
     group.finish();
 }
 
 fn bench_p521_batch_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P521");
     let mut rng = OsRng;
-    
+
     // Benchmark different batch sizes
     for batch_size in [10, 50, 100].iter() {
         // Prepare recipients
         let recipients: Vec<_> = (0..*batch_size)
             .map(|_| EcdhP521::keypair(&mut rng).unwrap())
             .collect();
-        
+
         group.bench_with_input(
             BenchmarkId::new("batch_encapsulate", batch_size),
             batch_size,
@@ -92,13 +91,13 @@ fn bench_p521_batch_operations(c: &mut Criterion) {
                 });
             },
         );
-        
+
         // Prepare ciphertexts for decapsulation benchmark
         let ciphertexts: Vec<_> = recipients
             .iter()
             .map(|(pk, _)| EcdhP521::encapsulate(&mut rng, pk).unwrap().0)
             .collect();
-        
+
         group.bench_with_input(
             BenchmarkId::new("batch_decapsulate", batch_size),
             batch_size,
@@ -111,20 +110,20 @@ fn bench_p521_batch_operations(c: &mut Criterion) {
             },
         );
     }
-    
+
     group.finish();
 }
 
 fn bench_p521_parallel_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P521");
     let mut rng = OsRng;
-    
+
     // Generate multiple keypairs for parallel operations
     let num_keypairs = 100;
     let keypairs: Vec<_> = (0..num_keypairs)
         .map(|_| EcdhP521::keypair(&mut rng).unwrap())
         .collect();
-    
+
     group.bench_function("parallel_encapsulations", |b| {
         b.iter(|| {
             // Simulate parallel encapsulations to different recipients
@@ -134,18 +133,18 @@ fn bench_p521_parallel_operations(c: &mut Criterion) {
                 .collect();
         });
     });
-    
+
     group.finish();
 }
 
 fn bench_p521_key_sizes(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P521-sizes");
     let mut rng = OsRng;
-    
+
     // Generate sample keys and ciphertext
     let (pk, sk) = EcdhP521::keypair(&mut rng).unwrap();
     let (ct, ss) = EcdhP521::encapsulate(&mut rng, &pk).unwrap();
-    
+
     // Report sizes (these won't actually benchmark, just report)
     group.bench_function("measure_sizes", |b| {
         b.iter(|| {
@@ -155,13 +154,13 @@ fn bench_p521_key_sizes(c: &mut Criterion) {
             let _ss_size = ss.as_ref().len();
         });
     });
-    
+
     println!("P-521 Key and Ciphertext Sizes:");
     println!("  Public key: {} bytes", pk.as_ref().len());
     println!("  Secret key: {} bytes", sk.as_ref().len());
     println!("  Ciphertext: {} bytes", ct.as_ref().len());
     println!("  Shared secret: {} bytes", ss.as_ref().len());
-    
+
     group.finish();
 }
 

@@ -3,7 +3,11 @@
 use super::{Error, Result};
 
 /// Validate key pair generation parameters
-pub fn key_generation(condition: bool, algorithm: &'static str, details: &'static str) -> Result<()> {
+pub fn key_generation(
+    condition: bool,
+    algorithm: &'static str,
+    details: &'static str,
+) -> Result<()> {
     if !condition {
         return Err(Error::KeyGeneration { algorithm, details });
     }
@@ -11,7 +15,11 @@ pub fn key_generation(condition: bool, algorithm: &'static str, details: &'stati
 }
 
 /// Validate encapsulation parameters
-pub fn encapsulation(condition: bool, algorithm: &'static str, details: &'static str) -> Result<()> {
+pub fn encapsulation(
+    condition: bool,
+    algorithm: &'static str,
+    details: &'static str,
+) -> Result<()> {
     if !condition {
         return Err(Error::Encapsulation { algorithm, details });
     }
@@ -19,7 +27,11 @@ pub fn encapsulation(condition: bool, algorithm: &'static str, details: &'static
 }
 
 /// Validate decapsulation parameters
-pub fn decapsulation(condition: bool, algorithm: &'static str, details: &'static str) -> Result<()> {
+pub fn decapsulation(
+    condition: bool,
+    algorithm: &'static str,
+    details: &'static str,
+) -> Result<()> {
     if !condition {
         return Err(Error::Decapsulation { algorithm, details });
     }
@@ -51,9 +63,4 @@ pub fn serialization(condition: bool, context: &'static str, details: &'static s
 }
 
 // Re-export primitive validations for convenience
-pub use dcrypt_api::error::validate::{
-    parameter,
-    length,
-    min_length,
-    max_length,
-};
+pub use dcrypt_api::error::validate::{length, max_length, min_length, parameter};

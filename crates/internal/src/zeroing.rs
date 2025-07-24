@@ -32,12 +32,12 @@ impl<'a> ZeroGuard<'a> {
     pub fn new(data: &'a mut [u8]) -> Self {
         Self(data)
     }
-    
+
     /// Get a reference to the protected data
     pub fn data(&self) -> &[u8] {
         self.0
     }
-    
+
     /// Get a mutable reference to the protected data
     pub fn data_mut(&mut self) -> &mut [u8] {
         self.0

@@ -6,8 +6,8 @@
 use alloc::vec::Vec;
 use zeroize::Zeroize;
 
-use crate::error::{Result, validate};
-use crate::hash::{Hash, HashFunction, HashAlgorithm};
+use crate::error::{validate, Result};
+use crate::hash::{Hash, HashAlgorithm, HashFunction};
 use crate::types::Digest;
 
 use core::sync::atomic::{compiler_fence, Ordering};
@@ -18,33 +18,49 @@ use dcrypt_params::utils::hash::{
     SHA3_224_OUTPUT_SIZE, SHA3_256_OUTPUT_SIZE, SHA3_384_OUTPUT_SIZE, SHA3_512_OUTPUT_SIZE,
 };
 
-const KECCAK_ROUNDS:      usize = 24;
-const KECCAK_STATE_SIZE:  usize = 25;   // 5 × 5 u64
-const SHA3_224_RATE:      usize = 144;  // 1152 bits
-const SHA3_256_RATE:      usize = 136;  // 1088 bits
-const SHA3_384_RATE:      usize = 104;  // 832 bits
-const SHA3_512_RATE:      usize = 72;   // 576 bits
+const KECCAK_ROUNDS: usize = 24;
+const KECCAK_STATE_SIZE: usize = 25; // 5 × 5 u64
+const SHA3_224_RATE: usize = 144; // 1152 bits
+const SHA3_256_RATE: usize = 136; // 1088 bits
+const SHA3_384_RATE: usize = 104; // 832 bits
+const SHA3_512_RATE: usize = 72; // 576 bits
 
 /// Keccak round constants.
 const RC: [u64; KECCAK_ROUNDS] = [
-    0x0000_0000_0000_0001, 0x0000_0000_0000_8082, 0x8000_0000_0000_808A, 0x8000_0000_8000_8000,
-    0x0000_0000_0000_808B, 0x0000_0000_8000_0001, 0x8000_0000_8000_8081, 0x8000_0000_0000_8009,
-    0x0000_0000_0000_008A, 0x0000_0000_0000_0088, 0x0000_0000_8000_8009, 0x0000_0000_8000_000A,
-    0x0000_0000_8000_808B, 0x8000_0000_0000_008B, 0x8000_0000_0000_8089, 0x8000_0000_0000_8003,
-    0x8000_0000_0000_8002, 0x8000_0000_0000_0080, 0x0000_0000_0000_800A, 0x8000_0000_8000_000A,
-    0x8000_0000_8000_8081, 0x8000_0000_0000_8080, 0x0000_0000_8000_0001, 0x8000_0000_8000_8008,
+    0x0000_0000_0000_0001,
+    0x0000_0000_0000_8082,
+    0x8000_0000_0000_808A,
+    0x8000_0000_8000_8000,
+    0x0000_0000_0000_808B,
+    0x0000_0000_8000_0001,
+    0x8000_0000_8000_8081,
+    0x8000_0000_0000_8009,
+    0x0000_0000_0000_008A,
+    0x0000_0000_0000_0088,
+    0x0000_0000_8000_8009,
+    0x0000_0000_8000_000A,
+    0x0000_0000_8000_808B,
+    0x8000_0000_0000_008B,
+    0x8000_0000_0000_8089,
+    0x8000_0000_0000_8003,
+    0x8000_0000_0000_8002,
+    0x8000_0000_0000_0080,
+    0x0000_0000_0000_800A,
+    0x8000_0000_8000_000A,
+    0x8000_0000_8000_8081,
+    0x8000_0000_0000_8080,
+    0x0000_0000_8000_0001,
+    0x8000_0000_8000_8008,
 ];
 
 /// Rotation offsets for the ρ step.
 const RHO: [u32; 24] = [
-     1,  3,  6, 10, 15, 21, 28, 36, 45, 55,  2, 14,
-    27, 41, 56,  8, 25, 43, 62, 18, 39, 61, 20, 44,
+    1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 2, 14, 27, 41, 56, 8, 25, 43, 62, 18, 39, 61, 20, 44,
 ];
 
 /// π-mapping indexes.
 const PI: [usize; 24] = [
-    10,  7, 11, 17, 18,  3,  5, 16,  8, 21, 24,  4,
-    15, 23, 19, 13, 12,  2, 20, 14, 22,  9,  6,  1,
+    10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4, 15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1,
 ];
 
 // ────────────────────────── constant-time helpers ─────────────────────────
@@ -141,10 +157,15 @@ macro_rules! impl_sha3_variant {
         impl $name {
             #[inline(always)]
             fn init() -> Self {
-                Self { state: [0u64; KECCAK_STATE_SIZE], pt: 0 }
+                Self {
+                    state: [0u64; KECCAK_STATE_SIZE],
+                    pt: 0,
+                }
             }
             #[inline(always)]
-            fn rate() -> usize { $rate }
+            fn rate() -> usize {
+                $rate
+            }
 
             fn update_internal(&mut self, data: &[u8]) -> Result<()> {
                 validate::parameter(
@@ -171,7 +192,9 @@ macro_rules! impl_sha3_variant {
                 keccak_f1600(&mut self.state);
 
                 let mut out = vec![0u8; $out];
-                for i in 0..$out { out[i] = get_byte_from_state(&self.state, i); }
+                for i in 0..$out {
+                    out[i] = get_byte_from_state(&self.state, i);
+                }
 
                 self.state = [0u64; KECCAK_STATE_SIZE];
                 self.pt = 0;
@@ -181,9 +204,11 @@ macro_rules! impl_sha3_variant {
 
         impl HashFunction for $name {
             type Algorithm = $alg;
-            type Output    = Digest<$out>;
+            type Output = Digest<$out>;
 
-            fn new() -> Self { Self::init() }
+            fn new() -> Self {
+                Self::init()
+            }
 
             fn update(&mut self, data: &[u8]) -> Result<&mut Self> {
                 self.update_internal(data)?;
@@ -197,17 +222,46 @@ macro_rules! impl_sha3_variant {
                 Ok(Digest::new(d))
             }
 
-            #[inline(always)] fn output_size() -> usize { <$alg as HashAlgorithm>::OUTPUT_SIZE }
-            #[inline(always)] fn block_size()  -> usize { <$alg as HashAlgorithm>::BLOCK_SIZE  }
-            #[inline(always)] fn name() -> String { <$alg as HashAlgorithm>::ALGORITHM_ID.to_string() }
+            #[inline(always)]
+            fn output_size() -> usize {
+                <$alg as HashAlgorithm>::OUTPUT_SIZE
+            }
+            #[inline(always)]
+            fn block_size() -> usize {
+                <$alg as HashAlgorithm>::BLOCK_SIZE
+            }
+            #[inline(always)]
+            fn name() -> String {
+                <$alg as HashAlgorithm>::ALGORITHM_ID.to_string()
+            }
         }
     };
 }
 
-impl_sha3_variant!(Sha3_224, SHA3_224_RATE, SHA3_224_OUTPUT_SIZE, Sha3_224Algorithm);
-impl_sha3_variant!(Sha3_256, SHA3_256_RATE, SHA3_256_OUTPUT_SIZE, Sha3_256Algorithm);
-impl_sha3_variant!(Sha3_384, SHA3_384_RATE, SHA3_384_OUTPUT_SIZE, Sha3_384Algorithm);
-impl_sha3_variant!(Sha3_512, SHA3_512_RATE, SHA3_512_OUTPUT_SIZE, Sha3_512Algorithm);
+impl_sha3_variant!(
+    Sha3_224,
+    SHA3_224_RATE,
+    SHA3_224_OUTPUT_SIZE,
+    Sha3_224Algorithm
+);
+impl_sha3_variant!(
+    Sha3_256,
+    SHA3_256_RATE,
+    SHA3_256_OUTPUT_SIZE,
+    Sha3_256Algorithm
+);
+impl_sha3_variant!(
+    Sha3_384,
+    SHA3_384_RATE,
+    SHA3_384_OUTPUT_SIZE,
+    Sha3_384Algorithm
+);
+impl_sha3_variant!(
+    Sha3_512,
+    SHA3_512_RATE,
+    SHA3_512_OUTPUT_SIZE,
+    Sha3_512Algorithm
+);
 
 // ───────────────────────────── permutation ────────────────────────────────
 
@@ -215,10 +269,14 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
     for &rc in RC.iter().take(KECCAK_ROUNDS) {
         // θ
         let mut c = [0u64; 5];
-        for x in 0..5 { c[x] = state[x] ^ state[x+5] ^ state[x+10] ^ state[x+15] ^ state[x+20]; }
         for x in 0..5 {
-            let d = c[(x+4)%5] ^ c[(x+1)%5].rotate_left(1);
-            for y in 0..5 { state[x + 5*y] ^= d; }
+            c[x] = state[x] ^ state[x + 5] ^ state[x + 10] ^ state[x + 15] ^ state[x + 20];
+        }
+        for x in 0..5 {
+            let d = c[(x + 4) % 5] ^ c[(x + 1) % 5].rotate_left(1);
+            for y in 0..5 {
+                state[x + 5 * y] ^= d;
+            }
         }
         // ρ + π
         let mut t = state[1];
@@ -231,8 +289,12 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
         // χ
         for y in 0..5 {
             let mut row = [0u64; 5];
-            for x in 0..5 { row[x] = state[x + 5*y]; }
-            for x in 0..5 { state[x + 5*y] ^= (!row[(x+1)%5]) & row[(x+2)%5]; }
+            for x in 0..5 {
+                row[x] = state[x + 5 * y];
+            }
+            for x in 0..5 {
+                state[x + 5 * y] ^= (!row[(x + 1) % 5]) & row[(x + 2) % 5];
+            }
         }
         // ι
         state[0] ^= rc;

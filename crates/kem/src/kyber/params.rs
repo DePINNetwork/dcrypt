@@ -48,12 +48,12 @@ impl Modulus for KyberPolyModParams {
 
 // Implement NttModulus trait for KyberPolyModParams
 impl NttModulus for KyberPolyModParams {
-    const ZETA: u32 = 17;  // primitive 512-th root of unity mod 3329
-    const ZETAS: &'static [u32] = &[];  // Not used with on-the-fly generation
-    const N_INV: u32 = 2385;  // 256^-1 · R mod 3329
-    const MONT_R: u32 = 1353;  // 2^32 mod 3329
-    const NEG_QINV: u32 = 0x94570CFF;  // -Q^-1 mod 2^32
-    
+    const ZETA: u32 = 17; // primitive 512-th root of unity mod 3329
+    const ZETAS: &'static [u32] = &[]; // Not used with on-the-fly generation
+    const N_INV: u32 = 2385; // 256^-1 · R mod 3329
+    const MONT_R: u32 = 1353; // 2^32 mod 3329
+    const NEG_QINV: u32 = 0x94570CFF; // -Q^-1 mod 2^32
+
     // Kyber doesn't use twisting, so these are empty
     const PSIS: &'static [u32] = &[];
     const INV_PSIS: &'static [u32] = &[];

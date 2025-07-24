@@ -1,31 +1,31 @@
 //! Elliptic Curve Integrated Encryption Scheme (ECIES) generic components.
 
-use dcrypt_algorithms::kdf::hkdf::Hkdf;
+use crate::error::{Error as PkeError, Result as PkeResult};
 use dcrypt_algorithms::hash::sha2::{Sha256, Sha384, Sha512}; // Added Sha512
-use dcrypt_algorithms::kdf::KeyDerivationFunction;
-use crate::error::{Result as PkeResult, Error as PkeError}; // Use PKE specific Result/Error
+use dcrypt_algorithms::kdf::hkdf::Hkdf;
+use dcrypt_algorithms::kdf::KeyDerivationFunction; // Use PKE specific Result/Error
 
 // Ensure Vec, String, format are available for no_std + alloc
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec::Vec;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::String; 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::format;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::string::String;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::vec::Vec;
 
 // Declare submodules
 pub mod p192; // Added P-192 module
 pub mod p224;
 pub mod p256;
 pub mod p384;
-pub mod p521; 
+pub mod p521;
 
 // Re-export the main structs
 pub use p192::EciesP192; // Added P-192 export
-pub use p224::EciesP224; 
+pub use p224::EciesP224;
 pub use p256::EciesP256;
 pub use p384::EciesP384;
-pub use p521::EciesP521; 
+pub use p521::EciesP521;
 
 // --- Constants and Helper Structs/Functions (moved from individual files if generic enough, or keep here) ---
 
@@ -45,8 +45,13 @@ pub(crate) fn derive_symmetric_key_hkdf_sha256(
     info: Option<&[u8]>,
 ) -> PkeResult<Vec<u8>> {
     let kdf = Hkdf::<Sha256>::new();
-    kdf.derive_key(shared_secret_z, Some(ephemeral_pk_bytes), info, key_output_len)
-       .map_err(PkeError::from)
+    kdf.derive_key(
+        shared_secret_z,
+        Some(ephemeral_pk_bytes),
+        info,
+        key_output_len,
+    )
+    .map_err(PkeError::from)
 }
 
 /// Derives symmetric key from an ECDH shared secret using HKDF-SHA384.
@@ -57,8 +62,13 @@ pub(crate) fn derive_symmetric_key_hkdf_sha384(
     info: Option<&[u8]>,
 ) -> PkeResult<Vec<u8>> {
     let kdf = Hkdf::<Sha384>::new();
-    kdf.derive_key(shared_secret_z, Some(ephemeral_pk_bytes), info, key_output_len)
-       .map_err(PkeError::from)
+    kdf.derive_key(
+        shared_secret_z,
+        Some(ephemeral_pk_bytes),
+        info,
+        key_output_len,
+    )
+    .map_err(PkeError::from)
 }
 
 /// Derives symmetric key from an ECDH shared secret using HKDF-SHA512.
@@ -69,8 +79,13 @@ pub(crate) fn derive_symmetric_key_hkdf_sha512(
     info: Option<&[u8]>,
 ) -> PkeResult<Vec<u8>> {
     let kdf = Hkdf::<Sha512>::new();
-    kdf.derive_key(shared_secret_z, Some(ephemeral_pk_bytes), info, key_output_len)
-       .map_err(PkeError::from)
+    kdf.derive_key(
+        shared_secret_z,
+        Some(ephemeral_pk_bytes),
+        info,
+        key_output_len,
+    )
+    .map_err(PkeError::from)
 }
 
 /// Internal structure for ECIES ciphertext components.
@@ -88,8 +103,14 @@ impl EciesCiphertextComponents {
         let n_len = self.aead_nonce.len();
         let ct_t_len = self.aead_ciphertext_tag.len();
 
-        assert!(r_len <= u8::MAX as usize, "Ephemeral PK too long for 1-byte length prefix");
-        assert!(n_len <= u8::MAX as usize, "AEAD Nonce too long for 1-byte length prefix");
+        assert!(
+            r_len <= u8::MAX as usize,
+            "Ephemeral PK too long for 1-byte length prefix"
+        );
+        assert!(
+            n_len <= u8::MAX as usize,
+            "AEAD Nonce too long for 1-byte length prefix"
+        );
 
         let total_len = 1 + r_len + 1 + n_len + 4 + ct_t_len;
         let mut serialized = Vec::with_capacity(total_len);
@@ -107,7 +128,9 @@ impl EciesCiphertextComponents {
 
     pub fn deserialize(bytes: &[u8]) -> PkeResult<Self> {
         if bytes.is_empty() {
-            return Err(PkeError::InvalidCiphertextFormat("empty input for deserialization"));
+            return Err(PkeError::InvalidCiphertextFormat(
+                "empty input for deserialization",
+            ));
         }
         let mut current_pos = 0;
 
@@ -123,7 +146,7 @@ impl EciesCiphertextComponents {
         current_pos += r_len;
 
         if bytes.len() < current_pos + 1 {
-             return Err(PkeError::InvalidCiphertextFormat("Nonce length truncated"));
+            return Err(PkeError::InvalidCiphertextFormat("Nonce length truncated"));
         }
         let n_len = bytes[current_pos] as usize;
         current_pos += 1;
@@ -134,22 +157,31 @@ impl EciesCiphertextComponents {
         current_pos += n_len;
 
         if bytes.len() < current_pos + 4 {
-            return Err(PkeError::InvalidCiphertextFormat("AEAD payload length truncated"));
+            return Err(PkeError::InvalidCiphertextFormat(
+                "AEAD payload length truncated",
+            ));
         }
         let ct_t_len = u32::from_be_bytes(
-            bytes[current_pos..current_pos + 4].try_into()
-                .map_err(|_| PkeError::InvalidCiphertextFormat("Failed to read AEAD payload length"))?
+            bytes[current_pos..current_pos + 4]
+                .try_into()
+                .map_err(|_| {
+                    PkeError::InvalidCiphertextFormat("Failed to read AEAD payload length")
+                })?,
         ) as usize;
         current_pos += 4;
 
         if bytes.len() < current_pos + ct_t_len {
-            return Err(PkeError::InvalidCiphertextFormat("AEAD payload data truncated"));
+            return Err(PkeError::InvalidCiphertextFormat(
+                "AEAD payload data truncated",
+            ));
         }
         let aead_ciphertext_tag = bytes[current_pos..current_pos + ct_t_len].to_vec();
         current_pos += ct_t_len;
 
         if current_pos != bytes.len() {
-            return Err(PkeError::InvalidCiphertextFormat("trailing data after deserialization"));
+            return Err(PkeError::InvalidCiphertextFormat(
+                "trailing data after deserialization",
+            ));
         }
 
         Ok(Self {

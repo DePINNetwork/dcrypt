@@ -1,8 +1,8 @@
 // File: dcrypt-kem/src/saber/mod.rs
 
 use dcrypt_api::{Kem, Result};
-use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
+use zeroize::Zeroize;
 
 /// LightSaber KEM
 pub struct LightSaber;
@@ -20,35 +20,51 @@ pub struct SaberSharedSecret(pub Vec<u8>);
 pub struct SaberCiphertext(pub Vec<u8>);
 
 impl AsRef<[u8]> for SaberPublicKey {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for SaberPublicKey {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for SaberSecretKey {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for SaberSecretKey {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for SaberSharedSecret {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for SaberSharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for SaberCiphertext {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for SaberCiphertext {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl Kem for LightSaber {
@@ -56,9 +72,11 @@ impl Kem for LightSaber {
     type SecretKey = SaberSecretKey;
     type SharedSecret = SaberSharedSecret;
     type Ciphertext = SaberCiphertext;
-    type KeyPair = (Self::PublicKey, Self::SecretKey);  // Added KeyPair type
+    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added KeyPair type
 
-    fn name() -> &'static str { "LightSaber" }
+    fn name() -> &'static str {
+        "LightSaber"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<(Self::PublicKey, Self::SecretKey)> {
         // Placeholder implementation
@@ -79,12 +97,21 @@ impl Kem for LightSaber {
         keypair.1.clone()
     }
 
-    fn encapsulate<R: CryptoRng + RngCore>(_rng: &mut R, _public_key: &Self::PublicKey) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
+    fn encapsulate<R: CryptoRng + RngCore>(
+        _rng: &mut R,
+        _public_key: &Self::PublicKey,
+    ) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
         // Placeholder implementation
-        Ok((SaberCiphertext(vec![0u8; 736]), SaberSharedSecret(vec![0u8; 32])))
+        Ok((
+            SaberCiphertext(vec![0u8; 736]),
+            SaberSharedSecret(vec![0u8; 32]),
+        ))
     }
 
-    fn decapsulate(_secret_key: &Self::SecretKey, _ciphertext: &Self::Ciphertext) -> Result<Self::SharedSecret> {
+    fn decapsulate(
+        _secret_key: &Self::SecretKey,
+        _ciphertext: &Self::Ciphertext,
+    ) -> Result<Self::SharedSecret> {
         // Placeholder implementation
         Ok(SaberSharedSecret(vec![0u8; 32]))
     }
@@ -98,9 +125,11 @@ impl Kem for Saber {
     type SecretKey = SaberSecretKey;
     type SharedSecret = SaberSharedSecret;
     type Ciphertext = SaberCiphertext;
-    type KeyPair = (Self::PublicKey, Self::SecretKey);  // Added KeyPair type
+    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added KeyPair type
 
-    fn name() -> &'static str { "Saber" }
+    fn name() -> &'static str {
+        "Saber"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<(Self::PublicKey, Self::SecretKey)> {
         // Placeholder implementation
@@ -121,12 +150,21 @@ impl Kem for Saber {
         keypair.1.clone()
     }
 
-    fn encapsulate<R: CryptoRng + RngCore>(_rng: &mut R, _public_key: &Self::PublicKey) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
+    fn encapsulate<R: CryptoRng + RngCore>(
+        _rng: &mut R,
+        _public_key: &Self::PublicKey,
+    ) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
         // Placeholder implementation
-        Ok((SaberCiphertext(vec![0u8; 1088]), SaberSharedSecret(vec![0u8; 32])))
+        Ok((
+            SaberCiphertext(vec![0u8; 1088]),
+            SaberSharedSecret(vec![0u8; 32]),
+        ))
     }
 
-    fn decapsulate(_secret_key: &Self::SecretKey, _ciphertext: &Self::Ciphertext) -> Result<Self::SharedSecret> {
+    fn decapsulate(
+        _secret_key: &Self::SecretKey,
+        _ciphertext: &Self::Ciphertext,
+    ) -> Result<Self::SharedSecret> {
         // Placeholder implementation
         Ok(SaberSharedSecret(vec![0u8; 32]))
     }
@@ -140,9 +178,11 @@ impl Kem for FireSaber {
     type SecretKey = SaberSecretKey;
     type SharedSecret = SaberSharedSecret;
     type Ciphertext = SaberCiphertext;
-    type KeyPair = (Self::PublicKey, Self::SecretKey);  // Added KeyPair type
+    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added KeyPair type
 
-    fn name() -> &'static str { "FireSaber" }
+    fn name() -> &'static str {
+        "FireSaber"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<(Self::PublicKey, Self::SecretKey)> {
         // Placeholder implementation
@@ -163,12 +203,21 @@ impl Kem for FireSaber {
         keypair.1.clone()
     }
 
-    fn encapsulate<R: CryptoRng + RngCore>(_rng: &mut R, _public_key: &Self::PublicKey) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
+    fn encapsulate<R: CryptoRng + RngCore>(
+        _rng: &mut R,
+        _public_key: &Self::PublicKey,
+    ) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
         // Placeholder implementation
-        Ok((SaberCiphertext(vec![0u8; 1472]), SaberSharedSecret(vec![0u8; 32])))
+        Ok((
+            SaberCiphertext(vec![0u8; 1472]),
+            SaberSharedSecret(vec![0u8; 32]),
+        ))
     }
 
-    fn decapsulate(_secret_key: &Self::SecretKey, _ciphertext: &Self::Ciphertext) -> Result<Self::SharedSecret> {
+    fn decapsulate(
+        _secret_key: &Self::SecretKey,
+        _ciphertext: &Self::Ciphertext,
+    ) -> Result<Self::SharedSecret> {
         // Placeholder implementation
         Ok(SaberSharedSecret(vec![0u8; 32]))
     }

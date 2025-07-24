@@ -1,8 +1,8 @@
 // File: dcrypt-sign/src/sphincs/mod.rs
 
-use dcrypt_api::{Signature as SignatureTrait, Result};
-use zeroize::Zeroize;
+use dcrypt_api::{Result, Signature as SignatureTrait};
 use rand::{CryptoRng, RngCore};
+use zeroize::Zeroize;
 
 /// SPHINCS+ signature scheme using SHA-2
 pub struct SphincsSha2;
@@ -17,36 +17,50 @@ pub struct SphincsSecretKey(pub Vec<u8>);
 pub struct SphincsSignature(pub Vec<u8>);
 
 impl AsRef<[u8]> for SphincsPublicKey {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for SphincsPublicKey {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for SphincsSecretKey {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for SphincsSecretKey {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for SphincsSignature {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for SphincsSignature {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl SignatureTrait for SphincsSha2 {
     type PublicKey = SphincsPublicKey;
     type SecretKey = SphincsSecretKey;
-    type SignatureData = SphincsSignature;  // Changed from 'Signature' to 'SignatureData'
-    type KeyPair = (Self::PublicKey, Self::SecretKey);  // Added this type definition
+    type SignatureData = SphincsSignature; // Changed from 'Signature' to 'SignatureData'
+    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added this type definition
 
-    fn name() -> &'static str { "SPHINCS+-SHA2" }
+    fn name() -> &'static str {
+        "SPHINCS+-SHA2"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<Self::KeyPair> {
         // Placeholder implementation
@@ -56,7 +70,7 @@ impl SignatureTrait for SphincsSha2 {
         rng.fill_bytes(&mut secret_key);
         Ok((SphincsPublicKey(public_key), SphincsSecretKey(secret_key)))
     }
-    
+
     // Add the missing public_key function
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
@@ -72,7 +86,11 @@ impl SignatureTrait for SphincsSha2 {
         Ok(SphincsSignature(vec![0u8; 16976]))
     }
 
-    fn verify(_message: &[u8], _signature: &Self::SignatureData, _public_key: &Self::PublicKey) -> Result<()> {
+    fn verify(
+        _message: &[u8],
+        _signature: &Self::SignatureData,
+        _public_key: &Self::PublicKey,
+    ) -> Result<()> {
         // Placeholder implementation
         Ok(())
     }
@@ -84,10 +102,12 @@ pub struct SphincsShake;
 impl SignatureTrait for SphincsShake {
     type PublicKey = SphincsPublicKey;
     type SecretKey = SphincsSecretKey;
-    type SignatureData = SphincsSignature;  // Changed from 'Signature' to 'SignatureData'
-    type KeyPair = (Self::PublicKey, Self::SecretKey);  // Added this type definition
+    type SignatureData = SphincsSignature; // Changed from 'Signature' to 'SignatureData'
+    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added this type definition
 
-    fn name() -> &'static str { "SPHINCS+-SHAKE" }
+    fn name() -> &'static str {
+        "SPHINCS+-SHAKE"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<Self::KeyPair> {
         // Placeholder implementation
@@ -97,7 +117,7 @@ impl SignatureTrait for SphincsShake {
         rng.fill_bytes(&mut secret_key);
         Ok((SphincsPublicKey(public_key), SphincsSecretKey(secret_key)))
     }
-    
+
     // Add the missing public_key function
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
@@ -113,7 +133,11 @@ impl SignatureTrait for SphincsShake {
         Ok(SphincsSignature(vec![0u8; 7856]))
     }
 
-    fn verify(_message: &[u8], _signature: &Self::SignatureData, _public_key: &Self::PublicKey) -> Result<()> {
+    fn verify(
+        _message: &[u8],
+        _signature: &Self::SignatureData,
+        _public_key: &Self::PublicKey,
+    ) -> Result<()> {
         // Placeholder implementation
         Ok(())
     }

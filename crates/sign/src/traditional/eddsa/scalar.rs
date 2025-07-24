@@ -2,9 +2,9 @@
 //!
 //! This module implements arithmetic operations on scalars for Ed25519.
 
-use zeroize::Zeroize;
 use super::constants::CURVE_ORDER;
 use core::convert::TryInto;
+use zeroize::Zeroize;
 
 /// Scalar value modulo L
 #[derive(Clone, Zeroize)]
@@ -14,10 +14,8 @@ pub struct Scalar {
 
 /// 2^256 mod L (precomputed constant)
 const MOD_256: [u8; 32] = [
-    0x1d, 0x95, 0x98, 0x8d, 0x74, 0x31, 0xec, 0xd6,
-    0x70, 0xcf, 0x7d, 0x73, 0xf4, 0x5b, 0xef, 0xc6,
-    0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0f,
+    0x1d, 0x95, 0x98, 0x8d, 0x74, 0x31, 0xec, 0xd6, 0x70, 0xcf, 0x7d, 0x73, 0xf4, 0x5b, 0xef, 0xc6,
+    0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0f,
 ];
 
 impl Scalar {
@@ -47,7 +45,7 @@ fn scalar_mul_small(src: &[u8; 32], k: u8, dst: &mut [u8; 32]) {
 /// Reduce 512-bit scalar to 256-bit scalar modulo L using byte-wise algorithm
 pub fn reduce_scalar_512(input: &[u8; 64], output: &mut [u8; 32]) {
     let mut r = [0u8; 32]; // running remainder
-    
+
     // Process input from most-significant byte first
     for &byte in input.iter().rev() {
         // r = r * 256 (left-shift one byte)
@@ -56,7 +54,7 @@ pub fn reduce_scalar_512(input: &[u8; 64], output: &mut [u8; 32]) {
             r[i] = r[i - 1];
         }
         r[0] = 0;
-        
+
         // If there was a carry, add carry * (2^256 mod L)
         if carry != 0 {
             let mut tmp = [0u8; 32];
@@ -65,7 +63,7 @@ pub fn reduce_scalar_512(input: &[u8; 64], output: &mut [u8; 32]) {
             r_copy.copy_from_slice(&r);
             scalar_add(&r_copy, &tmp, &mut r);
         }
-        
+
         // Add current input byte
         if byte != 0 {
             let mut tmp = [0u8; 32];
@@ -75,7 +73,7 @@ pub fn reduce_scalar_512(input: &[u8; 64], output: &mut [u8; 32]) {
             scalar_add(&r_copy, &tmp, &mut r);
         }
     }
-    
+
     // Final reduction to ensure r < L
     scalar_reduce(&mut r);
     output.copy_from_slice(&r);
@@ -84,13 +82,13 @@ pub fn reduce_scalar_512(input: &[u8; 64], output: &mut [u8; 32]) {
 /// Add two scalars modulo L
 fn scalar_add(a: &[u8; 32], b: &[u8; 32], result: &mut [u8; 32]) {
     let mut carry: u16 = 0;
-    
+
     for i in 0..32 {
         let tmp = a[i] as u16 + b[i] as u16 + carry;
         result[i] = (tmp & 0xFF) as u8;
         carry = tmp >> 8;
     }
-    
+
     // If there's a carry, we need to add 2^256 mod L (not 38!)
     // Add 2^256 mod L for each unit of carry
     let mut extra_carry = carry;
@@ -103,7 +101,7 @@ fn scalar_add(a: &[u8; 32], b: &[u8; 32], result: &mut [u8; 32]) {
         }
         extra_carry = sub_carry;
     }
-    
+
     // Reduce if necessary
     scalar_reduce(result);
 }
@@ -125,8 +123,8 @@ fn scalar_mul(a: &[u8; 32], b: &[u8; 32], result: &mut [u8; 32]) {
     let mut carry: u32 = 0;
     for limb in &mut prod {
         let val = *limb + carry;
-        *limb = val & 0xFF;      // keep low 8 bits
-        carry = val >> 8;        // propagate the rest
+        *limb = val & 0xFF; // keep low 8 bits
+        carry = val >> 8; // propagate the rest
     }
     // Any final carry beyond 512 bits can be ignored; we only keep 64 bytes.
 
@@ -144,16 +142,16 @@ fn scalar_mul(a: &[u8; 32], b: &[u8; 32], result: &mut [u8; 32]) {
 fn scalar_reduce(s: &mut [u8; 32]) {
     // ---- constants ----
     let l_limbs: [u64; 4] = [
-        u64::from_le_bytes(CURVE_ORDER[ 0.. 8].try_into().unwrap()),
-        u64::from_le_bytes(CURVE_ORDER[ 8..16].try_into().unwrap()),
+        u64::from_le_bytes(CURVE_ORDER[0..8].try_into().unwrap()),
+        u64::from_le_bytes(CURVE_ORDER[8..16].try_into().unwrap()),
         u64::from_le_bytes(CURVE_ORDER[16..24].try_into().unwrap()),
         u64::from_le_bytes(CURVE_ORDER[24..32].try_into().unwrap()),
     ];
 
     // ---- load s into four little‑endian 64‑bit limbs ----
     let mut s_limbs = [
-        u64::from_le_bytes(s[ 0.. 8].try_into().unwrap()),
-        u64::from_le_bytes(s[ 8..16].try_into().unwrap()),
+        u64::from_le_bytes(s[0..8].try_into().unwrap()),
+        u64::from_le_bytes(s[8..16].try_into().unwrap()),
         u64::from_le_bytes(s[16..24].try_into().unwrap()),
         u64::from_le_bytes(s[24..32].try_into().unwrap()),
     ];
@@ -165,14 +163,13 @@ fn scalar_reduce(s: &mut [u8; 32]) {
         let mut borrow: u64 = 0;
         for i in 0..4 {
             // full 128‑bit arithmetic to capture the borrow
-            let tmp = (s_limbs[i] as u128)
-                .wrapping_sub(l_limbs[i] as u128 + borrow as u128);
-            diff[i]  =  tmp as u64;
-            borrow   = (tmp >> 127) as u64;        // 1 if we wrapped → s < L
+            let tmp = (s_limbs[i] as u128).wrapping_sub(l_limbs[i] as u128 + borrow as u128);
+            diff[i] = tmp as u64;
+            borrow = (tmp >> 127) as u64; // 1 if we wrapped → s < L
         }
 
         // 2. mask = 0xffff…ffff if s >= L (borrow == 0), else 0x0
-        let mask = borrow.wrapping_sub(1);         // 0→all‑ones, 1→0
+        let mask = borrow.wrapping_sub(1); // 0→all‑ones, 1→0
 
         // 3. choose in constant time
         for i in 0..4 {
@@ -190,7 +187,7 @@ fn scalar_reduce(s: &mut [u8; 32]) {
 pub fn compute_s(r: &[u8; 32], k: &[u8; 32], a: &[u8], s: &mut [u8; 32]) {
     let mut a_array = [0u8; 32];
     a_array.copy_from_slice(&a[0..32]);
-    
+
     let mut ka = [0u8; 32];
     scalar_mul(k, &a_array, &mut ka);
     scalar_add(r, &ka, s);
@@ -203,7 +200,7 @@ pub fn reduce_512_to_scalar(hash: &[u8], output: &mut [u8; 32]) {
         output[0..hash.len().min(32)].copy_from_slice(&hash[0..hash.len().min(32)]);
         return;
     }
-    
+
     let mut hash_array = [0u8; 64];
     hash_array.copy_from_slice(&hash[0..64]);
     reduce_scalar_512(&hash_array, output);
@@ -212,30 +209,30 @@ pub fn reduce_512_to_scalar(hash: &[u8], output: &mut [u8; 32]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_scalar_arithmetic() {
         // Test basic scalar operations
         let a = Scalar::from_bytes(&[1; 32]);
         let b = Scalar::from_bytes(&[2; 32]);
-        
+
         // Test add
         let mut c = [0u8; 32];
         scalar_add(&a.bytes, &b.bytes, &mut c);
         assert!(c != [0; 32]);
-        
+
         // Test mul
         let mut d = [0u8; 32];
         scalar_mul(&a.bytes, &b.bytes, &mut d);
         assert!(d != [0; 32]);
     }
-    
+
     #[test]
     fn test_scalar_reduction() {
         // Test that values larger than L get reduced
         let mut large = [0xffu8; 32];
         scalar_reduce(&mut large);
-        
+
         // Should be reduced to a value less than L
         let mut is_less = false;
         for i in (0..32).rev() {

@@ -1,5 +1,5 @@
+pub mod chacha20poly1305;
 pub mod gcm;
-pub mod chacha20poly1305; 
 
 // Re-export for convenience
 pub use gcm::{Aes128Gcm, Aes256Gcm};

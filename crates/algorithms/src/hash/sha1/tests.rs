@@ -1,4 +1,3 @@
-
 use super::*;
 use hex;
 
@@ -20,7 +19,7 @@ fn test_sha1_abc() {
 fn test_sha1_longer_text() {
     let expected = "84983e441c3bd26ebaae4aa1f95129e5e54670f1";
     let result = hex::encode(
-        Sha1::digest(b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq").unwrap()
+        Sha1::digest(b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq").unwrap(),
     );
     assert_eq!(result, expected);
 }

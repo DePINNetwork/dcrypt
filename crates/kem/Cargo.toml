@@ -82,3 +82,6 @@ harness = false
 [[bench]]
 name = "ecdh_comparison"
 harness = false
+
+[package.metadata.release]
+publish = true

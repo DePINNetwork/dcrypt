@@ -10,7 +10,6 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-
 /// Trait for Public Key Encryption schemes.
 pub trait Pke {
     /// Public key type for the PKE scheme.
@@ -29,9 +28,7 @@ pub trait Pke {
     fn name() -> &'static str;
 
     /// Generates a new key pair for the PKE scheme.
-    fn keypair<R: CryptoRng + RngCore>(
-        rng: &mut R,
-    ) -> Result<(Self::PublicKey, Self::SecretKey)>;
+    fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<(Self::PublicKey, Self::SecretKey)>;
 
     /// Encrypts a plaintext message using the recipient's public key.
     ///

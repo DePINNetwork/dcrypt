@@ -6,9 +6,9 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-pub mod error;
 pub mod ecies;
+pub mod error;
 
 // Re-export key items
-pub use error::{Error, Result};
 pub use ecies::{EciesP192, EciesP224, EciesP256, EciesP384, EciesP521};
+pub use error::{Error, Result};

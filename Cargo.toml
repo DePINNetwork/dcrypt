@@ -108,3 +108,31 @@ thiserror   = { version = "1.0.69" }
 [dev-dependencies]
 criterion = "0.5"
 proptest = "1.0"
+
+[workspace.metadata.release]
+# All crates share the same version
+shared-version = true
+
+# How to handle version updates for dependencies
+dependent-version = "upgrade"
+
+# Use exact versions for internal dependencies
+exactly = true
+
+# Don't automatically push or tag - we'll do it manually
+push = false
+tag = false
+
+# Don't publish automatically - we'll use a separate command
+publish = false
+
+# Create a single commit for all version updates
+consolidate-commits = true
+
+# Commit message template
+pre-release-commit-message = "chore: release version {{version}}"
+
+# For the root package specifically
+[package.metadata.release]
+# The root crate should be published
+publish = true

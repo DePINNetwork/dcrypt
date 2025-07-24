@@ -8,7 +8,11 @@ use rand::rngs::OsRng;
 fn test_ecdsa_p192_keypair_generation() {
     let mut rng = OsRng;
     let keypair_result = EcdsaP192::keypair(&mut rng);
-    assert!(keypair_result.is_ok(), "Keypair generation failed: {:?}", keypair_result.err());
+    assert!(
+        keypair_result.is_ok(),
+        "Keypair generation failed: {:?}",
+        keypair_result.err()
+    );
 }
 
 #[test]
@@ -20,19 +24,29 @@ fn test_ecdsa_p192_sign_verify_roundtrip() {
 
     // Sign the message
     let signature_result = EcdsaP192::sign(message, &secret_key);
-    assert!(signature_result.is_ok(), "Signing failed: {:?}", signature_result.err());
+    assert!(
+        signature_result.is_ok(),
+        "Signing failed: {:?}",
+        signature_result.err()
+    );
     let signature = signature_result.unwrap();
 
     // Verify the signature
     let verification_result = EcdsaP192::verify(message, &signature, &public_key);
-    assert!(verification_result.is_ok(), "Verification failed: {:?}", verification_result.err());
+    assert!(
+        verification_result.is_ok(),
+        "Verification failed: {:?}",
+        verification_result.err()
+    );
 }
 
 #[test]
 fn test_ecdsa_p192_sign_verify_failure_wrong_key() {
     let mut rng = OsRng;
-    let (_public_key1, secret_key1) = EcdsaP192::keypair(&mut rng).expect("Keypair 1 generation failed");
-    let (public_key2, _secret_key2) = EcdsaP192::keypair(&mut rng).expect("Keypair 2 generation failed");
+    let (_public_key1, secret_key1) =
+        EcdsaP192::keypair(&mut rng).expect("Keypair 1 generation failed");
+    let (public_key2, _secret_key2) =
+        EcdsaP192::keypair(&mut rng).expect("Keypair 2 generation failed");
 
     let message = b"Test message for wrong key verification.";
 
@@ -41,7 +55,10 @@ fn test_ecdsa_p192_sign_verify_failure_wrong_key() {
 
     // Verify with pk2 (should fail)
     let verification_result = EcdsaP192::verify(message, &signature, &public_key2);
-    assert!(verification_result.is_err(), "Verification should have failed with wrong public key");
+    assert!(
+        verification_result.is_err(),
+        "Verification should have failed with wrong public key"
+    );
 }
 
 #[test]
@@ -57,7 +74,10 @@ fn test_ecdsa_p192_sign_verify_failure_tampered_message() {
 
     // Verify with the tampered message (should fail)
     let verification_result = EcdsaP192::verify(tampered_message, &signature, &public_key);
-    assert!(verification_result.is_err(), "Verification should have failed with tampered message");
+    assert!(
+        verification_result.is_err(),
+        "Verification should have failed with tampered message"
+    );
 }
 
 #[test]
@@ -74,8 +94,9 @@ fn test_ecdsa_p192_sign_verify_failure_tampered_signature() {
         // Find a byte that is not part of a length or tag if possible to avoid parse error
         // For simplicity, just flip a byte in the middle.
         let mid_index = signature.0.len() / 2;
-        if mid_index > 0 { // Ensure there's something to flip
-             signature.0[mid_index] ^= 0xff;
+        if mid_index > 0 {
+            // Ensure there's something to flip
+            signature.0[mid_index] ^= 0xff;
         } else if !signature.0.is_empty() {
             signature.0[0] ^= 0xff; // if very short, flip first byte
         }
@@ -85,10 +106,9 @@ fn test_ecdsa_p192_sign_verify_failure_tampered_signature() {
         signature.0.push(0xff);
     }
 
-
     // Verify with the tampered signature (should fail) - FIXED: Changed EcdsaP224 to EcdsaP192
     let verification_result = EcdsaP192::verify(message, &signature, &public_key);
-     match verification_result {
+    match verification_result {
         Ok(_) => panic!("Verification should have failed with tampered signature"),
         Err(ApiError::InvalidSignature { .. }) => { /* Expected */ }
         Err(e) => panic!("Verification failed with unexpected error: {:?}", e),

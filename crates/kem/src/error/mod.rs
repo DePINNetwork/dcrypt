@@ -3,49 +3,49 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::fmt;
-use dcrypt_api::error::Error as CoreError;
 use dcrypt_algorithms::error::Error as PrimitiveError;
+use dcrypt_api::error::Error as CoreError;
 
 /// Error type for KEM operations
 #[derive(Debug)]
 pub enum Error {
     /// Primitive error
     Primitive(PrimitiveError),
-    
+
     /// KEM-specific errors
-    KeyGeneration { 
+    KeyGeneration {
         algorithm: &'static str,
-        details: &'static str 
+        details: &'static str,
     },
-    
-    Encapsulation { 
+
+    Encapsulation {
         algorithm: &'static str,
-        details: &'static str 
+        details: &'static str,
     },
-    
-    Decapsulation { 
+
+    Decapsulation {
         algorithm: &'static str,
-        details: &'static str 
+        details: &'static str,
     },
-    
+
     /// Invalid key format
-    InvalidKey { 
+    InvalidKey {
         key_type: &'static str,
-        reason: &'static str 
+        reason: &'static str,
     },
-    
+
     /// Invalid ciphertext format
-    InvalidCiphertext { 
+    InvalidCiphertext {
         algorithm: &'static str,
-        reason: &'static str 
+        reason: &'static str,
     },
-    
+
     /// Serialization/deserialization errors
-    Serialization { 
+    Serialization {
         context: &'static str,
-        details: &'static str 
+        details: &'static str,
     },
-    
+
     /// I/O error (only when std is available)
     #[cfg(feature = "std")]
     Io(std::io::Error),
@@ -56,30 +56,20 @@ impl Clone for Error {
     fn clone(&self) -> Self {
         match self {
             Error::Primitive(e) => Error::Primitive(e.clone()),
-            Error::KeyGeneration { algorithm, details } => Error::KeyGeneration { 
-                algorithm, 
-                details 
-            },
-            Error::Encapsulation { algorithm, details } => Error::Encapsulation { 
-                algorithm, 
-                details 
-            },
-            Error::Decapsulation { algorithm, details } => Error::Decapsulation { 
-                algorithm, 
-                details 
-            },
-            Error::InvalidKey { key_type, reason } => Error::InvalidKey { 
-                key_type, 
-                reason 
-            },
-            Error::InvalidCiphertext { algorithm, reason } => Error::InvalidCiphertext { 
-                algorithm, 
-                reason 
-            },
-            Error::Serialization { context, details } => Error::Serialization { 
-                context, 
-                details 
-            },
+            Error::KeyGeneration { algorithm, details } => {
+                Error::KeyGeneration { algorithm, details }
+            }
+            Error::Encapsulation { algorithm, details } => {
+                Error::Encapsulation { algorithm, details }
+            }
+            Error::Decapsulation { algorithm, details } => {
+                Error::Decapsulation { algorithm, details }
+            }
+            Error::InvalidKey { key_type, reason } => Error::InvalidKey { key_type, reason },
+            Error::InvalidCiphertext { algorithm, reason } => {
+                Error::InvalidCiphertext { algorithm, reason }
+            }
+            Error::Serialization { context, details } => Error::Serialization { context, details },
             #[cfg(feature = "std")]
             Error::Io(e) => Error::Io(std::io::Error::new(e.kind(), e.to_string())),
         }
@@ -95,22 +85,22 @@ impl fmt::Display for Error {
             Error::Primitive(e) => write!(f, "Primitive error: {}", e),
             Error::KeyGeneration { algorithm, details } => {
                 write!(f, "Key generation error for {}: {}", algorithm, details)
-            },
+            }
             Error::Encapsulation { algorithm, details } => {
                 write!(f, "Encapsulation error for {}: {}", algorithm, details)
-            },
+            }
             Error::Decapsulation { algorithm, details } => {
                 write!(f, "Decapsulation error for {}: {}", algorithm, details)
-            },
+            }
             Error::InvalidKey { key_type, reason } => {
                 write!(f, "Invalid {} key: {}", key_type, reason)
-            },
+            }
             Error::InvalidCiphertext { algorithm, reason } => {
                 write!(f, "Invalid {} ciphertext: {}", algorithm, reason)
-            },
+            }
             Error::Serialization { context, details } => {
                 write!(f, "Serialization error in {}: {}", context, details)
-            },
+            }
             #[cfg(feature = "std")]
             Error::Io(e) => write!(f, "I/O error: {}", e),
         }

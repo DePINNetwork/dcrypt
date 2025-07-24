@@ -6,7 +6,7 @@ use crate::Result;
 pub trait Serialize: Sized {
     /// Convert the object to a byte array
     fn to_bytes(&self) -> Result<Vec<u8>>;
-    
+
     /// Create an object from a byte array
     fn from_bytes(bytes: &[u8]) -> Result<Self>;
 }

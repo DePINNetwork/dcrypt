@@ -42,14 +42,14 @@ impl SecurityLevel {
             SecurityLevel::Custom(bits) => *bits,
         }
     }
-    
+
     /// Get the recommended output size in bytes for this security level
     pub fn recommended_output_size(&self) -> usize {
         // For KDFs, output size is typically twice the security level
         // to account for birthday attacks
         (self.bits() / 4) as usize
     }
-    
+
     /// Check if this security level meets a minimum requirement
     pub fn meets_minimum(&self, minimum: SecurityLevel) -> bool {
         self.bits() >= minimum.bits()
@@ -74,18 +74,18 @@ pub fn generate_salt(len: usize) -> Zeroizing<Vec<u8>> {
 }
 
 /// Generate a random salt of the given length (embedded version)
-/// 
+///
 /// Note: This requires a custom RNG implementation for embedded platforms
 #[cfg(all(feature = "alloc", not(feature = "std"), not(target_arch = "wasm32")))]
 pub fn generate_salt(len: usize) -> Zeroizing<Vec<u8>> {
     // NOTE: In a real embedded implementation, you would need to provide
     // a cryptographically secure RNG here. This is a placeholder.
     let mut salt = vec![0u8; len];
-    
+
     // TODO: Replace with actual embedded RNG implementation
     // For now, this just returns zeroed memory which is NOT secure
     // Example: embedded_rng::fill_bytes(&mut salt);
-    
+
     Zeroizing::new(salt)
 }
 
@@ -93,9 +93,9 @@ pub fn generate_salt(len: usize) -> Zeroizing<Vec<u8>> {
 #[cfg(all(feature = "alloc", target_arch = "wasm32", not(feature = "std")))]
 pub fn generate_salt(len: usize) -> Zeroizing<Vec<u8>> {
     let mut salt = vec![0u8; len];
-    
+
     // For WASM, we can use getrandom which works in browser environments
     getrandom::getrandom(&mut salt).expect("Failed to generate random bytes");
-    
+
     Zeroizing::new(salt)
 }

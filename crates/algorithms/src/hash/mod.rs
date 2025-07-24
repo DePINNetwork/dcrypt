@@ -9,18 +9,18 @@ use alloc::vec::Vec;
 use crate::error::Result;
 use crate::types::Digest;
 
+pub mod blake2;
 pub mod sha1;
 pub mod sha2;
 pub mod sha3;
 pub mod shake;
-pub mod blake2;
 
 // Re-exports
+pub use blake2::{Blake2b, Blake2s};
 pub use sha1::Sha1;
 pub use sha2::{Sha224, Sha256, Sha384, Sha512};
 pub use sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
 pub use shake::{Shake128, Shake256};
-pub use blake2::{Blake2b, Blake2s};
 
 /// A byte-vector hash result for backward compatibility.
 pub type Hash = Vec<u8>;
@@ -29,13 +29,13 @@ pub type Hash = Vec<u8>;
 pub trait HashAlgorithm {
     /// Output size in bytes
     const OUTPUT_SIZE: usize;
-    
+
     /// Block size in bytes
     const BLOCK_SIZE: usize;
-    
+
     /// Static algorithm identifier for compile-time checking
     const ALGORITHM_ID: &'static str;
-    
+
     /// Algorithm name for display purposes
     fn name() -> String {
         Self::ALGORITHM_ID.to_string()
@@ -64,10 +64,10 @@ pub trait HashAlgorithm {
 pub trait HashFunction: Sized {
     /// The algorithm type that defines constants and properties
     type Algorithm: HashAlgorithm;
-    
+
     /// The output digest type with size guarantees
     type Output: AsRef<[u8]> + AsMut<[u8]> + Clone;
-    
+
     /// Creates a new instance of the hash function.
     fn new() -> Self;
 
@@ -105,7 +105,7 @@ pub trait HashFunction: Sized {
     fn name() -> String {
         Self::Algorithm::name()
     }
-    
+
     /// Convenience method to verify a hash against input data
     fn verify(data: &[u8], expected: &Self::Output) -> Result<bool>
     where
@@ -134,18 +134,18 @@ impl HashAlgorithm for Sha256Algorithm {
 impl HashFunction for EnhancedSha256 {
     type Algorithm = Sha256Algorithm;
     type Output = Digest<32>;
-    
+
     fn new() -> Self {
         Self {
             inner: sha2::Sha256::new(),
         }
     }
-    
+
     fn update(&mut self, data: &[u8]) -> Result<&mut Self> {
         self.inner.update(data)?;
         Ok(self)
     }
-    
+
     fn finalize(&mut self) -> Result<Self::Output> {
         self.inner.finalize()
     }

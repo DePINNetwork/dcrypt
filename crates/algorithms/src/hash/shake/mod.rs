@@ -10,14 +10,14 @@ use alloc::vec::Vec;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::error::Result;
-use crate::hash::{HashFunction, HashAlgorithm};
+use crate::hash::{HashAlgorithm, HashFunction};
 use crate::types::Digest;
 
 /// Default output size for SHAKE128 (256 bits / 32 bytes)
-pub const SHAKE128_OUTPUT_SIZE: usize = 32;  // 256 bits
+pub const SHAKE128_OUTPUT_SIZE: usize = 32; // 256 bits
 
 /// Default output size for SHAKE256 (512 bits / 64 bytes)
-pub const SHAKE256_OUTPUT_SIZE: usize = 64;  // 512 bits
+pub const SHAKE256_OUTPUT_SIZE: usize = 64; // 512 bits
 
 // SHAKE rates (in bytes): r = 1600 - 2*security_level
 const SHAKE128_RATE: usize = 168; // 1600 - 2*128 = 1344 bits = 168 bytes
@@ -29,24 +29,40 @@ const KECCAK_STATE_SIZE: usize = 25; // 5x5 of 64-bit words
 
 // Round constants for Keccak
 const RC: [u64; KECCAK_ROUNDS] = [
-    0x0000000000000001, 0x0000000000008082, 0x800000000000808A, 0x8000000080008000,
-    0x000000000000808B, 0x0000000080000001, 0x8000000080008081, 0x8000000000008009,
-    0x000000000000008A, 0x0000000000000088, 0x0000000080008009, 0x000000008000000A,
-    0x000000008000808B, 0x800000000000008B, 0x8000000000008089, 0x8000000000008003,
-    0x8000000000008002, 0x8000000000000080, 0x000000000000800A, 0x800000008000000A,
-    0x8000000080008081, 0x8000000000008080, 0x0000000080000001, 0x8000000080008008,
+    0x0000000000000001,
+    0x0000000000008082,
+    0x800000000000808A,
+    0x8000000080008000,
+    0x000000000000808B,
+    0x0000000080000001,
+    0x8000000080008081,
+    0x8000000000008009,
+    0x000000000000008A,
+    0x0000000000000088,
+    0x0000000080008009,
+    0x000000008000000A,
+    0x000000008000808B,
+    0x800000000000008B,
+    0x8000000000008089,
+    0x8000000000008003,
+    0x8000000000008002,
+    0x8000000000000080,
+    0x000000000000800A,
+    0x800000008000000A,
+    0x8000000080008081,
+    0x8000000000008080,
+    0x0000000080000001,
+    0x8000000080008008,
 ];
 
 // Rotation offsets
 const RHO: [u32; 24] = [
-    1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 2, 14,
-    27, 41, 56, 8, 25, 43, 62, 18, 39, 61, 20, 44,
+    1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 2, 14, 27, 41, 56, 8, 25, 43, 62, 18, 39, 61, 20, 44,
 ];
 
 // Mapping from index positions to x,y coordinates in the state array
 const PI: [usize; 24] = [
-    10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4,
-    15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1,
+    10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4, 15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1,
 ];
 
 /// Marker type for SHAKE128 algorithm
@@ -98,7 +114,7 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
         }
         for y in 0..5 {
             for x in 0..5 {
-                state[x + 5*y] ^= d[x];
+                state[x + 5 * y] ^= d[x];
             }
         }
 
@@ -108,18 +124,18 @@ fn keccak_f1600(state: &mut [u64; KECCAK_STATE_SIZE]) {
         let mut y = 0;
         b[0] = state[0];
         for i in 0..24 {
-            let idx = x + 5*y;
+            let idx = x + 5 * y;
             b[PI[i]] = state[idx].rotate_left(RHO[i]);
             let temp = y;
-            y = (2*x + 3*y) % 5;
+            y = (2 * x + 3 * y) % 5;
             x = temp;
         }
 
         // Chi step
         for y in 0..5 {
             for x in 0..5 {
-                let idx = x + 5*y;
-                state[idx] = b[idx] ^ ((!b[(x + 1) % 5 + 5*y]) & b[(x + 2) % 5 + 5*y]);
+                let idx = x + 5 * y;
+                state[idx] = b[idx] ^ ((!b[(x + 1) % 5 + 5 * y]) & b[(x + 2) % 5 + 5 * y]);
             }
         }
 
@@ -136,7 +152,7 @@ impl Shake128 {
             buffer_idx: 0,
         }
     }
-    
+
     fn update_internal(&mut self, data: &[u8]) -> Result<()> {
         let mut idx = 0;
 
@@ -153,7 +169,7 @@ impl Shake128 {
                 for (i, chunk) in self.buffer.chunks_exact(8).enumerate() {
                     let mut lane = 0u64;
                     for (j, &b) in chunk.iter().enumerate() {
-                        lane |= (b as u64) << (8*j);
+                        lane |= (b as u64) << (8 * j);
                     }
                     self.state[i] ^= lane;
                 }
@@ -168,7 +184,7 @@ impl Shake128 {
             for (i, chunk) in block.chunks_exact(8).enumerate() {
                 let mut lane = 0u64;
                 for (j, &b) in chunk.iter().enumerate() {
-                    lane |= (b as u64) << (8*j);
+                    lane |= (b as u64) << (8 * j);
                 }
                 self.state[i] ^= lane;
             }
@@ -185,19 +201,19 @@ impl Shake128 {
 
         Ok(())
     }
-    
+
     fn finalize_internal(&mut self) -> Result<Vec<u8>> {
         // Padding: SHAKE domain separator 0x1F, then pad with zeros and final 0x80
         let mut pad_block = [0u8; SHAKE128_RATE];
         pad_block[..self.buffer_idx].copy_from_slice(&self.buffer[..self.buffer_idx]);
         pad_block[self.buffer_idx] = 0x1F;
-        pad_block[SHAKE128_RATE-1] |= 0x80;
+        pad_block[SHAKE128_RATE - 1] |= 0x80;
 
         // Absorb final block
         for (i, chunk) in pad_block.chunks_exact(8).enumerate() {
             let mut lane = 0u64;
             for (j, &b) in chunk.iter().enumerate() {
-                lane |= (b as u64) << (8*j);
+                lane |= (b as u64) << (8 * j);
             }
             self.state[i] ^= lane;
         }
@@ -206,25 +222,25 @@ impl Shake128 {
         // Squeeze output
         let mut result = vec![0u8; SHAKE128_OUTPUT_SIZE];
         let mut offset = 0;
-        
+
         while offset < SHAKE128_OUTPUT_SIZE {
             let to_copy = (SHAKE128_OUTPUT_SIZE - offset).min(SHAKE128_RATE);
-            
+
             // Extract bytes from state
             for i in 0..to_copy {
                 let lane_idx = i / 8;
                 let byte_idx = i % 8;
                 result[offset + i] = ((self.state[lane_idx] >> (8 * byte_idx)) & 0xFF) as u8;
             }
-            
+
             offset += to_copy;
-            
+
             // Apply Keccak-f[1600] permutation if more output is needed
             if offset < SHAKE128_OUTPUT_SIZE {
                 keccak_f1600(&mut self.state);
             }
         }
-        
+
         Ok(result)
     }
 }
@@ -237,7 +253,7 @@ impl Shake256 {
             buffer_idx: 0,
         }
     }
-    
+
     fn update_internal(&mut self, data: &[u8]) -> Result<()> {
         let mut idx = 0;
 
@@ -254,7 +270,7 @@ impl Shake256 {
                 for (i, chunk) in self.buffer.chunks_exact(8).enumerate() {
                     let mut lane = 0u64;
                     for (j, &b) in chunk.iter().enumerate() {
-                        lane |= (b as u64) << (8*j);
+                        lane |= (b as u64) << (8 * j);
                     }
                     self.state[i] ^= lane;
                 }
@@ -269,7 +285,7 @@ impl Shake256 {
             for (i, chunk) in block.chunks_exact(8).enumerate() {
                 let mut lane = 0u64;
                 for (j, &b) in chunk.iter().enumerate() {
-                    lane |= (b as u64) << (8*j);
+                    lane |= (b as u64) << (8 * j);
                 }
                 self.state[i] ^= lane;
             }
@@ -286,19 +302,19 @@ impl Shake256 {
 
         Ok(())
     }
-    
+
     fn finalize_internal(&mut self) -> Result<Vec<u8>> {
         // Padding: SHAKE domain separator 0x1F, then pad with zeros and final 0x80
         let mut pad_block = [0u8; SHAKE256_RATE];
         pad_block[..self.buffer_idx].copy_from_slice(&self.buffer[..self.buffer_idx]);
         pad_block[self.buffer_idx] = 0x1F;
-        pad_block[SHAKE256_RATE-1] |= 0x80;
+        pad_block[SHAKE256_RATE - 1] |= 0x80;
 
         // Absorb final block
         for (i, chunk) in pad_block.chunks_exact(8).enumerate() {
             let mut lane = 0u64;
             for (j, &b) in chunk.iter().enumerate() {
-                lane |= (b as u64) << (8*j);
+                lane |= (b as u64) << (8 * j);
             }
             self.state[i] ^= lane;
         }
@@ -307,25 +323,25 @@ impl Shake256 {
         // Squeeze output
         let mut result = vec![0u8; SHAKE256_OUTPUT_SIZE];
         let mut offset = 0;
-        
+
         while offset < SHAKE256_OUTPUT_SIZE {
             let to_copy = (SHAKE256_OUTPUT_SIZE - offset).min(SHAKE256_RATE);
-            
+
             // Extract bytes from state
             for i in 0..to_copy {
                 let lane_idx = i / 8;
                 let byte_idx = i % 8;
                 result[offset + i] = ((self.state[lane_idx] >> (8 * byte_idx)) & 0xFF) as u8;
             }
-            
+
             offset += to_copy;
-            
+
             // Apply Keccak-f[1600] permutation if more output is needed
             if offset < SHAKE256_OUTPUT_SIZE {
                 keccak_f1600(&mut self.state);
             }
         }
-        
+
         Ok(result)
     }
 }

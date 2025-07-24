@@ -1,7 +1,7 @@
 //! sect283k1 scalar arithmetic operations
 
 use crate::ec::b283k::constants::B283K_SCALAR_SIZE;
-use crate::error::{Error, Result, validate};
+use crate::error::{validate, Error, Result};
 use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -11,7 +11,7 @@ pub struct Scalar(SecretBuffer<B283K_SCALAR_SIZE>);
 
 impl Scalar {
     /// Create a new scalar from raw bytes.
-    /// 
+    ///
     /// The bytes will be reduced modulo the curve order if necessary.
     /// The most significant bit is masked to ensure the scalar is < 2^283.
     /// Returns an error if the resulting scalar would be zero.
@@ -21,7 +21,7 @@ impl Scalar {
     }
 
     /// Create a scalar from a `SecretBuffer`.
-    /// 
+    ///
     /// The buffer contents will be reduced modulo the curve order if necessary.
     /// Returns an error if the resulting scalar would be zero.
     pub fn from_secret_buffer(buffer: SecretBuffer<B283K_SCALAR_SIZE>) -> Result<Self> {
@@ -83,16 +83,17 @@ impl Scalar {
         }
 
         if bytes.iter().all(|&b| b == 0) {
-            return Err(Error::param("B283k Scalar", "Reduction resulted in zero scalar"));
+            return Err(Error::param(
+                "B283k Scalar",
+                "Reduction resulted in zero scalar",
+            ));
         }
         Ok(())
     }
 
     const ORDER: [u8; 36] = [
-        0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0xFF, 0xFE, 0x96, 0xE4, 0x04, 0x28, 0x2D, 0xD3,
-        0x23, 0x22, 0x83, 0xE5,
+        0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0x96, 0xE4, 0x04, 0x28,
+        0x2D, 0xD3, 0x23, 0x22, 0x83, 0xE5,
     ];
 }

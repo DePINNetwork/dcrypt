@@ -2,9 +2,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod types;
 pub mod registry;
 pub mod traits;
+pub mod types;
 pub mod validate;
 
 // Re-export the primary error type and result
@@ -25,8 +25,8 @@ impl From<std::array::TryFromSliceError> for Error {
     fn from(_: std::array::TryFromSliceError) -> Self {
         Self::InvalidLength {
             context: "array conversion",
-            expected: 0,  // Unknown expected size
-            actual: 0,    // Unknown actual size
+            expected: 0, // Unknown expected size
+            actual: 0,   // Unknown actual size
         }
     }
 }

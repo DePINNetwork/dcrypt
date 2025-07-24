@@ -8,8 +8,8 @@
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;
 
-pub mod traits;
 pub mod error;
+pub mod traits;
 pub mod types;
 
 // Re-export commonly used items at the crate level for convenience
@@ -18,16 +18,9 @@ pub use types::*;
 
 // Re-export all traits from the traits module
 pub use traits::{
-    Kem,
-    Signature,
-    SymmetricCipher,
-    Serialize,
-    BlockCipher,
-    StreamCipher,
-    AuthenticatedCipher,
-    KeyDerivationFunction,
-    HashAlgorithm,
+    AuthenticatedCipher, BlockCipher, HashAlgorithm, Kem, KeyDerivationFunction, Serialize,
+    Signature, StreamCipher, SymmetricCipher,
 };
 
 // Re-export trait modules for direct access
-pub use traits::{kem, signature, symmetric, serialize};
+pub use traits::{kem, serialize, signature, symmetric};

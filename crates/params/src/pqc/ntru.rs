@@ -4,25 +4,25 @@
 pub struct NtruHpsParams {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Padding parameter
     pub p: u16,
-    
+
     /// Weight of private key
     pub d: usize,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Ciphertext size in bytes
     pub ciphertext_size: usize,
-    
+
     /// Shared secret size in bytes
     pub shared_secret_size: usize,
 }
@@ -67,22 +67,22 @@ pub const NTRU_HPS_4096_821: NtruHpsParams = NtruHpsParams {
 pub struct NtruHrssParams {
     /// Polynomial degree
     pub n: usize,
-    
+
     /// Modulus
     pub q: u16,
-    
+
     /// Padding parameter
     pub p: u16,
-    
+
     /// Public key size in bytes
     pub public_key_size: usize,
-    
+
     /// Secret key size in bytes
     pub secret_key_size: usize,
-    
+
     /// Ciphertext size in bytes
     pub ciphertext_size: usize,
-    
+
     /// Shared secret size in bytes
     pub shared_secret_size: usize,
 }

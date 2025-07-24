@@ -1,7 +1,7 @@
 //! Error registry for secure error handling
 
-use core::sync::atomic::{AtomicPtr, Ordering};
 use core::ptr::null_mut;
+use core::sync::atomic::{AtomicPtr, Ordering};
 
 /// Global error registry for recording errors during constant-time operations
 pub static ERROR_REGISTRY: ErrorRegistry = ErrorRegistry::new();
@@ -18,7 +18,7 @@ impl ErrorRegistry {
             error: AtomicPtr::new(null_mut()),
         }
     }
-    
+
     /// Store an error in the registry
     pub fn store<E>(&self, error: E) {
         // For simplicity, we use std allocation since that's the default feature
@@ -28,7 +28,7 @@ impl ErrorRegistry {
             // Store the error as a trait object
             let boxed = Box::into_raw(Box::new(error));
             let old = self.error.swap(boxed as *mut (), Ordering::SeqCst);
-            
+
             // Clean up any old error to avoid memory leaks
             if !old.is_null() {
                 unsafe {
@@ -36,16 +36,16 @@ impl ErrorRegistry {
                 }
             }
         }
-        
+
         // In no-std environments, we can't store the error
         #[cfg(not(feature = "std"))]
         {
             let _ = error; // Avoid unused variable warning
-            // Simply set a non-null pointer to indicate an error occurred
+                           // Simply set a non-null pointer to indicate an error occurred
             self.error.store(1 as *mut (), Ordering::SeqCst);
         }
     }
-    
+
     /// Clear any stored error
     pub fn clear(&self) {
         #[cfg(feature = "std")]
@@ -57,18 +57,18 @@ impl ErrorRegistry {
                 }
             }
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             self.error.store(null_mut(), Ordering::SeqCst);
         }
     }
-    
+
     /// Check if an error is present
     pub fn has_error(&self) -> bool {
         !self.error.load(Ordering::SeqCst).is_null()
     }
-    
+
     /// Get a copy of the last error, if any
     #[cfg(feature = "std")]
     pub fn get_error<E: Clone>(&self) -> Option<E> {

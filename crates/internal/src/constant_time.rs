@@ -1,6 +1,6 @@
 //! Constant-time operations to prevent timing attacks
 
-use subtle::{ConstantTimeEq, Choice, ConditionallySelectable};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 /// Constant-time comparison of two byte slices
 ///
@@ -39,9 +39,9 @@ where
 /// This function runs in constant time regardless of the input values.
 pub fn ct_assign(dst: &mut [u8], src: &[u8], condition: bool) {
     assert_eq!(dst.len(), src.len());
-    
+
     let choice = Choice::from(condition as u8);
-    
+
     for i in 0..dst.len() {
         dst[i] = u8::conditional_select(&dst[i], &src[i], choice);
     }
@@ -113,13 +113,13 @@ where
 {
     let choice = Choice::from(condition as u8);
     let mut result = [0u8; N];
-    
+
     for i in 0..N {
         // If condition is true, apply op(a[i], b[i]), otherwise keep a[i]
         let operated = op(a[i], b[i]);
         result[i] = u8::conditional_select(&a[i], &operated, choice);
     }
-    
+
     result
 }
 

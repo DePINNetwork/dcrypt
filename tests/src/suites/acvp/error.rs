@@ -7,19 +7,19 @@ use thiserror::Error;
 pub enum EngineError {
     #[error("hex decode error: {0}")]
     Hex(#[from] hex::FromHexError),
-    
+
     #[error("crypto operation failed: {0}")]
     Crypto(String),
-    
+
     #[error("unsupported key size: {0} bytes")]
     KeySize(usize),
-    
+
     #[error("missing required field: {0}")]
     MissingField(&'static str),
-    
+
     #[error("mismatch - expected: {expected}, got: {actual}")]
     Mismatch { expected: String, actual: String },
-    
+
     #[error("invalid data: {0}")]
     InvalidData(String),
 }

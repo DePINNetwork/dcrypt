@@ -1,8 +1,8 @@
 //! secp256k1 field arithmetic implementation.
 //! Field prime p = 2^256 - 2^32 - 977.
 
-use crate::error::{Error, Result};
 use crate::ec::k256::constants::K256_FIELD_ELEMENT_SIZE;
+use crate::error::{Error, Result};
 use subtle::{Choice, ConditionallySelectable};
 
 /// secp256k1 field element representing values in F_p
@@ -12,8 +12,14 @@ pub struct FieldElement(pub(crate) [u32; 8]);
 impl FieldElement {
     /// The secp256k1 prime modulus: p = 2^256 - 2^32 - 977
     pub(crate) const MOD_LIMBS: [u32; 8] = [
-        0xFFFF_FC2F, 0xFFFF_FFFE, 0xFFFF_FFFF, 0xFFFF_FFFF,
-        0xFFFF_FFFF, 0xFFFF_FFFF, 0xFFFF_FFFF, 0xFFFF_FFFF,
+        0xFFFF_FC2F,
+        0xFFFF_FFFE,
+        0xFFFF_FFFF,
+        0xFFFF_FFFF,
+        0xFFFF_FFFF,
+        0xFFFF_FFFF,
+        0xFFFF_FFFF,
+        0xFFFF_FFFF,
     ];
 
     /// The additive identity element: 0
@@ -29,19 +35,25 @@ impl FieldElement {
     }
 
     /// Create a field element from its canonical byte representation.
-    /// 
+    ///
     /// Returns an error if the value is greater than or equal to the field modulus.
     pub fn from_bytes(bytes: &[u8; K256_FIELD_ELEMENT_SIZE]) -> Result<Self> {
         let mut limbs = [0u32; 8];
         for (i, limb) in limbs.iter_mut().enumerate() {
             let offset = (7 - i) * 4;
             *limb = u32::from_be_bytes([
-                bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3],
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
             ]);
         }
         let fe = FieldElement(limbs);
         if !fe.is_valid() {
-            return Err(Error::param("FieldElement K256", "Value must be less than the field modulus"));
+            return Err(Error::param(
+                "FieldElement K256",
+                "Value must be less than the field modulus",
+            ));
         }
         Ok(fe)
     }
@@ -122,30 +134,32 @@ impl FieldElement {
     pub fn square(&self) -> Self {
         self.mul(self)
     }
-    
+
     /// Double a field element (multiply by 2) modulo p.
     pub fn double(&self) -> Self {
         self.add(self)
     }
-    
+
     /// Compute the multiplicative inverse of a field element.
-    /// 
+    ///
     /// Returns an error if the element is zero.
     pub fn invert(&self) -> Result<Self> {
         if self.is_zero() {
-            return Err(Error::param("FieldElement K256", "Inversion of zero is undefined"));
+            return Err(Error::param(
+                "FieldElement K256",
+                "Inversion of zero is undefined",
+            ));
         }
         const P_MINUS_2: [u8; 32] = [
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2D,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
+            0xFF, 0xFF, 0xFC, 0x2D,
         ];
         self.pow(&P_MINUS_2)
     }
 
     /// Compute the square root of a field element.
-    /// 
+    ///
     /// Returns None if the element is not a quadratic residue.
     pub fn sqrt(&self) -> Option<Self> {
         if self.is_zero() {
@@ -153,10 +167,9 @@ impl FieldElement {
         }
         // p mod 4 = 3, so sqrt(a) = a^((p+1)/4)
         const P_PLUS_1_DIV_4: [u8; 32] = [
-            0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xBF, 0xFF, 0xFF, 0x0C,
+            0x3F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xBF, 0xFF, 0xFF, 0x0C,
         ];
         let root = self.pow(&P_PLUS_1_DIV_4).ok()?;
         if root.square() == *self {
@@ -198,7 +211,7 @@ impl FieldElement {
         }
         (r, carry as u32)
     }
-    
+
     fn sbb8(a: [u32; 8], b: [u32; 8]) -> ([u32; 8], u32) {
         let mut r = [0u32; 8];
         let mut borrow: i64 = 0;
@@ -216,18 +229,18 @@ impl FieldElement {
         // For p = 2^256 - 2^32 - 977, we can use the fact that
         // 2^256 ≡ 2^32 + 977 (mod p)
         // This allows us to reduce the high 256 bits efficiently
-        
+
         // Split t into low 256 bits (t_low) and high 256 bits (t_high)
         let mut t_low = [0u32; 8];
         let mut t_high = [0u32; 8];
         t_low.copy_from_slice(&t[..8]);
         t_high.copy_from_slice(&t[8..]);
-        
+
         // We need to compute: t_low + t_high * 2^256
         // Since 2^256 ≡ 2^32 + 977 (mod p), we compute:
         // t_low + t_high * (2^32 + 977)
         // = t_low + (t_high << 32) + t_high * 977
-        
+
         // First, compute t_high * 977
         let mut t_high_977 = [0u64; 9];
         for i in 0..8 {
@@ -238,42 +251,42 @@ impl FieldElement {
             t_high_977[i + 1] += t_high_977[i] >> 32;
             t_high_977[i] &= 0xFFFF_FFFF;
         }
-        
+
         // Now add: t_low + (t_high << 32) + t_high_977
         let mut result = [0u64; 9];
-        
+
         // Add t_low
         for i in 0..8 {
             result[i] += t_low[i] as u64;
         }
-        
+
         // Add t_high << 32 (which means t_high[i] goes to position i+1)
         for i in 0..8 {
             result[i + 1] += t_high[i] as u64;
         }
-        
+
         // Add t_high_977
         for i in 0..9 {
             result[i] += t_high_977[i];
         }
-        
+
         // Propagate all carries
         for i in 0..8 {
             result[i + 1] += result[i] >> 32;
             result[i] &= 0xFFFF_FFFF;
         }
-        
+
         // If result[8] is non-zero, we need another reduction step
         if result[8] > 0 {
             // result[8] * 2^256 ≡ result[8] * (2^32 + 977) (mod p)
             let overflow = result[8];
             result[8] = 0;
-            
+
             // Add overflow * 977 to result[0]
             result[0] += overflow * 977;
             // Add overflow to result[1] (for the 2^32 part)
             result[1] += overflow;
-            
+
             // Propagate carries again
             for i in 0..8 {
                 if i < 7 {
@@ -282,13 +295,13 @@ impl FieldElement {
                 result[i] &= 0xFFFF_FFFF;
             }
         }
-        
+
         // Convert back to u32 array
         let mut r = [0u32; 8];
         for i in 0..8 {
             r[i] = result[i] as u32;
         }
-        
+
         // Final reduction if r >= p
         let fe = FieldElement(r);
         if !fe.is_valid() {
@@ -303,12 +316,12 @@ impl FieldElement {
 #[cfg(test)]
 mod field_constants_tests {
     use super::*;
-    
+
     #[test]
     fn test_modulus_is_correct() {
         // The correct secp256k1 prime in hex:
         // p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
-        
+
         // Convert MOD_LIMBS to bytes for comparison
         let mut mod_bytes = [0u8; 32];
         for (i, &limb) in FieldElement::MOD_LIMBS.iter().enumerate() {
@@ -316,15 +329,17 @@ mod field_constants_tests {
             let offset = (7 - i) * 4;
             mod_bytes[offset..offset + 4].copy_from_slice(&limb_bytes);
         }
-        
+
         // Expected prime as bytes
         let expected_bytes: [u8; 32] = [
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2F,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
+            0xFF, 0xFF, 0xFC, 0x2F,
         ];
-        
-        assert_eq!(mod_bytes, expected_bytes, "MOD_LIMBS does not encode the correct secp256k1 prime");
+
+        assert_eq!(
+            mod_bytes, expected_bytes,
+            "MOD_LIMBS does not encode the correct secp256k1 prime"
+        );
     }
 }

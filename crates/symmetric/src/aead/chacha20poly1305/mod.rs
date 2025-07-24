@@ -56,7 +56,7 @@
 //! ## Encrypted Package Format
 //!
 //! ```
-//! use dcrypt_symmetric::{ChaCha20Poly1305Cipher, ChaCha20Poly1305Key, 
+//! use dcrypt_symmetric::{ChaCha20Poly1305Cipher, ChaCha20Poly1305Key,
 //!     ChaCha20Poly1305CiphertextPackage}; // Corrected
 //! use dcrypt_symmetric::{SymmetricCipher, Aead}; // Corrected
 //! use dcrypt_symmetric::Result; // Corrected
@@ -126,18 +126,18 @@
 //! }
 //! ```
 
-mod common;
 mod cipher;
+mod common;
 // No longer need to include the streaming module here
 
 // Re-export common types and functions
 pub use common::{
-    ChaCha20Poly1305Key, ChaCha20Poly1305Nonce, ChaCha20Poly1305CiphertextPackage,
-    derive_chacha20poly1305_key, generate_salt
+    derive_chacha20poly1305_key, generate_salt, ChaCha20Poly1305CiphertextPackage,
+    ChaCha20Poly1305Key, ChaCha20Poly1305Nonce,
 };
 
 // Re-export cipher implementations
 pub use cipher::{ChaCha20Poly1305Cipher, XChaCha20Poly1305Cipher, XChaCha20Poly1305Nonce};
 
 // Re-export from crate::cipher for convenience
-pub use crate::cipher::{SymmetricCipher, Aead};
+pub use crate::cipher::{Aead, SymmetricCipher};

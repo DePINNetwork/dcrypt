@@ -20,66 +20,66 @@ use dcrypt_api::{Error as CoreError, Result as CoreResult};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     /// Parameter validation error
-    Parameter { 
+    Parameter {
         /// Name of the invalid parameter
-        name: Cow<'static, str>,   // Changed from &'static str
+        name: Cow<'static, str>, // Changed from &'static str
         /// Reason why the parameter is invalid
-        reason: Cow<'static, str>  // Changed from &'static str
+        reason: Cow<'static, str>, // Changed from &'static str
     },
-    
+
     /// Length validation error
-    Length { 
+    Length {
         /// Context where the length error occurred
-        context: &'static str, 
+        context: &'static str,
         /// Expected length in bytes
-        expected: usize, 
+        expected: usize,
         /// Actual length in bytes
-        actual: usize 
+        actual: usize,
     },
-    
+
     /// Authentication failure (e.g., AEAD tag verification)
-    Authentication { 
+    Authentication {
         /// Algorithm that failed authentication
-        algorithm: &'static str 
+        algorithm: &'static str,
     },
-    
+
     /// Feature not implemented
-    NotImplemented { 
+    NotImplemented {
         /// Name of the unimplemented feature
-        feature: &'static str 
+        feature: &'static str,
     },
-    
+
     /// Processing error during cryptographic operation
-    Processing { 
+    Processing {
         /// Operation that failed
-        operation: &'static str, 
+        operation: &'static str,
         /// Additional details about the failure
-        details: &'static str 
+        details: &'static str,
     },
-    
+
     /// MAC error
-    MacError { 
+    MacError {
         /// MAC algorithm that encountered the error
-        algorithm: &'static str, 
+        algorithm: &'static str,
         /// Additional details about the MAC error
-        details: &'static str 
+        details: &'static str,
     },
-    
+
     /// External errors with String details (only available with alloc/std)
     #[cfg(feature = "std")]
-    External { 
+    External {
         /// Source of the external error
-        source: &'static str, 
+        source: &'static str,
         /// Detailed error message
-        details: String 
+        details: String,
     },
-    
+
     #[cfg(not(feature = "std"))]
-    External { 
+    External {
         /// Source of the external error
-        source: &'static str 
+        source: &'static str,
     },
-    
+
     /// Fallback for other errors
     Other(&'static str),
 }
@@ -115,31 +115,38 @@ impl fmt::Display for Error {
         match self {
             Error::Parameter { name, reason } => {
                 write!(f, "Invalid parameter '{}': {}", name, reason)
-            },
-            Error::Length { context, expected, actual } => {
-                write!(f, "Invalid length for {}: expected {}, got {}", 
-                    context, expected, actual)
-            },
+            }
+            Error::Length {
+                context,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "Invalid length for {}: expected {}, got {}",
+                    context, expected, actual
+                )
+            }
             Error::Authentication { algorithm } => {
                 write!(f, "Authentication failed for {}", algorithm)
-            },
+            }
             Error::NotImplemented { feature } => {
                 write!(f, "Feature not implemented: {}", feature)
-            },
+            }
             Error::Processing { operation, details } => {
                 write!(f, "Processing error in {}: {}", operation, details)
-            },
+            }
             Error::MacError { algorithm, details } => {
                 write!(f, "MAC error in {}: {}", algorithm, details)
-            },
+            }
             #[cfg(feature = "std")]
             Error::External { source, details } => {
                 write!(f, "External error from {}: {}", source, details)
-            },
+            }
             #[cfg(not(feature = "std"))]
             Error::External { source } => {
                 write!(f, "External error from {}", source)
-            },
+            }
             Error::Other(msg) => write!(f, "{}", msg),
         }
     }
@@ -161,7 +168,11 @@ impl From<Error> for CoreError {
                 #[cfg(feature = "std")]
                 message: reason.into_owned(),
             },
-            Error::Length { context, expected, actual } => CoreError::InvalidLength {
+            Error::Length {
+                context,
+                expected,
+                actual,
+            } => CoreError::InvalidLength {
                 context,
                 expected,
                 actual,
@@ -171,9 +182,7 @@ impl From<Error> for CoreError {
                 #[cfg(feature = "std")]
                 message: "authentication failed".to_string(),
             },
-            Error::NotImplemented { feature } => CoreError::NotImplemented {
-                feature,
-            },
+            Error::NotImplemented { feature } => CoreError::NotImplemented { feature },
             Error::Processing { operation, details } => CoreError::Other {
                 context: operation,
                 #[cfg(feature = "std")]

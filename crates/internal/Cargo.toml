@@ -22,3 +22,6 @@ subtle = { version = "2.4.1" }
 
 [dev-dependencies]
 rand = { version = "0.8.5" }
+
+[package.metadata.release]
+publish = true

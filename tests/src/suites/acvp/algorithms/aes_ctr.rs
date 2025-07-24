@@ -1,23 +1,20 @@
 //! ACVP handlers for AES-CTR mode
 
-use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
+use crate::suites::acvp::model::{TestCase, TestGroup};
+use arrayref::array_ref;
 use dcrypt_algorithms::block::aes::{Aes128, Aes192, Aes256};
-use dcrypt_algorithms::block::modes::ctr::{Ctr, CounterPosition};
+use dcrypt_algorithms::block::modes::ctr::{CounterPosition, Ctr};
 use dcrypt_algorithms::block::BlockCipher;
 use dcrypt_algorithms::types::{Nonce, SecretBytes};
-use arrayref::array_ref;
+use rand::{thread_rng, RngCore};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
-use rand::{RngCore, thread_rng};
 
-use super::super::dispatcher::{insert, HandlerFn, DispatchKey};
+use super::super::dispatcher::{insert, DispatchKey, HandlerFn};
 
 // Small utility: look in the case, then in the group defaults
-fn lookup<'a>(case: &'a TestCase,
-              group: &'a TestGroup,
-              names: &[&str]) -> Option<String>
-{
+fn lookup<'a>(case: &'a TestCase, group: &'a TestGroup, names: &[&str]) -> Option<String> {
     for &n in names {
         if let Some(v) = case.inputs.get(n) {
             return Some(v.as_string());
@@ -43,31 +40,49 @@ pub(crate) fn aes_ctr_decrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
 /// Common processing for CTR mode
 fn aes_ctr_process(group: &TestGroup, case: &TestCase, is_encrypt: bool) -> Result<()> {
     // Get inputs - ACVP uses short field names
-    let key_hex = case.inputs.get("key")
+    let key_hex = case
+        .inputs
+        .get("key")
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField("key"))?;
-    
+
     // For CTR mode, the input/output field names depend on direction
     let (input_field, output_field) = if is_encrypt {
         ("pt", "ct")
     } else {
         ("ct", "pt")
     };
-    
-    let input_hex = case.inputs.get(input_field)
-        .or_else(|| case.inputs.get(if is_encrypt { "plainText" } else { "cipherText" }))
+
+    let input_hex = case
+        .inputs
+        .get(input_field)
+        .or_else(|| {
+            case.inputs.get(if is_encrypt {
+                "plainText"
+            } else {
+                "cipherText"
+            })
+        })
         .map(|v| v.as_string())
         .ok_or(EngineError::MissingField(input_field))?;
-    
+
     // Expected output is OPTIONAL
-    let expected_hex = case.inputs.get(output_field)
-        .or_else(|| case.inputs.get(if is_encrypt { "cipherText" } else { "plainText" }))
+    let expected_hex = case
+        .inputs
+        .get(output_field)
+        .or_else(|| {
+            case.inputs.get(if is_encrypt {
+                "cipherText"
+            } else {
+                "plainText"
+            })
+        })
         .map(|v| v.as_string());
-    
+
     // Decode hex values
     let mut key_bytes = hex::decode(&key_hex)?;
     let input = hex::decode(&input_hex)?;
-    
+
     // Handle IV/counter - for encrypt, it might need to be generated
     let iv_bytes = if let Some(iv_hex) = lookup(case, group, &["iv", "ctr", "nonce", "counter"]) {
         // IV was provided
@@ -76,23 +91,26 @@ fn aes_ctr_process(group: &TestGroup, case: &TestCase, is_encrypt: bool) -> Resu
         // No IV provided for encrypt - generate one
         let mut iv = [0u8; 16];
         thread_rng().fill_bytes(&mut iv);
-        
+
         // Store the generated IV in outputs for the response
-        case.outputs.borrow_mut().insert("iv".into(), hex::encode(&iv));
-        
+        case.outputs
+            .borrow_mut()
+            .insert("iv".into(), hex::encode(&iv));
+
         iv.to_vec()
     } else {
         // Decrypt requires an IV
         return Err(EngineError::MissingField("iv"));
     };
-    
+
     // ACVP CTR test vectors use the full block as the initial counter value
     if iv_bytes.len() != 16 {
-        return Err(EngineError::InvalidData(
-            format!("CTR mode requires 16-byte IV/counter, got {} bytes", iv_bytes.len())
-        ));
+        return Err(EngineError::InvalidData(format!(
+            "CTR mode requires 16-byte IV/counter, got {} bytes",
+            iv_bytes.len()
+        )));
     }
-    
+
     // Process based on key size
     let result = match key_bytes.len() {
         16 => {
@@ -115,10 +133,10 @@ fn aes_ctr_process(group: &TestGroup, case: &TestCase, is_encrypt: bool) -> Resu
         }
         n => return Err(EngineError::KeySize(n)),
     };
-    
+
     // Zeroize sensitive data
     key_bytes.zeroize();
-    
+
     // Check result if expected value was provided
     if let Some(exp_hex) = expected_hex {
         let expected = hex::decode(&exp_hex)?;
@@ -133,7 +151,9 @@ fn aes_ctr_process(group: &TestGroup, case: &TestCase, is_encrypt: bool) -> Resu
         }
     } else {
         // Store result for response generation
-        case.outputs.borrow_mut().insert(output_field.into(), hex::encode(&result));
+        case.outputs
+            .borrow_mut()
+            .insert(output_field.into(), hex::encode(&result));
         Ok(())
     }
 }
@@ -146,7 +166,7 @@ fn process_ctr_with_full_counter<B: BlockCipher + Clone + zeroize::Zeroize>(
 ) -> Result<Vec<u8>> {
     // ACVP provides the full counter block in the IV field
     // We need to set up CTR mode to use it properly
-    
+
     // Use the first 12 bytes as nonce, last 4 as counter
     let nonce_bytes = &counter_block[0..12];
     let initial_counter = u32::from_be_bytes([
@@ -155,21 +175,16 @@ fn process_ctr_with_full_counter<B: BlockCipher + Clone + zeroize::Zeroize>(
         counter_block[14],
         counter_block[15],
     ]);
-    
+
     // Create nonce
     let nonce = Nonce::<12>::new(*array_ref![nonce_bytes, 0, 12]);
-    
+
     // Create CTR instance with standard configuration (4-byte counter at end)
-    let mut ctr = Ctr::with_counter_params(
-        cipher,
-        &nonce,
-        CounterPosition::Postfix,
-        4
-    )?;
-    
+    let mut ctr = Ctr::with_counter_params(cipher, &nonce, CounterPosition::Postfix, 4)?;
+
     // Set the initial counter value
     ctr.set_counter(initial_counter);
-    
+
     // Process the data
     Ok(ctr.encrypt(data)?)
 }
@@ -188,44 +203,49 @@ pub(crate) fn aes_ctr_mct_decrypt(group: &TestGroup, case: &TestCase) -> Result<
 fn aes_ctr_mct_process(group: &TestGroup, case: &TestCase, is_encrypt: bool) -> Result<()> {
     // Parse inputs
     let mut key = hex::decode(
-        &case.inputs.get("key")
+        &case
+            .inputs
+            .get("key")
             .map(|v| v.as_string())
-            .ok_or(EngineError::MissingField("key"))?
+            .ok_or(EngineError::MissingField("key"))?,
     )?;
-    
+
     // ACVP may call the counter block iv, ctr, or nonce
     let mut iv = hex::decode(
         &lookup(case, group, &["iv", "ctr", "nonce", "counter"])
-            .ok_or(EngineError::MissingField("iv"))?
+            .ok_or(EngineError::MissingField("iv"))?,
     )?;
-    
+
     // Initial data
     let (input_field, output_field) = if is_encrypt {
         ("pt", "ct")
     } else {
         ("ct", "pt")
     };
-    
+
     let mut data = hex::decode(
-        &case.inputs.get(input_field)
+        &case
+            .inputs
+            .get(input_field)
             .map(|v| v.as_string())
-            .ok_or(EngineError::MissingField(input_field))?
+            .ok_or(EngineError::MissingField(input_field))?,
     )?;
-    
+
     // Ensure IV is 16 bytes
     if iv.len() != 16 {
-        return Err(EngineError::InvalidData(
-            format!("CTR MCT requires 16-byte IV, got {} bytes", iv.len())
-        ));
+        return Err(EngineError::InvalidData(format!(
+            "CTR MCT requires 16-byte IV, got {} bytes",
+            iv.len()
+        )));
     }
-    
+
     // Build cipher once based on key size
     enum CipherVariant {
         Aes128(Aes128),
         Aes192(Aes192),
         Aes256(Aes256),
     }
-    
+
     let cipher = match key.len() {
         16 => {
             let key_array = array_ref![key, 0, 16];
@@ -244,36 +264,30 @@ fn aes_ctr_mct_process(group: &TestGroup, case: &TestCase, is_encrypt: bool) -> 
         }
         n => return Err(EngineError::KeySize(n)),
     };
-    
+
     // Monte Carlo loop - 1000 iterations
     for _ in 0..1000 {
         // Process the current data
         let result = match &cipher {
-            CipherVariant::Aes128(c) => {
-                process_ctr_with_full_counter(c.clone(), &iv, &data)?
-            }
-            CipherVariant::Aes192(c) => {
-                process_ctr_with_full_counter(c.clone(), &iv, &data)?
-            }
-            CipherVariant::Aes256(c) => {
-                process_ctr_with_full_counter(c.clone(), &iv, &data)?
-            }
+            CipherVariant::Aes128(c) => process_ctr_with_full_counter(c.clone(), &iv, &data)?,
+            CipherVariant::Aes192(c) => process_ctr_with_full_counter(c.clone(), &iv, &data)?,
+            CipherVariant::Aes256(c) => process_ctr_with_full_counter(c.clone(), &iv, &data)?,
         };
-        
+
         // For CTR MCT, the IV is incremented by 1 for each iteration
         // Increment the counter portion (last 4 bytes) as a big-endian integer
         let mut counter = u32::from_be_bytes([iv[12], iv[13], iv[14], iv[15]]);
         counter = counter.wrapping_add(1);
         iv[12..16].copy_from_slice(&counter.to_be_bytes());
-        
+
         // Update data for next iteration
         data = result;
     }
-    
+
     // Zeroize sensitive data
     key.zeroize();
     iv.zeroize();
-    
+
     // Check or store result
     if let Some(expected_hex) = case.inputs.get(output_field).map(|v| v.as_string()) {
         let result_hex = hex::encode(&data);
@@ -286,7 +300,9 @@ fn aes_ctr_mct_process(group: &TestGroup, case: &TestCase, is_encrypt: bool) -> 
             })
         }
     } else {
-        case.outputs.borrow_mut().insert(output_field.into(), hex::encode(&data));
+        case.outputs
+            .borrow_mut()
+            .insert(output_field.into(), hex::encode(&data));
         Ok(())
     }
 }

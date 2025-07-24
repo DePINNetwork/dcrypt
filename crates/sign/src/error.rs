@@ -7,49 +7,58 @@ use core::fmt;
 pub enum Error {
     /// Algorithm not supported
     Algorithm(String),
-    
+
     /// Invalid key size
     InvalidKeySize { expected: usize, actual: usize },
-    
+
     /// Invalid signature size
     InvalidSignatureSize { expected: usize, actual: usize },
-    
+
     /// Invalid parameter
     InvalidParameter(String),
-    
+
     /// Invalid key
     InvalidKey(String),
-    
+
     /// Key generation failed
-    KeyGeneration { algorithm: &'static str, details: String },
-    
+    KeyGeneration {
+        algorithm: &'static str,
+        details: String,
+    },
+
     /// Signature generation failed
-    SignatureGeneration { algorithm: &'static str, details: String },
-    
+    SignatureGeneration {
+        algorithm: &'static str,
+        details: String,
+    },
+
     /// Verification failed
-    Verification { algorithm: &'static str, details: String },
-    
+    Verification {
+        algorithm: &'static str,
+        details: String,
+    },
+
     /// Encoding error
     Encoding(String),
-    
+
     /// Deserialization error
     Deserialization(String),
-    
+
     /// Serialization error
     Serialization(String),
-    
+
     /// Nonce error
     Nonce(String),
-    
+
     /// Hashing error
     Hashing(String),
-    
+
     /// RNG error
     Rng(String),
-    
+
     /// Sampling error
     Sampling(String),
-    
+
     /// Internal error
     Internal(String),
 }
@@ -62,7 +71,11 @@ impl fmt::Display for Error {
                 write!(f, "Invalid key size: expected {}, got {}", expected, actual)
             }
             Error::InvalidSignatureSize { expected, actual } => {
-                write!(f, "Invalid signature size: expected {}, got {}", expected, actual)
+                write!(
+                    f,
+                    "Invalid signature size: expected {}, got {}",
+                    expected, actual
+                )
             }
             Error::InvalidParameter(msg) => write!(f, "Invalid parameter: {}", msg),
             Error::InvalidKey(msg) => write!(f, "Invalid key: {}", msg),
@@ -100,7 +113,7 @@ impl Error {
 impl From<dcrypt_algorithms::error::Error> for Error {
     fn from(err: dcrypt_algorithms::error::Error) -> Self {
         use dcrypt_algorithms::error::Error as AlgoError;
-        
+
         match err {
             AlgoError::Parameter { name, reason } => {
                 Error::InvalidParameter(format!("{}: {}", name, reason))
@@ -113,7 +126,7 @@ impl From<dcrypt_algorithms::error::Error> for Error {
     }
 }
 
-// Convert to api::Error  
+// Convert to api::Error
 impl From<Error> for dcrypt_api::Error {
     fn from(err: Error) -> Self {
         match err {
@@ -126,10 +139,15 @@ impl From<Error> for dcrypt_api::Error {
                 context: "sign",
                 message: format!("Invalid key size: expected {}, got {}", expected, actual),
             },
-            Error::InvalidSignatureSize { expected, actual } => dcrypt_api::Error::InvalidSignature {
-                context: "sign",
-                message: format!("Invalid signature size: expected {}, got {}", expected, actual),
-            },
+            Error::InvalidSignatureSize { expected, actual } => {
+                dcrypt_api::Error::InvalidSignature {
+                    context: "sign",
+                    message: format!(
+                        "Invalid signature size: expected {}, got {}",
+                        expected, actual
+                    ),
+                }
+            }
             Error::InvalidParameter(msg) => dcrypt_api::Error::InvalidParameter {
                 context: "sign",
                 message: msg,
@@ -144,10 +162,12 @@ impl From<Error> for dcrypt_api::Error {
                 message: format!("Key generation failed: {}", details),
             },
             // Map SignatureGeneration to InvalidSignature
-            Error::SignatureGeneration { algorithm, details } => dcrypt_api::Error::InvalidSignature {
-                context: algorithm,
-                message: format!("Signature generation failed: {}", details),
-            },
+            Error::SignatureGeneration { algorithm, details } => {
+                dcrypt_api::Error::InvalidSignature {
+                    context: algorithm,
+                    message: format!("Signature generation failed: {}", details),
+                }
+            }
             Error::Verification { algorithm, details } => dcrypt_api::Error::InvalidSignature {
                 context: algorithm,
                 message: details,
@@ -191,4 +211,3 @@ impl From<Error> for dcrypt_api::Error {
 }
 
 pub type Result<T> = core::result::Result<T, Error>;
-

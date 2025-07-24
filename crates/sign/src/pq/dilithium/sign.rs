@@ -21,35 +21,33 @@
 //!
 //! Internal module - use public `Dilithium2/3/5` types instead.
 
-use super::polyvec::{PolyVecK, expand_matrix_a, matrix_polyvecl_mul};
 use super::arithmetic::{
-    power2round_polyvec, highbits_polyvec, lowbits_polyvec,
-    check_norm_polyvec_l, check_norm_polyvec_k,
-    make_hint_polyveck, use_hint_polyveck,
-    challenge_poly_mul,
-    schoolbook_mul_generic,
-};
-use super::sampling::{
-    sample_polyvecl_cbd_eta, sample_polyveck_cbd_eta, 
-    sample_polyvecl_uniform_gamma1, sample_challenge_c
+    challenge_poly_mul, check_norm_polyvec_k, check_norm_polyvec_l, highbits_polyvec,
+    lowbits_polyvec, make_hint_polyveck, power2round_polyvec, schoolbook_mul_generic,
+    use_hint_polyveck,
 };
 use super::encoding::{
-    pack_public_key, unpack_public_key, pack_secret_key, unpack_secret_key,
-    pack_signature, unpack_signature, pack_polyveck_w1,
+    pack_polyveck_w1, pack_public_key, pack_secret_key, pack_signature, unpack_public_key,
+    unpack_secret_key, unpack_signature,
+};
+use super::polyvec::{expand_matrix_a, matrix_polyvecl_mul, PolyVecK};
+use super::sampling::{
+    sample_challenge_c, sample_polyveck_cbd_eta, sample_polyvecl_cbd_eta,
+    sample_polyvecl_uniform_gamma1,
 };
 
+use crate::error::Error as SignError;
 use dcrypt_algorithms::hash::sha3::Sha3_256;
-use dcrypt_algorithms::xof::shake::ShakeXof256;
 use dcrypt_algorithms::hash::HashFunction;
+use dcrypt_algorithms::poly::params::{DilithiumParams, Modulus};
+use dcrypt_algorithms::xof::shake::ShakeXof256;
 use dcrypt_algorithms::xof::ExtendableOutputFunction;
-use dcrypt_algorithms::poly::params::{DilithiumParams, Modulus}; 
-use crate::error::{Error as SignError};
 use dcrypt_params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N};
 use rand::{CryptoRng, RngCore};
 use subtle::ConstantTimeEq;
 
 /// Key Generation (Algorithm 9 from FIPS 204)
-/// 
+///
 /// Generates (pk, sk) where pk = (ρ, t1) and sk = (ρ, K, tr, s1, s2, t0).
 /// Matrix A expanded from ρ, secrets s1,s2 from CBD(η).
 pub(crate) fn keypair_internal<P, R>(rng: &mut R) -> Result<(Vec<u8>, Vec<u8>), SignError>
@@ -69,7 +67,7 @@ where
     let mut rho_seed = [0u8; 32];
     let mut sigma_seed = [0u8; 32];
     let mut k_seed = [0u8; 32];
-    
+
     // Squeeze each seed separately to ensure proper domain separation
     xof.squeeze(&mut rho_seed).map_err(SignError::from_algo)?;
     xof.squeeze(&mut sigma_seed).map_err(SignError::from_algo)?;
@@ -82,7 +80,7 @@ where
     let mut matrix_a_hat = Vec::with_capacity(P::K_DIM);
     for row in matrix_a {
         let mut row_ntt = row;
-        row_ntt.ntt_inplace().map_err(SignError::from_algo)?; 
+        row_ntt.ntt_inplace().map_err(SignError::from_algo)?;
         matrix_a_hat.push(row_ntt);
     }
 
@@ -125,12 +123,12 @@ where
 }
 
 /// Signing (Algorithm 10 from FIPS 204)
-/// 
+///
 /// Accepts FIPS 204 format secret key bytes
 pub(crate) fn sign_internal<P, R>(
     message: &[u8],
     sk_bytes: &[u8],
-    _rng: &mut R, 
+    _rng: &mut R,
 ) -> Result<Vec<u8>, SignError>
 where
     P: DilithiumSchemeParams,
@@ -150,12 +148,12 @@ where
     let mut xof_mu = ShakeXof256::new();
     xof_mu.update(&tr_hash).map_err(SignError::from_algo)?;
     xof_mu.update(message).map_err(SignError::from_algo)?;
-    let mut mu = vec![0u8; 64]; 
+    let mut mu = vec![0u8; 64];
     xof_mu.squeeze(&mut mu).map_err(SignError::from_algo)?;
 
     let mut kappa: u16 = 0;
 
-    loop { 
+    loop {
         if kappa >= P::MAX_SIGN_ABORTS {
             return Err(SignError::SignatureGeneration {
                 algorithm: P::NAME,
@@ -174,22 +172,24 @@ where
         w_vec.inv_ntt_inplace().map_err(SignError::from_algo)?;
 
         let w1_vec = highbits_polyvec(&w_vec, 2 * P::GAMMA2_PARAM);
-        
+
         let w1_packed = pack_polyveck_w1::<P>(&w1_vec)?;
-        
+
         // Compute challenge
         let mut xof_c = ShakeXof256::new();
         xof_c.update(&mu).map_err(SignError::from_algo)?;
         xof_c.update(&w1_packed).map_err(SignError::from_algo)?;
-        
+
         let mut c_tilde_seed = vec![0u8; P::CHALLENGE_BYTES];
-        xof_c.squeeze(&mut c_tilde_seed).map_err(SignError::from_algo)?;
+        xof_c
+            .squeeze(&mut c_tilde_seed)
+            .map_err(SignError::from_algo)?;
 
         // Sample challenge polynomial
         let c_poly = sample_challenge_c::<P>(&c_tilde_seed, P::TAU_PARAM as u32)?;
-        
+
         // Compute z = y + cs1
-        let mut z_vec = y_vec.clone(); 
+        let mut z_vec = y_vec.clone();
         for i in 0..P::L_DIM {
             let cs1_i = schoolbook_mul_generic(&c_poly, &s1_vec.polys[i], true, true);
             z_vec.polys[i] = z_vec.polys[i].add(&cs1_i);
@@ -197,7 +197,7 @@ where
 
         if !check_norm_polyvec_l::<P>(&z_vec, P::GAMMA1_PARAM - P::BETA_PARAM) {
             kappa = kappa.wrapping_add(1);
-            continue; 
+            continue;
         }
 
         // Compute cs2
@@ -206,7 +206,7 @@ where
             cs2_vec.polys[i] = schoolbook_mul_generic(&c_poly, &s2_vec.polys[i], true, true);
         }
         let w_minus_cs2 = w_vec.sub(&cs2_vec);
-        
+
         let r0_vec = lowbits_polyvec(&w_minus_cs2, 2 * P::GAMMA2_PARAM);
 
         if !check_norm_polyvec_k::<P>(&r0_vec, P::GAMMA2_PARAM - P::BETA_PARAM) {
@@ -219,10 +219,10 @@ where
         for i in 0..P::K_DIM {
             ct0_vec.polys[i] = schoolbook_mul_generic(&c_poly, &t0_vec.polys[i], true, true);
         }
-        
+
         // Compute z_for_hint = ct0 - cs2 using centered subtraction
         let z_for_hint = ct0_vec.sub_centered(&cs2_vec);
-        
+
         // Check the centered norm
         let mut max_norm = 0i32;
         for i in 0..P::K_DIM {
@@ -236,7 +236,7 @@ where
                 max_norm = max_norm.max(centered.abs());
             }
         }
-        
+
         if max_norm > (P::GAMMA2_PARAM - P::BETA_PARAM) as i32 {
             kappa = kappa.wrapping_add(1);
             continue;
@@ -250,7 +250,7 @@ where
                 continue;
             }
         };
-        
+
         if hint_count > P::OMEGA_PARAM as usize {
             kappa = kappa.wrapping_add(1);
             continue;
@@ -264,13 +264,13 @@ where
 
         // All checks passed - success!
         let sig_bytes = pack_signature::<P>(&c_tilde_seed, &z_vec, &h_hint_poly)?;
-        
+
         return Ok(sig_bytes);
     }
 }
 
 /// Verification (Algorithm 11 from FIPS 204)
-/// 
+///
 /// Accepts if: c̃ = H(μ || UseHint(h, Az - ct1·2^d)) and ||z||∞ ≤ γ1 - β.
 pub(crate) fn verify_internal<P>(
     message: &[u8],
@@ -307,14 +307,14 @@ where
     let mut hasher_tr = Sha3_256::new();
     hasher_tr.update(pk_bytes).map_err(SignError::from_algo)?;
     let tr_digest = hasher_tr.finalize().map_err(SignError::from_algo)?;
-    let mut tr = [0u8; 32]; 
+    let mut tr = [0u8; 32];
     tr.copy_from_slice(&tr_digest);
 
     // Step 6: μ = H(tr || M)
     let mut xof_mu = ShakeXof256::new();
     xof_mu.update(&tr).map_err(SignError::from_algo)?;
     xof_mu.update(message).map_err(SignError::from_algo)?;
-    let mut mu = vec![0u8; 64]; 
+    let mut mu = vec![0u8; 64];
     xof_mu.squeeze(&mut mu).map_err(SignError::from_algo)?;
 
     // Step 7: c = SampleInBall(c̃_sig)
@@ -323,9 +323,11 @@ where
     // Compute Az
     let mut z_hat_vec = z_vec.clone();
     z_hat_vec.ntt_inplace().map_err(SignError::from_algo)?;
-    
+
     let mut w_prime_vec = matrix_polyvecl_mul(&matrix_a_hat, &z_hat_vec);
-    w_prime_vec.inv_ntt_inplace().map_err(SignError::from_algo)?;
+    w_prime_vec
+        .inv_ntt_inplace()
+        .map_err(SignError::from_algo)?;
 
     // Scale t1 by 2^d
     let two_d = 1u32 << P::D_PARAM;
@@ -341,7 +343,7 @@ where
         let ct1 = challenge_poly_mul(&c_poly, &t1_scaled.polys[i]);
         w_prime_vec.polys[i] = w_prime_vec.polys[i].sub(&ct1);
     }
-    
+
     // Ensure coefficients are in [0, q)
     for i in 0..P::K_DIM {
         for j in 0..DILITHIUM_N {
@@ -357,14 +359,18 @@ where
 
     // Pack w1''
     let w1_double_prime_packed = pack_polyveck_w1::<P>(&w1_double_prime_vec)?;
-    
+
     // Recompute challenge
     let mut xof_c_recompute = ShakeXof256::new();
     xof_c_recompute.update(&mu).map_err(SignError::from_algo)?;
-    xof_c_recompute.update(&w1_double_prime_packed).map_err(SignError::from_algo)?;
-    
+    xof_c_recompute
+        .update(&w1_double_prime_packed)
+        .map_err(SignError::from_algo)?;
+
     let mut c_tilde_seed_recomputed = vec![0u8; P::CHALLENGE_BYTES];
-    xof_c_recompute.squeeze(&mut c_tilde_seed_recomputed).map_err(SignError::from_algo)?;
+    xof_c_recompute
+        .squeeze(&mut c_tilde_seed_recomputed)
+        .map_err(SignError::from_algo)?;
 
     if !bool::from(c_tilde_seed_sig.ct_eq(&c_tilde_seed_recomputed)) {
         return Err(SignError::Verification {
@@ -384,6 +390,6 @@ where
             details: "Verification failed: too many hints in signature".into(),
         });
     }
-    
+
     Ok(())
 }

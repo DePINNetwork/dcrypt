@@ -8,9 +8,9 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use dcrypt_algorithms::poly::polynomial::Polynomial;
-use dcrypt_algorithms::poly::params::Modulus;
 use dcrypt_algorithms::error::Result as AlgoResult;
+use dcrypt_algorithms::poly::params::Modulus;
+use dcrypt_algorithms::poly::polynomial::Polynomial;
 use zeroize::Zeroize;
 
 use super::params::{KyberParams, KyberPolyModParams};
@@ -48,7 +48,7 @@ impl<P: KyberParams> PolyVec<P> {
         }
         Ok(())
     }
-    
+
     /// Computes the pointwise product of two PolyVecs' polynomials,
     /// and accumulates the results into a single polynomial.
     /// Result = sum(self.polys[i] * other.polys[i])
@@ -57,15 +57,15 @@ impl<P: KyberParams> PolyVec<P> {
         let mut acc = Polynomial::<KyberPolyModParams>::zero();
         for (p1, p2) in self.polys.iter().zip(other.polys.iter()) {
             let prod = p1.ntt_mul(p2); // p1 and p2 are in NTT domain
-            acc = acc.add(&prod);      // Accumulate in NTT domain
+            acc = acc.add(&prod); // Accumulate in NTT domain
         }
         acc // Result is in NTT domain
     }
-    
+
     /// Pack polynomial vector to bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        
+
         for poly in &self.polys {
             // Pack each polynomial with 12-bit coefficients
             for chunk in poly.as_coeffs_slice().chunks(2) {
@@ -81,15 +81,15 @@ impl<P: KyberParams> PolyVec<P> {
                 }
             }
         }
-        
+
         bytes
     }
-    
+
     /// Unpack bytes to polynomial vector
     pub fn from_bytes(bytes: &[u8], k: usize) -> AlgoResult<Self> {
         let mut polyvec = Self::zero();
         let mut byte_idx = 0;
-        
+
         for i in 0..k {
             for j in (0..KyberPolyModParams::N).step_by(2) {
                 if byte_idx + 2 >= bytes.len() {
@@ -98,20 +98,21 @@ impl<P: KyberParams> PolyVec<P> {
                         details: "insufficient data",
                     });
                 }
-                
+
                 // Unpack two 12-bit values from 3 bytes
                 let d1 = (bytes[byte_idx] as u32) | ((bytes[byte_idx + 1] as u32 & 0x0F) << 8);
                 polyvec.polys[i].coeffs[j] = d1;
-                
+
                 if j + 1 < KyberPolyModParams::N {
-                    let d2 = ((bytes[byte_idx + 1] as u32) >> 4) | ((bytes[byte_idx + 2] as u32) << 4);
+                    let d2 =
+                        ((bytes[byte_idx + 1] as u32) >> 4) | ((bytes[byte_idx + 2] as u32) << 4);
                     polyvec.polys[i].coeffs[j + 1] = d2;
                 }
-                
+
                 byte_idx += 3;
             }
         }
-        
+
         Ok(polyvec)
     }
 }

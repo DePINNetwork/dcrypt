@@ -1,11 +1,11 @@
 //! P-521 scalar arithmetic operations
 
-use crate::ec::p521::constants::{P521_SCALAR_SIZE, p521_bytes_to_limbs, p521_limbs_to_bytes};
+use crate::ec::p521::constants::{p521_bytes_to_limbs, p521_limbs_to_bytes, P521_SCALAR_SIZE};
 use crate::ec::p521::field::FieldElement;
-use crate::error::{Error, Result, validate};
+use crate::error::{validate, Error, Result};
 use dcrypt_common::security::SecretBuffer;
-use zeroize::{Zeroize, ZeroizeOnDrop};
 use dcrypt_params::traditional::ecdsa::NIST_P521;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// P-521 scalar value for use in elliptic curve operations.
 /// Represents integers modulo the curve order n. Used for private keys
@@ -100,7 +100,7 @@ impl Scalar {
 
         Ok(Self::from_bytes_unchecked(Self::limbs_to_be(&r)))
     }
-    
+
     /// Subtract two scalars modulo the curve order n
     pub fn sub_mod_n(&self, other: &Self) -> Result<Self> {
         let a = Self::to_le_limbs(&self.serialize());
@@ -116,30 +116,31 @@ impl Scalar {
 
         Ok(Self::from_bytes_unchecked(Self::limbs_to_be(&r)))
     }
-    
+
     /// Multiply two scalars modulo the curve order n.
     /// Uses constant-time double-and-add algorithm for correctness and security.
     /// Processes bits from MSB to LSB to ensure correct powers of 2.
     pub fn mul_mod_n(&self, other: &Self) -> Result<Self> {
         // Start with zero (additive identity)
         let mut acc = Self::from_bytes_unchecked([0u8; P521_SCALAR_SIZE]);
-        
+
         // Process each bit from MSB to LSB
         for byte in other.serialize() {
-            for i in (0..8).rev() {  // MSB first within each byte
+            for i in (0..8).rev() {
+                // MSB first within each byte
                 // Double the accumulator: acc = acc * 2 (mod n)
                 acc = acc.add_mod_n(&acc)?;
-                
+
                 // If bit is set, add self: acc = acc + self (mod n)
                 if (byte >> i) & 1 == 1 {
                     acc = acc.add_mod_n(self)?;
                 }
             }
         }
-        
+
         Ok(acc)
     }
-    
+
     /// Compute multiplicative inverse modulo n using Fermat's little theorem
     /// a^(-1) ≡ a^(n-2) (mod n). Left-to-right binary exponentiation.
     pub fn inv_mod_n(&self) -> Result<Self> {
@@ -150,7 +151,7 @@ impl Scalar {
 
         // Step 1: form exponent = n-2
         let mut exp = NIST_P521.n; // big-endian [u8;66]
-        // subtract 2 with borrow
+                                   // subtract 2 with borrow
         let mut borrow = 2u16;
         for i in (0..P521_SCALAR_SIZE).rev() {
             let v = exp[i] as i16 - (borrow as i16);
@@ -193,12 +194,12 @@ impl Scalar {
         if self.is_zero() {
             return Self::from_bytes_unchecked([0u8; P521_SCALAR_SIZE]);
         }
-        
+
         // Otherwise compute n - self
         let n_limbs = Self::N_LIMBS;
         let self_limbs = Self::to_le_limbs(&self.serialize());
         let mut res = [0u32; 17];
-        
+
         // Subtract self from n
         let mut borrow = 0i64;
         for i in 0..17 {
@@ -211,10 +212,10 @@ impl Scalar {
                 borrow = 0;
             }
         }
-        
+
         // No borrow should occur since self < n
         debug_assert_eq!(borrow, 0);
-        
+
         Self::from_bytes_unchecked(Self::limbs_to_be(&res))
     }
 
@@ -223,13 +224,13 @@ impl Scalar {
     /// Reduce scalar modulo the curve order n using constant-time arithmetic.
     /// The curve order n for P-521 is:
     /// n = 0x01FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFA51868783BF2F966B7FCC0148F709A5D03BB5C9B8899C47AEBB6FB71E91386409
-    /// 
+    ///
     /// Algorithm:
     /// 1. Check if input is zero (invalid)
     /// 2. Compare with curve order using constant-time comparison
     /// 3. Conditionally subtract n if input >= n
     /// 4. Verify result is still non-zero
-    /// 
+    ///
     /// Constant-time "a ≥ b" test on 66-byte big-endian values
     #[inline(always)]
     fn ge_be(a: &[u8; P521_SCALAR_SIZE], b: &[u8; P521_SCALAR_SIZE]) -> bool {
@@ -261,16 +262,16 @@ impl Scalar {
                 let diff = bytes[i] as i16 - order[i] as i16 - borrow as i16;
                 if diff < 0 {
                     bytes[i] = (diff + 256) as u8;
-                    borrow   = 1;
+                    borrow = 1;
                 } else {
                     bytes[i] = diff as u8;
-                    borrow   = 0;
+                    borrow = 0;
                 }
             }
         }
         Ok(())
     }
-    
+
     /// n (group order) in 17 little-endian 32-bit limbs
     const N_LIMBS: [u32; 17] = [
         0x9138_6409, // limb 0  – least-significant
@@ -296,10 +297,14 @@ impl Scalar {
     #[inline(always)]
     fn geq(a: &[u32; 17], b: &[u32; 17]) -> bool {
         for i in (0..17).rev() {
-            if a[i] > b[i] { return true; }
-            if a[i] < b[i] { return false; }
+            if a[i] > b[i] {
+                return true;
+            }
+            if a[i] < b[i] {
+                return false;
+            }
         }
-        true  // equal
+        true // equal
     }
 
     /// Subtract b from a in-place
@@ -307,11 +312,9 @@ impl Scalar {
     fn sub_in_place(a: &mut [u32; 17], b: &[u32; 17]) {
         let mut borrow = 0u64;
         for i in 0..17 {
-            let tmp = (a[i] as u64)
-                     .wrapping_sub(b[i] as u64)
-                     .wrapping_sub(borrow);
+            let tmp = (a[i] as u64).wrapping_sub(b[i] as u64).wrapping_sub(borrow);
             a[i] = tmp as u32;
-            borrow = (tmp >> 63) & 1;  // 1 if we wrapped
+            borrow = (tmp >> 63) & 1; // 1 if we wrapped
         }
     }
 }

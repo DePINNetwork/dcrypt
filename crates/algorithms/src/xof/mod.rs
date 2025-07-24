@@ -15,7 +15,7 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use crate::error::{Error, Result, validate};
+use crate::error::{validate, Error, Result};
 
 #[cfg(feature = "alloc")]
 pub mod shake;
@@ -67,9 +67,9 @@ pub trait ExtendableOutputFunction {
         validate::parameter(
             len > 0,
             "output_length",
-            "XOF output length must be greater than 0"
+            "XOF output length must be greater than 0",
         )?;
-        
+
         let mut xof = Self::new();
         xof.update(data)?;
         xof.squeeze_into_vec(len)
@@ -80,33 +80,33 @@ pub trait ExtendableOutputFunction {
 pub trait XofAlgorithm {
     /// Security level in bits
     const SECURITY_LEVEL: usize;
-    
+
     /// Minimum recommended output size in bytes
     const MIN_OUTPUT_SIZE: usize;
-    
+
     /// Maximum output size in bytes (None for unlimited)
     const MAX_OUTPUT_SIZE: Option<usize>;
-    
+
     /// Algorithm identifier
     const ALGORITHM_ID: &'static str;
-    
+
     /// Algorithm name
     fn name() -> &'static str {
         Self::ALGORITHM_ID
     }
-    
+
     /// Validate output length
     fn validate_output_length(len: usize) -> Result<()> {
         validate::parameter(
             len >= Self::MIN_OUTPUT_SIZE,
             "output_length",
-            "Output length below minimum recommended size"
+            "Output length below minimum recommended size",
         )?;
-        
+
         if let Some(max) = Self::MAX_OUTPUT_SIZE {
             validate::max_length("XOF output", len, max)?;
         }
-        
+
         Ok(())
     }
 }
@@ -144,8 +144,10 @@ impl XofAlgorithm for Blake3Algorithm {
 /// Helper trait for XOFs that need keyed variants
 pub trait KeyedXof: ExtendableOutputFunction {
     /// Creates a new keyed XOF instance
-    fn with_key(key: &[u8]) -> Result<Self> where Self: Sized;
-    
+    fn with_key(key: &[u8]) -> Result<Self>
+    where
+        Self: Sized;
+
     /// Generates keyed output in a single call
     #[cfg(feature = "alloc")]
     fn keyed_generate(key: &[u8], data: &[u8], len: usize) -> Result<Vec<u8>>
@@ -155,9 +157,9 @@ pub trait KeyedXof: ExtendableOutputFunction {
         validate::parameter(
             len > 0,
             "output_length",
-            "XOF output length must be greater than 0"
+            "XOF output length must be greater than 0",
         )?;
-        
+
         let mut xof = Self::with_key(key)?;
         xof.update(data)?;
         xof.squeeze_into_vec(len)
@@ -167,8 +169,10 @@ pub trait KeyedXof: ExtendableOutputFunction {
 /// Helper trait for XOFs that support key derivation mode
 pub trait DeriveKeyXof: ExtendableOutputFunction {
     /// Creates a new XOF instance for key derivation
-    fn for_derive_key(context: &[u8]) -> Result<Self> where Self: Sized;
-    
+    fn for_derive_key(context: &[u8]) -> Result<Self>
+    where
+        Self: Sized;
+
     /// Derives key material in a single call
     #[cfg(feature = "alloc")]
     fn derive_key(context: &[u8], data: &[u8], len: usize) -> Result<Vec<u8>>
@@ -178,9 +182,9 @@ pub trait DeriveKeyXof: ExtendableOutputFunction {
         validate::parameter(
             len > 0,
             "output_length",
-            "Key derivation output length must be greater than 0"
+            "Key derivation output length must be greater than 0",
         )?;
-        
+
         let mut xof = Self::for_derive_key(context)?;
         xof.update(data)?;
         xof.squeeze_into_vec(len)
@@ -196,7 +200,7 @@ impl Error {
             details: "Cannot update after finalization",
         }
     }
-    
+
     /// Create an XOF squeezing error
     pub(crate) fn xof_squeezing() -> Self {
         Error::Processing {
@@ -209,17 +213,17 @@ impl Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_xof_algorithm_validation() {
         // Test SHAKE-128 validation
         assert!(Shake128Algorithm::validate_output_length(16).is_ok());
         assert!(Shake128Algorithm::validate_output_length(15).is_err());
-        
+
         // Test SHAKE-256 validation
         assert!(Shake256Algorithm::validate_output_length(32).is_ok());
         assert!(Shake256Algorithm::validate_output_length(31).is_err());
-        
+
         // Test BLAKE3 validation
         assert!(Blake3Algorithm::validate_output_length(32).is_ok());
         assert!(Blake3Algorithm::validate_output_length(31).is_err());

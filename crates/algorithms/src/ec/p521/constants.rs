@@ -23,7 +23,8 @@ pub(crate) const P521_LIMBS: usize = 17;
 pub(crate) fn p521_bytes_to_limbs(bytes_be: &[u8; P521_FIELD_ELEMENT_SIZE]) -> [u32; P521_LIMBS] {
     let mut limbs = [0u32; P521_LIMBS];
     #[allow(clippy::needless_range_loop)]
-    for i in 0..16 { // First 16 limbs are full
+    for i in 0..16 {
+        // First 16 limbs are full
         let offset = P521_FIELD_ELEMENT_SIZE - 4 - (i * 4);
         limbs[i] = u32::from_be_bytes([
             bytes_be[offset],
@@ -44,7 +45,8 @@ pub(crate) fn p521_bytes_to_limbs(bytes_be: &[u8; P521_FIELD_ELEMENT_SIZE]) -> [
 pub(crate) fn p521_limbs_to_bytes(limbs: &[u32; P521_LIMBS]) -> [u8; P521_FIELD_ELEMENT_SIZE] {
     let mut bytes_be = [0u8; P521_FIELD_ELEMENT_SIZE];
     #[allow(clippy::needless_range_loop)]
-    for i in 0..16 { // First 16 limbs
+    for i in 0..16 {
+        // First 16 limbs
         let limb_bytes = limbs[i].to_be_bytes();
         let offset = P521_FIELD_ELEMENT_SIZE - 4 - (i * 4);
         bytes_be[offset..offset + 4].copy_from_slice(&limb_bytes);

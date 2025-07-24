@@ -1,8 +1,8 @@
 // File: dcrypt-kem/src/mceliece/mod.rs
 
 use dcrypt_api::{Kem, Result};
-use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
+use zeroize::Zeroize;
 
 /// McEliece-348864 KEM
 pub struct McEliece348864;
@@ -20,35 +20,51 @@ pub struct McElieceSharedSecret(pub Vec<u8>);
 pub struct McElieceCiphertext(pub Vec<u8>);
 
 impl AsRef<[u8]> for McEliecePublicKey {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for McEliecePublicKey {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for McElieceSecretKey {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for McElieceSecretKey {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for McElieceSharedSecret {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for McElieceSharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl AsRef<[u8]> for McElieceCiphertext {
-    fn as_ref(&self) -> &[u8] { &self.0 }
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl AsMut<[u8]> for McElieceCiphertext {
-    fn as_mut(&mut self) -> &mut [u8] { &mut self.0 }
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 impl Kem for McEliece348864 {
@@ -58,7 +74,9 @@ impl Kem for McEliece348864 {
     type Ciphertext = McElieceCiphertext;
     type KeyPair = (Self::PublicKey, Self::SecretKey);
 
-    fn name() -> &'static str { "McEliece-348864" }
+    fn name() -> &'static str {
+        "McEliece-348864"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<(Self::PublicKey, Self::SecretKey)> {
         // Placeholder implementation
@@ -77,12 +95,21 @@ impl Kem for McEliece348864 {
         keypair.1.clone()
     }
 
-    fn encapsulate<R: CryptoRng + RngCore>(_rng: &mut R, _public_key: &Self::PublicKey) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
+    fn encapsulate<R: CryptoRng + RngCore>(
+        _rng: &mut R,
+        _public_key: &Self::PublicKey,
+    ) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
         // Placeholder implementation
-        Ok((McElieceCiphertext(vec![0u8; 128]), McElieceSharedSecret(vec![0u8; 32])))
+        Ok((
+            McElieceCiphertext(vec![0u8; 128]),
+            McElieceSharedSecret(vec![0u8; 32]),
+        ))
     }
 
-    fn decapsulate(_secret_key: &Self::SecretKey, _ciphertext: &Self::Ciphertext) -> Result<Self::SharedSecret> {
+    fn decapsulate(
+        _secret_key: &Self::SecretKey,
+        _ciphertext: &Self::Ciphertext,
+    ) -> Result<Self::SharedSecret> {
         // Placeholder implementation
         Ok(McElieceSharedSecret(vec![0u8; 32]))
     }
@@ -98,7 +125,9 @@ impl Kem for McEliece6960119 {
     type Ciphertext = McElieceCiphertext;
     type KeyPair = (Self::PublicKey, Self::SecretKey);
 
-    fn name() -> &'static str { "McEliece-6960119" }
+    fn name() -> &'static str {
+        "McEliece-6960119"
+    }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> Result<(Self::PublicKey, Self::SecretKey)> {
         // Placeholder implementation
@@ -117,12 +146,21 @@ impl Kem for McEliece6960119 {
         keypair.1.clone()
     }
 
-    fn encapsulate<R: CryptoRng + RngCore>(_rng: &mut R, _public_key: &Self::PublicKey) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
+    fn encapsulate<R: CryptoRng + RngCore>(
+        _rng: &mut R,
+        _public_key: &Self::PublicKey,
+    ) -> Result<(Self::Ciphertext, Self::SharedSecret)> {
         // Placeholder implementation
-        Ok((McElieceCiphertext(vec![0u8; 240]), McElieceSharedSecret(vec![0u8; 32])))
+        Ok((
+            McElieceCiphertext(vec![0u8; 240]),
+            McElieceSharedSecret(vec![0u8; 32]),
+        ))
     }
 
-    fn decapsulate(_secret_key: &Self::SecretKey, _ciphertext: &Self::Ciphertext) -> Result<Self::SharedSecret> {
+    fn decapsulate(
+        _secret_key: &Self::SecretKey,
+        _ciphertext: &Self::Ciphertext,
+    ) -> Result<Self::SharedSecret> {
         // Placeholder implementation
         Ok(McElieceSharedSecret(vec![0u8; 32]))
     }

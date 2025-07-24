@@ -10,10 +10,10 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 #[cfg(feature = "alloc")]
 mod ntt_benchmarks {
-    use dcrypt_algorithms::poly::prelude::*;
-    use dcrypt_algorithms::poly::params::{DilithiumParams, Kyber256Params};
-    use dcrypt_algorithms::poly::sampling::{DefaultSamplers, UniformSampler};
     use criterion::{black_box, BenchmarkId, Criterion};
+    use dcrypt_algorithms::poly::params::{DilithiumParams, Kyber256Params};
+    use dcrypt_algorithms::poly::prelude::*;
+    use dcrypt_algorithms::poly::sampling::{DefaultSamplers, UniformSampler};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
@@ -21,11 +21,11 @@ mod ntt_benchmarks {
     pub fn bench_dilithium_forward_ntt(c: &mut Criterion) {
         let mut group = c.benchmark_group("dilithium_ntt");
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        
+
         // Create a random polynomial
         let poly = <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
             .expect("Failed to sample polynomial");
-        
+
         group.bench_function("forward", |b| {
             b.iter_batched(
                 || poly.clone(),
@@ -36,7 +36,7 @@ mod ntt_benchmarks {
                 criterion::BatchSize::SmallInput,
             )
         });
-        
+
         group.finish();
     }
 
@@ -44,12 +44,13 @@ mod ntt_benchmarks {
     pub fn bench_dilithium_inverse_ntt(c: &mut Criterion) {
         let mut group = c.benchmark_group("dilithium_ntt");
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        
+
         // Create a polynomial in NTT domain
-        let mut poly = <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
-            .expect("Failed to sample polynomial");
+        let mut poly =
+            <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
+                .expect("Failed to sample polynomial");
         poly.ntt_inplace().expect("NTT failed");
-        
+
         group.bench_function("inverse", |b| {
             b.iter_batched(
                 || poly.clone(),
@@ -60,7 +61,7 @@ mod ntt_benchmarks {
                 criterion::BatchSize::SmallInput,
             )
         });
-        
+
         group.finish();
     }
 
@@ -68,11 +69,11 @@ mod ntt_benchmarks {
     pub fn bench_kyber_forward_ntt(c: &mut Criterion) {
         let mut group = c.benchmark_group("kyber_ntt");
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        
+
         // Create a random polynomial
         let poly = <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
             .expect("Failed to sample polynomial");
-        
+
         group.bench_function("forward", |b| {
             b.iter_batched(
                 || poly.clone(),
@@ -83,7 +84,7 @@ mod ntt_benchmarks {
                 criterion::BatchSize::SmallInput,
             )
         });
-        
+
         group.finish();
     }
 
@@ -91,12 +92,13 @@ mod ntt_benchmarks {
     pub fn bench_kyber_inverse_ntt(c: &mut Criterion) {
         let mut group = c.benchmark_group("kyber_ntt");
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        
+
         // Create a polynomial in NTT domain
-        let mut poly = <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
-            .expect("Failed to sample polynomial");
+        let mut poly =
+            <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
+                .expect("Failed to sample polynomial");
         poly.ntt_inplace().expect("NTT failed");
-        
+
         group.bench_function("inverse", |b| {
             b.iter_batched(
                 || poly.clone(),
@@ -107,7 +109,7 @@ mod ntt_benchmarks {
                 criterion::BatchSize::SmallInput,
             )
         });
-        
+
         group.finish();
     }
 
@@ -115,17 +117,19 @@ mod ntt_benchmarks {
     pub fn bench_ntt_multiplication(c: &mut Criterion) {
         let mut group = c.benchmark_group("ntt_multiplication");
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        
+
         // Dilithium multiplication
         {
-            let mut poly_a = <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            let mut poly_b = <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            
+            let mut poly_a =
+                <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+            let mut poly_b =
+                <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+
             poly_a.ntt_inplace().expect("NTT failed");
             poly_b.ntt_inplace().expect("NTT failed");
-            
+
             group.bench_function("dilithium_pointwise", |b| {
                 b.iter(|| {
                     let result = poly_a.ntt_mul(&poly_b);
@@ -133,17 +137,19 @@ mod ntt_benchmarks {
                 })
             });
         }
-        
+
         // Kyber multiplication
         {
-            let mut poly_a = <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            let mut poly_b = <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            
+            let mut poly_a =
+                <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+            let mut poly_b =
+                <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+
             poly_a.ntt_inplace().expect("NTT failed");
             poly_b.ntt_inplace().expect("NTT failed");
-            
+
             group.bench_function("kyber_pointwise", |b| {
                 b.iter(|| {
                     let result = poly_a.ntt_mul(&poly_b);
@@ -151,7 +157,7 @@ mod ntt_benchmarks {
                 })
             });
         }
-        
+
         group.finish();
     }
 
@@ -159,14 +165,16 @@ mod ntt_benchmarks {
     pub fn bench_full_polynomial_multiplication(c: &mut Criterion) {
         let mut group = c.benchmark_group("full_polynomial_multiplication");
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        
+
         // Dilithium
         {
-            let poly_a = <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            let poly_b = <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            
+            let poly_a =
+                <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+            let poly_b =
+                <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+
             group.bench_function("dilithium_ntt_based", |b| {
                 b.iter_batched(
                     || (poly_a.clone(), poly_b.clone()),
@@ -180,7 +188,7 @@ mod ntt_benchmarks {
                     criterion::BatchSize::SmallInput,
                 )
             });
-            
+
             group.bench_function("dilithium_schoolbook", |b| {
                 b.iter_batched(
                     || (poly_a.clone(), poly_b.clone()),
@@ -192,14 +200,16 @@ mod ntt_benchmarks {
                 )
             });
         }
-        
+
         // Kyber
         {
-            let poly_a = <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            let poly_b = <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            
+            let poly_a =
+                <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+            let poly_b =
+                <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+
             group.bench_function("kyber_ntt_based", |b| {
                 b.iter_batched(
                     || (poly_a.clone(), poly_b.clone()),
@@ -213,7 +223,7 @@ mod ntt_benchmarks {
                     criterion::BatchSize::SmallInput,
                 )
             });
-            
+
             group.bench_function("kyber_schoolbook", |b| {
                 b.iter_batched(
                     || (poly_a.clone(), poly_b.clone()),
@@ -225,14 +235,14 @@ mod ntt_benchmarks {
                 )
             });
         }
-        
+
         group.finish();
     }
 
     /// Benchmark Montgomery reduction operations
     pub fn bench_montgomery_operations(c: &mut Criterion) {
         let mut group = c.benchmark_group("montgomery_operations");
-        
+
         // Dilithium Montgomery reduction
         group.bench_function("dilithium_montgomery_reduce", |b| {
             let a: u64 = 0x12345678_9ABCDEF0;
@@ -241,7 +251,7 @@ mod ntt_benchmarks {
                 black_box(result)
             })
         });
-        
+
         // Kyber Montgomery reduction
         group.bench_function("kyber_montgomery_reduce", |b| {
             let a: u64 = 0x12345678;
@@ -250,7 +260,7 @@ mod ntt_benchmarks {
                 black_box(result)
             })
         });
-        
+
         group.finish();
     }
 
@@ -258,50 +268,44 @@ mod ntt_benchmarks {
     pub fn bench_ntt_scaling(c: &mut Criterion) {
         let mut group = c.benchmark_group("ntt_scaling");
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        
+
         // For now, we only have N=256, but this is structured to easily add more sizes
         let sizes = vec![("n256", 256)];
-        
+
         for (label, _size) in sizes {
             // Dilithium
-            let poly = <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            
-            group.bench_with_input(
-                BenchmarkId::new("dilithium", label),
-                &poly,
-                |b, p| {
-                    b.iter_batched(
-                        || p.clone(),
-                        |mut poly| {
-                            poly.ntt_inplace().expect("NTT failed");
-                            black_box(poly)
-                        },
-                        criterion::BatchSize::SmallInput,
-                    )
-                },
-            );
-            
+            let poly =
+                <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+
+            group.bench_with_input(BenchmarkId::new("dilithium", label), &poly, |b, p| {
+                b.iter_batched(
+                    || p.clone(),
+                    |mut poly| {
+                        poly.ntt_inplace().expect("NTT failed");
+                        black_box(poly)
+                    },
+                    criterion::BatchSize::SmallInput,
+                )
+            });
+
             // Kyber
-            let poly = <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
-                .expect("Failed to sample polynomial");
-            
-            group.bench_with_input(
-                BenchmarkId::new("kyber", label),
-                &poly,
-                |b, p| {
-                    b.iter_batched(
-                        || p.clone(),
-                        |mut poly| {
-                            poly.ntt_inplace().expect("NTT failed");
-                            black_box(poly)
-                        },
-                        criterion::BatchSize::SmallInput,
-                    )
-                },
-            );
+            let poly =
+                <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
+                    .expect("Failed to sample polynomial");
+
+            group.bench_with_input(BenchmarkId::new("kyber", label), &poly, |b, p| {
+                b.iter_batched(
+                    || p.clone(),
+                    |mut poly| {
+                        poly.ntt_inplace().expect("NTT failed");
+                        black_box(poly)
+                    },
+                    criterion::BatchSize::SmallInput,
+                )
+            });
         }
-        
+
         group.finish();
     }
 
@@ -309,11 +313,12 @@ mod ntt_benchmarks {
     pub fn bench_ntt_roundtrip(c: &mut Criterion) {
         let mut group = c.benchmark_group("ntt_roundtrip");
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        
+
         // Dilithium roundtrip
-        let poly_dilithium = <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
-            .expect("Failed to sample polynomial");
-        
+        let poly_dilithium =
+            <DefaultSamplers as UniformSampler<DilithiumParams>>::sample_uniform(&mut rng)
+                .expect("Failed to sample polynomial");
+
         group.bench_function("dilithium", |b| {
             b.iter_batched(
                 || poly_dilithium.clone(),
@@ -325,11 +330,12 @@ mod ntt_benchmarks {
                 criterion::BatchSize::SmallInput,
             )
         });
-        
+
         // Kyber roundtrip
-        let poly_kyber = <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
-            .expect("Failed to sample polynomial");
-        
+        let poly_kyber =
+            <DefaultSamplers as UniformSampler<Kyber256Params>>::sample_uniform(&mut rng)
+                .expect("Failed to sample polynomial");
+
         group.bench_function("kyber", |b| {
             b.iter_batched(
                 || poly_kyber.clone(),
@@ -341,7 +347,7 @@ mod ntt_benchmarks {
                 criterion::BatchSize::SmallInput,
             )
         });
-        
+
         group.finish();
     }
 }

@@ -5,9 +5,9 @@
 pub struct TestConfig {
     pub mean_ratio_min: f64,
     pub mean_ratio_max: f64,
-    pub std_dev_threshold: f64,    // Kept for diagnostics only
-    pub t_stat_threshold: f64,     // t-statistic threshold
-    pub combined_score_threshold: f64,  // combined score threshold
+    pub std_dev_threshold: f64,        // Kept for diagnostics only
+    pub t_stat_threshold: f64,         // t-statistic threshold
+    pub combined_score_threshold: f64, // combined score threshold
     pub num_warmup: usize,
     pub num_samples: usize,
     pub num_iterations: usize,
@@ -18,9 +18,9 @@ impl Default for TestConfig {
         Self {
             mean_ratio_min: 0.80,
             mean_ratio_max: 1.25,
-            std_dev_threshold: 0.20,   // Kept for diagnostics only
-            t_stat_threshold: 1.7,     // Default from the algorithm document
-            combined_score_threshold: 1.8,  // Default from the algorithm document
+            std_dev_threshold: 0.20,       // Kept for diagnostics only
+            t_stat_threshold: 1.7,         // Default from the algorithm document
+            combined_score_threshold: 1.8, // Default from the algorithm document
             num_warmup: 1000,
             num_samples: 25,
             num_iterations: 1000,
@@ -51,13 +51,13 @@ impl TestConfig {
         self.num_iterations = iterations;
         self
     }
-    
+
     // Set t-statistic threshold
     pub fn with_t_stat_threshold(mut self, threshold: f64) -> Self {
         self.t_stat_threshold = threshold;
         self
     }
-    
+
     // Set combined score threshold
     pub fn with_combined_score_threshold(mut self, threshold: f64) -> Self {
         self.combined_score_threshold = threshold;
@@ -76,21 +76,21 @@ impl TestConfig {
     pub fn for_aead() -> Self {
         Self::default()
             .with_mean_ratio_range(0.80, 1.35)
-            .with_t_stat_threshold(1.9)  // Slightly higher for more complex operations
+            .with_t_stat_threshold(1.9) // Slightly higher for more complex operations
             .with_combined_score_threshold(1.9)
     }
 
     pub fn for_hash() -> Self {
         Self::default()
             .with_mean_ratio_range(0.80, 1.3)
-            .with_t_stat_threshold(3.5)  // Increased from 1.7 to allow for hash implementation variance
+            .with_t_stat_threshold(3.5) // Increased from 1.7 to allow for hash implementation variance
             .with_combined_score_threshold(1.8)
     }
 
     pub fn for_chacha_poly() -> Self {
         Self::default()
             .with_mean_ratio_range(0.80, 1.5)
-            .with_t_stat_threshold(2.0)  // Higher due to more variability
+            .with_t_stat_threshold(2.0) // Higher due to more variability
             .with_combined_score_threshold(2.0)
     }
 
@@ -103,7 +103,7 @@ impl TestConfig {
     pub fn for_blake3_xof() -> Self {
         Self::default()
             .with_std_dev_threshold(0.25)
-            .with_t_stat_threshold(2.0)  // Higher for BLAKE3
+            .with_t_stat_threshold(2.0) // Higher for BLAKE3
             .with_combined_score_threshold(2.0)
     }
 
@@ -123,7 +123,7 @@ impl TestConfig {
     pub fn for_hkdf() -> Self {
         Self::default()
             .with_mean_ratio_range(0.80, 1.5) // Existing range for mean drift
-            .with_std_dev_threshold(0.30)      // Kept for diagnostics only
+            .with_std_dev_threshold(0.30) // Kept for diagnostics only
             .with_t_stat_threshold(1.9)
             .with_combined_score_threshold(2.0)
     }
@@ -131,10 +131,10 @@ impl TestConfig {
     pub fn for_pbkdf2() -> Self {
         Self::default()
             .with_mean_ratio_range(0.75, 1.33)
-            .with_std_dev_threshold(0.4)       // Kept for diagnostics only
+            .with_std_dev_threshold(0.4) // Kept for diagnostics only
             .with_warmup(10)
             .with_samples_and_iterations(10, 10)
-            .with_t_stat_threshold(2.2)  // Higher due to inherent variability
+            .with_t_stat_threshold(2.2) // Higher due to inherent variability
             .with_combined_score_threshold(2.2)
     }
 }

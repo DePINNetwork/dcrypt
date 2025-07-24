@@ -1,27 +1,27 @@
 //! # dcrypt
-//! 
+//!
 //! A modular cryptographic library providing both traditional and post-quantum algorithms.
-//! 
+//!
 //! ## Usage
-//! 
+//!
 //! Add this to your `Cargo.toml`:
-//! 
+//!
 //! ```toml
 //! [dependencies]
 //! dcrypt = "0.1"
 //! ```
-//! 
+//!
 //! ## Features
-//! 
+//!
 //! - `traditional` (default): Traditional cryptographic algorithms
 //! - `post-quantum`: Post-quantum cryptographic algorithms  
 //! - `hybrid`: Hybrid constructions combining traditional and post-quantum
 //! - `full`: All features enabled
-//! 
+//!
 //! ## Crate Structure
-//! 
+//!
 //! This is a facade crate that re-exports functionality from several sub-crates:
-//! 
+//!
 //! - [`dcrypt-algorithms`]: Core algorithms (AES, SHA, etc.)
 //! - [`dcrypt-symmetric`]: Symmetric encryption
 //! - [`dcrypt-kem`]: Key Encapsulation Mechanisms
@@ -41,7 +41,7 @@ pub use dcrypt_params as params;
 #[cfg(feature = "algorithms")]
 pub use dcrypt_algorithms as algorithms;
 
-#[cfg(feature = "symmetric")] 
+#[cfg(feature = "symmetric")]
 pub use dcrypt_symmetric as symmetric;
 
 #[cfg(feature = "kem")]
@@ -60,42 +60,26 @@ pub use dcrypt_hybrid as hybrid;
 pub mod prelude {
     // Re-export error types
     pub use crate::api::{Error, Result};
-    
+
     // Re-export core traits
     pub use crate::api::{
-        Kem,
-        Signature,
-        SymmetricCipher,
-        Serialize,
-        BlockCipher,
-        StreamCipher,
-        AuthenticatedCipher,
-        KeyDerivationFunction,
-        HashAlgorithm,
+        AuthenticatedCipher, BlockCipher, HashAlgorithm, Kem, KeyDerivationFunction, Serialize,
+        Signature, StreamCipher, SymmetricCipher,
     };
-    
+
     // Re-export security types
-    pub use crate::common::{
-        SecretBuffer,
-        EphemeralSecret,
-        ZeroizeGuard,
-        SecureZeroingType,
-    };
-    
+    pub use crate::common::{EphemeralSecret, SecretBuffer, SecureZeroingType, ZeroizeGuard};
+
     // Re-export memory safety utilities
-    pub use crate::common::{
-        SecureOperation,
-        SecureCompare,
-        SecureOperationExt,
-    };
-    
+    pub use crate::common::{SecureCompare, SecureOperation, SecureOperationExt};
+
     // Conditional re-exports based on features
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub use crate::common::SecureOperationBuilder;
-    
+
     #[cfg(feature = "alloc")]
     pub use crate::common::SecretVec;
-    
+
     #[cfg(any(feature = "std", feature = "alloc"))]
-    pub use crate::common::{ECPoint, CurveParams};
+    pub use crate::common::{CurveParams, ECPoint};
 }

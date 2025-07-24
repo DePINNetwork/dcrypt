@@ -16,22 +16,19 @@ mod point;
 mod scalar;
 
 pub use constants::{
-    P192_SCALAR_SIZE,
-    P192_FIELD_ELEMENT_SIZE,
-    P192_POINT_UNCOMPRESSED_SIZE,
-    P192_POINT_COMPRESSED_SIZE,
-    P192_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE,
+    P192_FIELD_ELEMENT_SIZE, P192_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE, P192_POINT_COMPRESSED_SIZE,
+    P192_POINT_UNCOMPRESSED_SIZE, P192_SCALAR_SIZE,
 };
 pub use field::FieldElement;
 pub use point::{Point, PointFormat};
 pub use scalar::Scalar;
 
 use crate::error::{Error, Result};
-use crate::kdf::hkdf::Hkdf;
 use crate::hash::sha2::Sha256;
+use crate::kdf::hkdf::Hkdf;
 use crate::kdf::KeyDerivationFunction as KdfTrait;
-use rand::{CryptoRng, RngCore};
 use dcrypt_params::traditional::ecdsa::NIST_P192;
+use rand::{CryptoRng, RngCore};
 
 /// Get the standard base point G of the P-192 curve
 pub fn base_point_g() -> Point {

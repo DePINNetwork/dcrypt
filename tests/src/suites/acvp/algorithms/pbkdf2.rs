@@ -1,17 +1,17 @@
 //! ACVP handlers for PBKDF2 (Password-Based Key Derivation Function 2)
 
-use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
-use dcrypt_algorithms::kdf::pbkdf2::{Pbkdf2, Pbkdf2Params};
+use crate::suites::acvp::model::{TestCase, TestGroup};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use dcrypt_algorithms::hash::sha1::Sha1;
 use dcrypt_algorithms::hash::sha2::{Sha224, Sha256, Sha384, Sha512};
 use dcrypt_algorithms::hash::sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
-use dcrypt_algorithms::hash::sha1::Sha1;
+use dcrypt_algorithms::kdf::pbkdf2::{Pbkdf2, Pbkdf2Params};
 use dcrypt_algorithms::kdf::{KeyDerivationFunction, ParamProvider};
 use dcrypt_algorithms::types::Salt;
 use hex;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 
-use super::super::dispatcher::{insert, HandlerFn, DispatchKey};
+use super::super::dispatcher::{insert, DispatchKey, HandlerFn};
 
 /// Helper to look for a value in the test case first, then the group defaults
 fn lookup<'a>(case: &'a TestCase, group: &'a TestGroup, names: &[&str]) -> Option<String> {
@@ -34,12 +34,12 @@ fn decode_flexible(s: &str) -> Result<Vec<u8>> {
             return Ok(decoded);
         }
     }
-    
+
     // Try Base64 decoding (with and without padding)
     if let Ok(decoded) = BASE64.decode(s) {
         return Ok(decoded);
     }
-    
+
     // If the string length is not a multiple of 4, try adding padding
     let padded = match s.len() % 4 {
         0 => s.to_string(),
@@ -47,13 +47,13 @@ fn decode_flexible(s: &str) -> Result<Vec<u8>> {
         3 => format!("{}=", s),
         _ => s.to_string(),
     };
-    
+
     if padded != s {
         if let Ok(decoded) = BASE64.decode(&padded) {
             return Ok(decoded);
         }
     }
-    
+
     // If all else fails, treat it as raw ASCII/UTF-8
     Ok(s.as_bytes().to_vec())
 }
@@ -63,34 +63,37 @@ pub(crate) fn pbkdf2_aft(group: &TestGroup, case: &TestCase) -> Result<()> {
     // Get inputs - ACVP uses these field names for PBKDF2
     let password_str = lookup(case, group, &["password", "pass", "p"])
         .ok_or(EngineError::MissingField("password"))?;
-    
-    let salt_str = lookup(case, group, &["salt", "s"])
-        .ok_or(EngineError::MissingField("salt"))?;
-    
+
+    let salt_str = lookup(case, group, &["salt", "s"]).ok_or(EngineError::MissingField("salt"))?;
+
     // Get iteration count
     let iterations_str = lookup(case, group, &["iterationCount", "iterations", "c"])
         .ok_or(EngineError::MissingField("iterationCount"))?;
-    let iterations = iterations_str.parse::<u32>()
-        .map_err(|_| EngineError::InvalidData(format!("Invalid iteration count: {}", iterations_str)))?;
-    
+    let iterations = iterations_str.parse::<u32>().map_err(|_| {
+        EngineError::InvalidData(format!("Invalid iteration count: {}", iterations_str))
+    })?;
+
     // Get key length - ACVP provides this in BITS
     let key_len_str = lookup(case, group, &["keyLen", "dkLen", "keyLength"])
         .ok_or(EngineError::MissingField("keyLen"))?;
-    let key_len_bits = key_len_str.parse::<usize>()
+    let key_len_bits = key_len_str
+        .parse::<usize>()
         .map_err(|_| EngineError::InvalidData(format!("Invalid key length: {}", key_len_str)))?;
-    
+
     if key_len_bits % 8 != 0 {
-        return Err(EngineError::InvalidData("Key length must be a multiple of 8 bits".into()));
+        return Err(EngineError::InvalidData(
+            "Key length must be a multiple of 8 bits".into(),
+        ));
     }
     let key_len_bytes = key_len_bits / 8;
-    
+
     // Get expected derived key if provided (this is typically hex encoded)
     let expected_dk = lookup(case, group, &["derivedKey", "dk", "dkm"]);
-    
+
     // Decode inputs - try multiple encodings
     let password = decode_flexible(&password_str)?;
     let salt_bytes = decode_flexible(&salt_str)?;
-    
+
     // Get the HMAC algorithm
     let hmac_alg = lookup(case, group, &["hmacAlg"])
         .or_else(|| {
@@ -98,13 +101,25 @@ pub(crate) fn pbkdf2_aft(group: &TestGroup, case: &TestCase) -> Result<()> {
             let algo = &group.algorithm;
             if algo.contains("SHA1") || algo.contains("SHA-1") {
                 Some("SHA-1".to_string())
-            } else if algo.contains("SHA224") || algo.contains("SHA-224") || algo.contains("SHA2-224") {
+            } else if algo.contains("SHA224")
+                || algo.contains("SHA-224")
+                || algo.contains("SHA2-224")
+            {
                 Some("SHA2-224".to_string())
-            } else if algo.contains("SHA256") || algo.contains("SHA-256") || algo.contains("SHA2-256") {
+            } else if algo.contains("SHA256")
+                || algo.contains("SHA-256")
+                || algo.contains("SHA2-256")
+            {
                 Some("SHA2-256".to_string())
-            } else if algo.contains("SHA384") || algo.contains("SHA-384") || algo.contains("SHA2-384") {
+            } else if algo.contains("SHA384")
+                || algo.contains("SHA-384")
+                || algo.contains("SHA2-384")
+            {
                 Some("SHA2-384".to_string())
-            } else if algo.contains("SHA512") || algo.contains("SHA-512") || algo.contains("SHA2-512") {
+            } else if algo.contains("SHA512")
+                || algo.contains("SHA-512")
+                || algo.contains("SHA2-512")
+            {
                 Some("SHA2-512".to_string())
             } else if algo.contains("SHA3-224") {
                 Some("SHA3-224".to_string())
@@ -119,14 +134,14 @@ pub(crate) fn pbkdf2_aft(group: &TestGroup, case: &TestCase) -> Result<()> {
             }
         })
         .ok_or(EngineError::MissingField("hmacAlg"))?;
-    
+
     // Create parameters with the specified iteration count
     let params = Pbkdf2Params {
         salt: Salt::<16>::zeroed(), // Will be overridden by derive_key
         iterations,
         key_length: key_len_bytes,
     };
-    
+
     // Perform PBKDF2 based on the HMAC algorithm
     let dk_hex = match hmac_alg.as_str() {
         "SHA-1" | "SHA1" => {
@@ -174,9 +189,14 @@ pub(crate) fn pbkdf2_aft(group: &TestGroup, case: &TestCase) -> Result<()> {
             let dk = pbkdf2.derive_key(&password, Some(&salt_bytes), None, key_len_bytes)?;
             hex::encode(&dk)
         }
-        _ => return Err(EngineError::InvalidData(format!("Unsupported HMAC algorithm: {}", hmac_alg))),
+        _ => {
+            return Err(EngineError::InvalidData(format!(
+                "Unsupported HMAC algorithm: {}",
+                hmac_alg
+            )))
+        }
     };
-    
+
     // Check result if expected value was provided
     if let Some(expected) = expected_dk {
         if dk_hex != expected {
@@ -187,9 +207,11 @@ pub(crate) fn pbkdf2_aft(group: &TestGroup, case: &TestCase) -> Result<()> {
         }
     } else {
         // Store result for response generation
-        case.outputs.borrow_mut().insert("derivedKey".into(), dk_hex);
+        case.outputs
+            .borrow_mut()
+            .insert("derivedKey".into(), dk_hex);
     }
-    
+
     Ok(())
 }
 
@@ -197,22 +219,42 @@ pub(crate) fn pbkdf2_aft(group: &TestGroup, case: &TestCase) -> Result<()> {
 pub fn register(map: &mut std::collections::HashMap<DispatchKey, HandlerFn>) {
     // Register AFT handlers for PBKDF2 with various hash functions
     let pbkdf2_variants = &[
-        "PBKDF", "PBKDF2",
-        "PBKDF-SHA-1", "PBKDF2-SHA-1", "PBKDF-SHA1", "PBKDF2-SHA1",
-        "PBKDF-SHA-224", "PBKDF2-SHA-224", "PBKDF-SHA224", "PBKDF2-SHA224",
-        "PBKDF-SHA-256", "PBKDF2-SHA-256", "PBKDF-SHA256", "PBKDF2-SHA256",
-        "PBKDF-SHA-384", "PBKDF2-SHA-384", "PBKDF-SHA384", "PBKDF2-SHA384",
-        "PBKDF-SHA-512", "PBKDF2-SHA-512", "PBKDF-SHA512", "PBKDF2-SHA512",
-        "PBKDF-SHA3-224", "PBKDF2-SHA3-224",
-        "PBKDF-SHA3-256", "PBKDF2-SHA3-256",
-        "PBKDF-SHA3-384", "PBKDF2-SHA3-384",
-        "PBKDF-SHA3-512", "PBKDF2-SHA3-512",
+        "PBKDF",
+        "PBKDF2",
+        "PBKDF-SHA-1",
+        "PBKDF2-SHA-1",
+        "PBKDF-SHA1",
+        "PBKDF2-SHA1",
+        "PBKDF-SHA-224",
+        "PBKDF2-SHA-224",
+        "PBKDF-SHA224",
+        "PBKDF2-SHA224",
+        "PBKDF-SHA-256",
+        "PBKDF2-SHA-256",
+        "PBKDF-SHA256",
+        "PBKDF2-SHA256",
+        "PBKDF-SHA-384",
+        "PBKDF2-SHA-384",
+        "PBKDF-SHA384",
+        "PBKDF2-SHA384",
+        "PBKDF-SHA-512",
+        "PBKDF2-SHA-512",
+        "PBKDF-SHA512",
+        "PBKDF2-SHA512",
+        "PBKDF-SHA3-224",
+        "PBKDF2-SHA3-224",
+        "PBKDF-SHA3-256",
+        "PBKDF2-SHA3-256",
+        "PBKDF-SHA3-384",
+        "PBKDF2-SHA3-384",
+        "PBKDF-SHA3-512",
+        "PBKDF2-SHA3-512",
     ];
-    
+
     for algo in pbkdf2_variants {
         // AFT tests
         insert(map, algo, "AFT", "AFT", pbkdf2_aft);
-        
+
         // Some ACVP vectors might not have a specific direction
         insert(map, algo, "", "AFT", pbkdf2_aft);
     }

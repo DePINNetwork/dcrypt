@@ -1,7 +1,7 @@
 //! P-192 test vectors and unit tests
 
 use super::*;
-use crate::ec::p192::{FieldElement, Point, Scalar, PointFormat};
+use crate::ec::p192::{FieldElement, Point, PointFormat, Scalar};
 use dcrypt_params::traditional::ecdsa::NIST_P192;
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -14,14 +14,14 @@ mod field_tests {
     fn test_field_zero_one() {
         let zero = FieldElement::zero();
         let one = FieldElement::one();
-        
+
         assert!(zero.is_zero());
         assert!(!one.is_zero());
-        
+
         // Test that zero + one = one
         let sum = zero.add(&one);
         assert_eq!(sum, one);
-        
+
         // Test that one - one = zero
         let diff = one.sub(&one);
         assert_eq!(diff, zero);
@@ -30,14 +30,12 @@ mod field_tests {
     #[test]
     fn test_field_addition_commutativity() {
         let a_bytes = [
-            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
-            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-            0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+            0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
         ];
         let b_bytes = [
-            0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10,
-            0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11,
-            0x00, 0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x99,
+            0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33,
+            0x22, 0x11, 0x00, 0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x99,
         ];
 
         let a = FieldElement::from_bytes(&a_bytes).unwrap();
@@ -52,9 +50,8 @@ mod field_tests {
     fn test_field_multiplication() {
         let one = FieldElement::one();
         let two_bytes = [
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02,
         ];
         let two = FieldElement::from_bytes(&two_bytes).unwrap();
 
@@ -65,9 +62,8 @@ mod field_tests {
         // Test that 2 * 2 = 4
         let four = two.mul(&two);
         let four_bytes = [
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
         ];
         let expected_four = FieldElement::from_bytes(&four_bytes).unwrap();
         assert_eq!(four, expected_four);
@@ -76,9 +72,8 @@ mod field_tests {
     #[test]
     fn test_field_squaring() {
         let x_bytes = [
-            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
-            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-            0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+            0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
         ];
         let x = FieldElement::from_bytes(&x_bytes).unwrap();
 
@@ -90,9 +85,8 @@ mod field_tests {
     #[test]
     fn test_field_inversion() {
         let x_bytes = [
-            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
-            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-            0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+            0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
         ];
         let x = FieldElement::from_bytes(&x_bytes).unwrap();
         let x_inv = x.invert().unwrap();
@@ -112,9 +106,8 @@ mod field_tests {
     #[test]
     fn test_field_serialization() {
         let original_bytes = [
-            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
-            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-            0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+            0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
         ];
 
         let fe = FieldElement::from_bytes(&original_bytes).unwrap();
@@ -126,17 +119,15 @@ mod field_tests {
     fn test_field_modulus_rejection() {
         // Test that values >= p are rejected
         let p_bytes = [
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         ];
         assert!(FieldElement::from_bytes(&p_bytes).is_err());
 
         // Test that p-1 is accepted
         let p_minus_1_bytes = [
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
+            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE,
         ];
         assert!(FieldElement::from_bytes(&p_minus_1_bytes).is_ok());
     }
@@ -164,7 +155,7 @@ mod point_tests {
         assert!(identity.is_identity());
 
         let g = base_point_g();
-        
+
         // Test that G + O = G
         let sum = g.add(&identity);
         assert_eq!(sum, g);
@@ -177,7 +168,7 @@ mod point_tests {
     #[test]
     fn test_point_doubling() {
         let g = base_point_g();
-        
+
         // Test that 2G = G + G
         let double1 = g.double();
         let double2 = g.add(&g);
@@ -188,7 +179,7 @@ mod point_tests {
     fn test_point_addition_commutativity() {
         let g = base_point_g();
         let g2 = g.double();
-        
+
         // Test that G + 2G = 2G + G
         let sum1 = g.add(&g2);
         let sum2 = g2.add(&g);
@@ -198,7 +189,7 @@ mod point_tests {
     #[test]
     fn test_point_uncompressed_serialization() {
         let g = base_point_g();
-        
+
         // Test round-trip serialization
         let serialized = g.serialize_uncompressed();
         let deserialized = Point::deserialize_uncompressed(&serialized).unwrap();
@@ -212,7 +203,7 @@ mod point_tests {
     #[test]
     fn test_point_compressed_serialization() {
         let g = base_point_g();
-        
+
         // Test round-trip serialization
         let compressed = g.serialize_compressed();
         let decompressed = Point::deserialize_compressed(&compressed).unwrap();
@@ -226,7 +217,7 @@ mod point_tests {
     #[test]
     fn test_point_identity_serialization() {
         let identity = Point::identity();
-        
+
         // Test uncompressed identity serialization
         let uncompressed = identity.serialize_uncompressed();
         assert!(uncompressed.iter().all(|&b| b == 0));
@@ -243,7 +234,7 @@ mod point_tests {
     #[test]
     fn test_point_scalar_multiplication() {
         let g = base_point_g();
-        
+
         // Create a small scalar
         let mut scalar_bytes = [0u8; P192_SCALAR_SIZE];
         scalar_bytes[P192_SCALAR_SIZE - 1] = 3; // scalar = 3
@@ -260,7 +251,7 @@ mod point_tests {
         // Try to create a point with coordinates that don't satisfy the curve equation
         let invalid_x = [0x12; P192_FIELD_ELEMENT_SIZE];
         let invalid_y = [0x34; P192_FIELD_ELEMENT_SIZE];
-        
+
         assert!(Point::new_uncompressed(&invalid_x, &invalid_y).is_err());
     }
 
@@ -268,7 +259,7 @@ mod point_tests {
     fn test_compressed_point_invalid_prefix() {
         let mut invalid_compressed = [0u8; P192_POINT_COMPRESSED_SIZE];
         invalid_compressed[0] = 0x05; // Invalid prefix
-        
+
         assert!(Point::deserialize_compressed(&invalid_compressed).is_err());
     }
 }
@@ -280,14 +271,13 @@ mod scalar_tests {
     #[test]
     fn test_scalar_creation() {
         let scalar_bytes = [
-            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
-            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-            0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
+            0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+            0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
         ];
-        
+
         let scalar = Scalar::new(scalar_bytes).unwrap();
         assert!(!scalar.is_zero());
-        
+
         // Test serialization round-trip
         let serialized = scalar.serialize();
         let deserialized = Scalar::deserialize(&serialized).unwrap();
@@ -379,12 +369,12 @@ mod integration_tests {
     #[test]
     fn test_keypair_generation() {
         let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
-        
+
         let (private_key, public_key) = generate_keypair(&mut rng).unwrap();
-        
+
         // Verify that the public key is not the identity
         assert!(!public_key.is_identity());
-        
+
         // Verify that private_key * G = public_key
         let computed_public = scalar_mult_base_g(&private_key).unwrap();
         assert_eq!(public_key, computed_public);
@@ -428,10 +418,10 @@ mod integration_tests {
     fn test_kdf_functionality() {
         let input_material = b"test input material";
         let info = Some(b"test context info".as_slice());
-        
+
         let derived_key = kdf_hkdf_sha256_for_ecdh_kem(input_material, info).unwrap();
         assert_eq!(derived_key.len(), P192_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE);
-        
+
         // Test that different input produces different output
         let different_input = b"different input material";
         let different_key = kdf_hkdf_sha256_for_ecdh_kem(different_input, info).unwrap();
@@ -441,7 +431,7 @@ mod integration_tests {
     #[test]
     fn test_ecdh_compatibility() {
         let mut rng = ChaCha20Rng::from_seed([1u8; 32]);
-        
+
         // Generate two keypairs
         let (alice_private, alice_public) = generate_keypair(&mut rng).unwrap();
         let (bob_private, bob_public) = generate_keypair(&mut rng).unwrap();
@@ -457,7 +447,7 @@ mod integration_tests {
         let shared_x = alice_shared_point.x_coordinate_bytes();
         let alice_key = kdf_hkdf_sha256_for_ecdh_kem(&shared_x, None).unwrap();
         let bob_key = kdf_hkdf_sha256_for_ecdh_kem(&shared_x, None).unwrap();
-        
+
         assert_eq!(alice_key, bob_key);
     }
 }
@@ -472,11 +462,11 @@ mod test_vectors {
         let g = base_point_g();
         let g_x = g.x_coordinate_bytes();
         let g_y = g.y_coordinate_bytes();
-        
+
         // These should match the standard NIST P-192 base point coordinates
         assert_eq!(g_x, NIST_P192.g_x);
         assert_eq!(g_y, NIST_P192.g_y);
-        
+
         // Verify that G is on the curve
         assert!(!g.is_identity());
     }
@@ -487,11 +477,11 @@ mod test_vectors {
         let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
         let mut scalar_bytes = [0u8; P192_SCALAR_SIZE];
         rng.fill_bytes(&mut scalar_bytes);
-        
+
         let scalar = Scalar::new(scalar_bytes).unwrap();
         let result1 = scalar_mult_base_g(&scalar).unwrap();
         let result2 = scalar_mult_base_g(&scalar).unwrap();
-        
+
         // Results should be identical
         assert_eq!(result1, result2);
     }
@@ -501,16 +491,16 @@ mod test_vectors {
         // Verify that n * G = O (where n is the curve order)
         // Note: This test is computationally expensive, so we use a smaller test
         let g = base_point_g();
-        
+
         // Test that 2G ≠ G and 2G ≠ O
         let g2 = g.double();
         assert_ne!(g2, g);
         assert!(!g2.is_identity());
-        
+
         // Test that (2^k)G cycles through different points
         let mut current = g.clone();
         let mut seen_identity = false;
-        
+
         // Just test a few doublings to make sure we don't immediately hit identity
         for _ in 0..10 {
             current = current.double();
@@ -519,7 +509,7 @@ mod test_vectors {
                 break;
             }
         }
-        
+
         // We shouldn't see identity in just 10 doublings for P-192
         assert!(!seen_identity);
     }
@@ -532,32 +522,32 @@ mod property_tests {
     #[test]
     fn test_field_element_properties() {
         let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
-        
+
         for _ in 0..20 {
             let mut a_bytes = [0u8; P192_FIELD_ELEMENT_SIZE];
             let mut b_bytes = [0u8; P192_FIELD_ELEMENT_SIZE];
             let mut c_bytes = [0u8; P192_FIELD_ELEMENT_SIZE];
-            
+
             rng.fill_bytes(&mut a_bytes);
             rng.fill_bytes(&mut b_bytes);
             rng.fill_bytes(&mut c_bytes);
-            
+
             // Ensure they're valid field elements
             if let (Ok(a), Ok(b), Ok(c)) = (
                 FieldElement::from_bytes(&a_bytes),
                 FieldElement::from_bytes(&b_bytes),
-                FieldElement::from_bytes(&c_bytes)
+                FieldElement::from_bytes(&c_bytes),
             ) {
                 // Test associativity: (a + b) + c = a + (b + c)
                 let left = a.add(&b).add(&c);
                 let right = a.add(&b.add(&c));
                 assert_eq!(left, right);
-                
+
                 // Test commutativity: a + b = b + a
                 let sum1 = a.add(&b);
                 let sum2 = b.add(&a);
                 assert_eq!(sum1, sum2);
-                
+
                 // Test distributivity: a * (b + c) = a * b + a * c
                 let left = a.mul(&b.add(&c));
                 let right = a.mul(&b).add(&a.mul(&c));
@@ -577,14 +567,14 @@ mod property_tests {
             let point = scalar_mult_base_g(&scalar).unwrap();
             test_points.push(point);
         }
-        
+
         for p in &test_points {
             for q in &test_points {
                 // Test commutativity: P + Q = Q + P
                 let sum1 = p.add(q);
                 let sum2 = q.add(p);
                 assert_eq!(sum1, sum2);
-                
+
                 // Test that P + O = P
                 let identity = Point::identity();
                 let sum_with_identity = p.add(&identity);
@@ -596,7 +586,7 @@ mod property_tests {
     #[test]
     fn test_scalar_arithmetic_properties() {
         let mut rng = ChaCha20Rng::from_seed([2u8; 32]);
-        
+
         // Generate test scalars
         let mut test_scalars = Vec::new();
         for _ in 0..5 {
@@ -606,23 +596,22 @@ mod property_tests {
                 test_scalars.push(scalar);
             }
         }
-        
+
         for a in &test_scalars {
             for b in &test_scalars {
                 // Test commutativity: a + b = b + a
                 if let (Ok(sum1), Ok(sum2)) = (a.add_mod_n(b), b.add_mod_n(a)) {
                     assert_eq!(sum1.serialize(), sum2.serialize());
                 }
-                
+
                 // Test that (a * b) * G = a * (b * G)
                 if let Ok(product) = a.mul_mod_n(b) {
                     // First compute b * G
                     if let Ok(b_times_g) = scalar_mult_base_g(b) {
                         // Then compute both sides of the equation
-                        if let (Ok(left), Ok(right)) = (
-                            scalar_mult_base_g(&product),
-                            scalar_mult(a, &b_times_g)
-                        ) {
+                        if let (Ok(left), Ok(right)) =
+                            (scalar_mult_base_g(&product), scalar_mult(a, &b_times_g))
+                        {
                             assert_eq!(left, right);
                         }
                     }
@@ -642,11 +631,11 @@ mod regression_tests {
         let identity = Point::identity();
         let uncompressed = identity.serialize_uncompressed();
         let compressed = identity.serialize_compressed();
-        
+
         // Identity should serialize to all zeros
         assert!(uncompressed.iter().all(|&b| b == 0));
         assert!(compressed.iter().all(|&b| b == 0));
-        
+
         // Deserialization should work
         assert!(Point::deserialize_uncompressed(&uncompressed).is_ok());
         assert!(Point::deserialize_compressed(&compressed).is_ok());
@@ -657,13 +646,13 @@ mod regression_tests {
         // Test various malformed inputs
         let too_short = vec![0u8; 10];
         let too_long = vec![0u8; 100];
-        
+
         // Points
         assert!(Point::deserialize_uncompressed(&too_short).is_err());
         assert!(Point::deserialize_uncompressed(&too_long).is_err());
         assert!(Point::deserialize_compressed(&too_short).is_err());
         assert!(Point::deserialize_compressed(&too_long).is_err());
-        
+
         // Scalars
         assert!(Scalar::deserialize(&too_short).is_err());
         assert!(Scalar::deserialize(&too_long).is_err());
@@ -674,11 +663,11 @@ mod regression_tests {
         // Test that zero scalar is properly rejected
         let zero_bytes = [0u8; P192_SCALAR_SIZE];
         assert!(Scalar::new(zero_bytes).is_err());
-        
+
         // Test that large values are properly reduced
         let large_bytes = [0xFF; P192_SCALAR_SIZE];
         assert!(Scalar::new(large_bytes).is_ok());
-        
+
         // Test field element boundaries
         let mut max_valid = [0xFF; P192_FIELD_ELEMENT_SIZE];
         max_valid[16] = 0xFE; // Make it p-1

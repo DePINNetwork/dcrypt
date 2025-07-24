@@ -25,3 +25,6 @@ dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.1" }
 
 [dev-dependencies]
 rand = { version = "0.8.5" }
+
+[package.metadata.release]
+publish = true

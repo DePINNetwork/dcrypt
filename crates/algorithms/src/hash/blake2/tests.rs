@@ -1,6 +1,6 @@
 use super::*;
-use hex;
 use crate::hash::HashFunction;
+use hex;
 
 // Helper function to convert a digest to hex string
 fn to_hex(digest: &[u8]) -> String {
@@ -13,12 +13,12 @@ fn test_blake2b_empty_string() {
     hasher.update(b"").unwrap();
     let digest = hasher.finalize().unwrap();
     let hex = to_hex(digest.as_ref());
-    
+
     // RFC 7693 Appendix A test vector for empty string
     let expected = "786a02f742015903c6c6fd852552d272912f4740e1584761\
                     8a86e217f71f5419d25e1031afee585313896444934eb04b\
                     903a685b1448b755d56f701afe9be2ce";
-    
+
     assert_eq!(hex, expected);
     // Also verify first 4 bytes specifically
     assert_eq!(&hex[0..8], "786a02f7");
@@ -30,12 +30,12 @@ fn test_blake2b_abc() {
     hasher.update(b"abc").unwrap();
     let digest = hasher.finalize().unwrap();
     let hex = to_hex(digest.as_ref());
-    
+
     // RFC 7693 Appendix A test vector for "abc"
     let expected = "ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b7\
                     4b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc95\
                     18d38aa8dbf1925ab92386edd4009923";
-    
+
     assert_eq!(hex, expected);
     // Also verify first 4 bytes specifically
     assert_eq!(&hex[0..8], "ba80a53f");
@@ -64,19 +64,21 @@ fn test_blake2b_1million_zeros() {
 fn test_f1_flag_never_set_sequential_tree() {
     // Create a Blake2b instance
     let mut hasher = Blake2b::new();
-    
+
     // Check that f[1] is initially zero
     assert_eq!(hasher.f[1], 0);
-    
+
     // Small input to trigger compression
-    hasher.update(b"test data that will cause compression").unwrap();
-    
+    hasher
+        .update(b"test data that will cause compression")
+        .unwrap();
+
     // Check f[1] is still zero after an update
     assert_eq!(hasher.f[1], 0);
-    
+
     // Finalize to trigger the last block with the 'last' flag
     hasher.finalize().unwrap();
-    
+
     // Check f[1] is still zero after finalization
     // This ensures LAST_NODE bit is not set in sequential tree mode
     assert_eq!(hasher.f[1], 0);
@@ -93,7 +95,6 @@ fn test_blake2b_empty() {
     let res = h.finalize().unwrap();
     assert_eq!(hex::encode(&res), expected);
 }
-
 
 #[test]
 fn test_blake2s_empty() {
@@ -240,17 +241,24 @@ fn test_blake2s_boundary_sizes() {
 #[test]
 fn test_blake2b_vectors() {
     let test_vectors = [
-        (b"".as_ref(), "\
+        (
+            b"".as_ref(),
+            "\
             786a02f742015903c6c6fd852552d272912f4740e15847618a86e217f71f5419\
-            d25e1031afee585313896444934eb04b903a685b1448b755d56f701afe9be2ce"),
-        (b"The quick brown fox jumps over the lazy dog".as_ref(),
-         "\
+            d25e1031afee585313896444934eb04b903a685b1448b755d56f701afe9be2ce",
+        ),
+        (
+            b"The quick brown fox jumps over the lazy dog".as_ref(),
+            "\
             a8add4bdddfd93e4877d2746e62817b116364a1fa7bc148d95090bc7333b3673\
-            f82401cf7aa2e4cb1ecd90296e3f14cb5413f8ed77be73045b13914cdcd6a918"),
-        (b"The quick brown fox jumps over the lazy dof".as_ref(),
-         "\
+            f82401cf7aa2e4cb1ecd90296e3f14cb5413f8ed77be73045b13914cdcd6a918",
+        ),
+        (
+            b"The quick brown fox jumps over the lazy dof".as_ref(),
+            "\
             ab6b007747d8068c02e25a6008db8a77c218d94f3b40d2291a7dc8a62090a744c\
-            082ea27af01521a102e42f480a31e9844053f456b4b41e8aa78bbe5c12957bb"),
+            082ea27af01521a102e42f480a31e9844053f456b4b41e8aa78bbe5c12957bb",
+        ),
     ];
     for (i, &(msg, exp)) in test_vectors.iter().enumerate() {
         let mut h = Blake2b::new();
@@ -263,11 +271,18 @@ fn test_blake2b_vectors() {
 #[test]
 fn test_blake2s_vectors() {
     let test_vectors = [
-        (b"".as_ref(), "69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9"),
-        (b"The quick brown fox jumps over the lazy dog".as_ref(),
-         "606beeec743ccbeff6cbcdf5d5302aa855c256c29b88c8ed331ea1a6bf3c8812"),
-        (b"The quick brown fox jumps over the lazy dof".as_ref(),
-         "ae8ce27c652988829d43a30e38a710e59c5adacab9076d8289d0f44976a567e8"),
+        (
+            b"".as_ref(),
+            "69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9",
+        ),
+        (
+            b"The quick brown fox jumps over the lazy dog".as_ref(),
+            "606beeec743ccbeff6cbcdf5d5302aa855c256c29b88c8ed331ea1a6bf3c8812",
+        ),
+        (
+            b"The quick brown fox jumps over the lazy dof".as_ref(),
+            "ae8ce27c652988829d43a30e38a710e59c5adacab9076d8289d0f44976a567e8",
+        ),
     ];
     for (i, &(msg, exp)) in test_vectors.iter().enumerate() {
         let mut h = Blake2s::new();

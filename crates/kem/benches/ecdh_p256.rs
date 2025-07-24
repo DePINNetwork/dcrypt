@@ -7,9 +7,9 @@
 //! - Decapsulation
 //! - Full round-trip operations
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use dcrypt_kem::ecdh::p256::EcdhP256;
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use dcrypt_api::Kem;
+use dcrypt_kem::ecdh::p256::EcdhP256;
 use rand::rngs::OsRng;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -17,7 +17,7 @@ use rand_chacha::ChaCha20Rng;
 /// Benchmark key generation
 fn bench_keypair_generation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P256/Keypair");
-    
+
     // Benchmark with OsRng (system randomness)
     group.bench_function("OsRng", |b| {
         let mut rng = OsRng;
@@ -26,7 +26,7 @@ fn bench_keypair_generation(c: &mut Criterion) {
             black_box(keypair);
         });
     });
-    
+
     // Benchmark with ChaCha20Rng (deterministic for consistency)
     group.bench_function("ChaCha20Rng", |b| {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
@@ -35,7 +35,7 @@ fn bench_keypair_generation(c: &mut Criterion) {
             black_box(keypair);
         });
     });
-    
+
     group.finish();
 }
 
@@ -43,17 +43,18 @@ fn bench_keypair_generation(c: &mut Criterion) {
 fn bench_encapsulation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P256/Encapsulate");
     let mut rng = ChaCha20Rng::seed_from_u64(42);
-    
+
     // Generate a recipient keypair
     let (recipient_pk, _) = EcdhP256::keypair(&mut rng).unwrap();
-    
+
     group.bench_function("default", |b| {
         b.iter(|| {
-            let (ciphertext, shared_secret) = EcdhP256::encapsulate(&mut rng, &recipient_pk).unwrap();
+            let (ciphertext, shared_secret) =
+                EcdhP256::encapsulate(&mut rng, &recipient_pk).unwrap();
             black_box((ciphertext, shared_secret));
         });
     });
-    
+
     group.finish();
 }
 
@@ -61,48 +62,50 @@ fn bench_encapsulation(c: &mut Criterion) {
 fn bench_decapsulation(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P256/Decapsulate");
     let mut rng = ChaCha20Rng::seed_from_u64(42);
-    
+
     // Generate recipient keypair and create a ciphertext
     let (recipient_pk, recipient_sk) = EcdhP256::keypair(&mut rng).unwrap();
     let (ciphertext, _) = EcdhP256::encapsulate(&mut rng, &recipient_pk).unwrap();
-    
+
     group.bench_function("default", |b| {
         b.iter(|| {
             let shared_secret = EcdhP256::decapsulate(&recipient_sk, &ciphertext).unwrap();
             black_box(shared_secret);
         });
     });
-    
+
     group.finish();
 }
 
 /// Benchmark full round-trip (keypair + encapsulate + decapsulate)
 fn bench_full_roundtrip(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P256/FullRoundtrip");
-    
+
     group.bench_function("default", |b| {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         b.iter(|| {
             // Generate recipient keypair
             let (recipient_pk, recipient_sk) = EcdhP256::keypair(&mut rng).unwrap();
-            
+
             // Encapsulate
-            let (ciphertext, shared_secret_sender) = EcdhP256::encapsulate(&mut rng, &recipient_pk).unwrap();
-            
+            let (ciphertext, shared_secret_sender) =
+                EcdhP256::encapsulate(&mut rng, &recipient_pk).unwrap();
+
             // Decapsulate
-            let shared_secret_recipient = EcdhP256::decapsulate(&recipient_sk, &ciphertext).unwrap();
-            
+            let shared_secret_recipient =
+                EcdhP256::decapsulate(&recipient_sk, &ciphertext).unwrap();
+
             black_box((shared_secret_sender, shared_secret_recipient));
         });
     });
-    
+
     group.finish();
 }
 
 /// Benchmark parallel operations to test scalability
 fn bench_parallel_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P256/Parallel");
-    
+
     // Test with different numbers of keypairs
     for num_keys in [1, 10, 100].iter() {
         group.bench_with_input(
@@ -110,22 +113,23 @@ fn bench_parallel_operations(c: &mut Criterion) {
             num_keys,
             |b, &num_keys| {
                 let mut rng = ChaCha20Rng::seed_from_u64(42);
-                
+
                 // Pre-generate recipient keys
                 let recipients: Vec<_> = (0..num_keys)
                     .map(|_| EcdhP256::keypair(&mut rng).unwrap())
                     .collect();
-                
+
                 b.iter(|| {
                     for (pk, _) in &recipients {
-                        let (ciphertext, shared_secret) = EcdhP256::encapsulate(&mut rng, pk).unwrap();
+                        let (ciphertext, shared_secret) =
+                            EcdhP256::encapsulate(&mut rng, pk).unwrap();
                         black_box((ciphertext, shared_secret));
                     }
                 });
             },
         );
     }
-    
+
     group.finish();
 }
 
@@ -133,18 +137,15 @@ fn bench_parallel_operations(c: &mut Criterion) {
 fn bench_memory_patterns(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P256/Memory");
     let mut rng = ChaCha20Rng::seed_from_u64(42);
-    
+
     // Benchmark key sizes
     group.bench_function("key_sizes", |b| {
         let (pk, sk) = EcdhP256::keypair(&mut rng).unwrap();
         b.iter(|| {
-            black_box((
-                pk.as_ref().len(),
-                sk.as_ref().len(),
-            ));
+            black_box((pk.as_ref().len(), sk.as_ref().len()));
         });
     });
-    
+
     // Benchmark ciphertext size
     group.bench_function("ciphertext_size", |b| {
         let (pk, _) = EcdhP256::keypair(&mut rng).unwrap();
@@ -153,7 +154,7 @@ fn bench_memory_patterns(c: &mut Criterion) {
             black_box(ct.as_ref().len());
         });
     });
-    
+
     group.finish();
 }
 
@@ -161,47 +162,47 @@ fn bench_memory_patterns(c: &mut Criterion) {
 fn bench_error_cases(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P256/ErrorCases");
     let mut rng = ChaCha20Rng::seed_from_u64(42);
-    
+
     // Benchmark invalid public key handling (identity point)
     group.bench_function("invalid_public_key", |b| {
         // Create a valid public key first, then modify it to be invalid
         let (mut invalid_pk, _) = EcdhP256::keypair(&mut rng).unwrap();
         // Set all bytes to zero to create an invalid identity point
         invalid_pk.as_mut().fill(0);
-        
+
         b.iter(|| {
             let result = EcdhP256::encapsulate(&mut rng, &invalid_pk);
             black_box(result.is_err());
         });
     });
-    
+
     // Benchmark invalid ciphertext handling
     group.bench_function("invalid_ciphertext", |b| {
         let (pk, sk) = EcdhP256::keypair(&mut rng).unwrap();
         let (mut invalid_ct, _) = EcdhP256::encapsulate(&mut rng, &pk).unwrap();
         // Set all bytes to zero to create an invalid ciphertext
         invalid_ct.as_mut().fill(0);
-        
+
         b.iter(|| {
             let result = EcdhP256::decapsulate(&sk, &invalid_ct);
             black_box(result.is_err());
         });
     });
-    
+
     // Benchmark tampered ciphertext handling
     group.bench_function("tampered_ciphertext", |b| {
         let (pk, sk) = EcdhP256::keypair(&mut rng).unwrap();
         let (mut tampered_ct, _) = EcdhP256::encapsulate(&mut rng, &pk).unwrap();
         // Tamper with the first byte
         tampered_ct.as_mut()[0] ^= 0xFF;
-        
+
         b.iter(|| {
             let result = EcdhP256::decapsulate(&sk, &tampered_ct);
             // This might succeed but produce a different shared secret, or it might fail
             black_box(result);
         });
     });
-    
+
     group.finish();
 }
 
@@ -209,11 +210,11 @@ fn bench_error_cases(c: &mut Criterion) {
 fn bench_kdf_performance(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P256/KDF");
     let mut rng = ChaCha20Rng::seed_from_u64(42);
-    
+
     // Measure the overhead of KDF in encapsulation
     group.bench_function("encapsulation_kdf_overhead", |b| {
         let (pk, _) = EcdhP256::keypair(&mut rng).unwrap();
-        
+
         b.iter(|| {
             // The KDF is included in the encapsulation process
             let (_, shared_secret) = EcdhP256::encapsulate(&mut rng, &pk).unwrap();
@@ -221,7 +222,7 @@ fn bench_kdf_performance(c: &mut Criterion) {
             black_box(shared_secret.as_ref().len());
         });
     });
-    
+
     group.finish();
 }
 
@@ -229,11 +230,11 @@ fn bench_kdf_performance(c: &mut Criterion) {
 fn bench_point_compression(c: &mut Criterion) {
     let mut group = c.benchmark_group("ECDH-P256/Compression");
     let mut rng = ChaCha20Rng::seed_from_u64(42);
-    
+
     // Benchmark serialization/deserialization of compressed points
     group.bench_function("compressed_point_operations", |b| {
         let (pk, _) = EcdhP256::keypair(&mut rng).unwrap();
-        
+
         b.iter(|| {
             // The implementation uses compressed points internally
             let pk_bytes = pk.as_ref();
@@ -241,7 +242,7 @@ fn bench_point_compression(c: &mut Criterion) {
             black_box(pk_bytes);
         });
     });
-    
+
     group.finish();
 }
 

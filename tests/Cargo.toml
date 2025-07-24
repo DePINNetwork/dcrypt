@@ -1,5 +1,5 @@
 [package]
-name = "tests"
+name = "dcrypt_tests"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -42,3 +42,6 @@ toml = "0.8"
 [[bench]]
 name = "aes_bench"
 harness = false
+
+[package.metadata.release]
+publish = true
