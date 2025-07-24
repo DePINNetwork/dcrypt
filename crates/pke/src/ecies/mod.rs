@@ -1,8 +1,8 @@
 //! Elliptic Curve Integrated Encryption Scheme (ECIES) generic components.
 
-use algorithms::kdf::hkdf::Hkdf;
-use algorithms::hash::sha2::{Sha256, Sha384, Sha512}; // Added Sha512
-use algorithms::kdf::KeyDerivationFunction;
+use dcrypt_algorithms::kdf::hkdf::Hkdf;
+use dcrypt_algorithms::hash::sha2::{Sha256, Sha384, Sha512}; // Added Sha512
+use dcrypt_algorithms::kdf::KeyDerivationFunction;
 use crate::error::{Result as PkeResult, Error as PkeError}; // Use PKE specific Result/Error
 
 // Ensure Vec, String, format are available for no_std + alloc

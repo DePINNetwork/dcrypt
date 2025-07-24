@@ -8,8 +8,8 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use api::{Kem as KemTrait, Result as ApiResult, error::Error as ApiError, Key as ApiKey};
-use algorithms::error::Error as AlgoError;
+use dcrypt_api::{Kem as KemTrait, Result as ApiResult, error::Error as ApiError, Key as ApiKey};
+use dcrypt_algorithms::error::Error as AlgoError;
 use crate::error::Error as KemError; // KEM-specific errors
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use rand::{CryptoRng, RngCore};

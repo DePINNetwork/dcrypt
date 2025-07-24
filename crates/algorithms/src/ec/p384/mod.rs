@@ -32,7 +32,7 @@ use crate::kdf::hkdf::Hkdf;
 use crate::hash::sha2::Sha384;
 use crate::kdf::KeyDerivationFunction as KdfTrait;
 use rand::{CryptoRng, RngCore};
-use params::traditional::ecdsa::NIST_P384;
+use dcrypt_params::traditional::ecdsa::NIST_P384;
 
 /// Get the standard base point G of the P-384 curve
 /// 

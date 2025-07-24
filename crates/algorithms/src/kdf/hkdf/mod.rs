@@ -13,7 +13,7 @@ use crate::types::Salt;
 use crate::types::salt::HkdfCompatible;
 
 // Import security types from dcrypt-core
-use common::security::{EphemeralSecret, SecureZeroingType};
+use dcrypt_common::security::{EphemeralSecret, SecureZeroingType};
 
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 use rand::{CryptoRng, RngCore};

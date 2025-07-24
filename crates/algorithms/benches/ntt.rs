@@ -10,9 +10,9 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 #[cfg(feature = "alloc")]
 mod ntt_benchmarks {
-    use algorithms::poly::prelude::*;
-    use algorithms::poly::params::{DilithiumParams, Kyber256Params};
-    use algorithms::poly::sampling::{DefaultSamplers, UniformSampler};
+    use dcrypt_algorithms::poly::prelude::*;
+    use dcrypt_algorithms::poly::params::{DilithiumParams, Kyber256Params};
+    use dcrypt_algorithms::poly::sampling::{DefaultSamplers, UniformSampler};
     use criterion::{black_box, BenchmarkId, Criterion};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;

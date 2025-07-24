@@ -9,10 +9,10 @@ use std::println;
 use alloc::println;
 
 // Core DCRYPT API traits and types
-use api::error::{Error as CoreError, Result as CoreResult};
+use dcrypt_api::error::{Error as CoreError, Result as CoreResult};
 
 // Algorithms crate components and types
-use algorithms::types::{
+use dcrypt_algorithms::types::{
     SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey,
     Nonce, Salt, SecretBytes, RandomGeneration, // Added RandomGeneration
     // Algorithm marker types

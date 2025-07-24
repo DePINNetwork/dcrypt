@@ -2,8 +2,8 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase, FlexValue};
 use crate::suites::acvp::error::{EngineError, Result};
-use algorithms::hash::sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
-use algorithms::hash::HashFunction;
+use dcrypt_algorithms::hash::sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
+use dcrypt_algorithms::hash::HashFunction;
 use hex;
 
 use super::super::dispatcher::{insert, HandlerFn, DispatchKey};

@@ -2,9 +2,9 @@
 
 use crate::ec::p256::constants::P256_SCALAR_SIZE;
 use crate::error::{Error, Result, validate};
-use common::security::SecretBuffer;
+use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use params::traditional::ecdsa::NIST_P256;
+use dcrypt_params::traditional::ecdsa::NIST_P256;
 
 /// P-256 scalar value for use in elliptic curve operations
 /// 

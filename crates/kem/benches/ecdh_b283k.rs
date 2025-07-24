@@ -7,7 +7,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use kem::ecdh::b283k::EcdhB283k;
-use api::Kem;
+use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 
 /// Benchmark key pair generation for ECDH-B283k

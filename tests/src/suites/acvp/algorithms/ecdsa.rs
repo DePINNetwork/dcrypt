@@ -2,19 +2,19 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
-use sign::traditional::ecdsa::{
+use dcrypt_sign::traditional::ecdsa::{
     EcdsaP192, EcdsaP192PublicKey, EcdsaP192SecretKey, EcdsaP192Signature, // Added P-192
     EcdsaP224, EcdsaP224PublicKey, EcdsaP224SecretKey, EcdsaP224Signature,
     EcdsaP256, EcdsaP256PublicKey, EcdsaP256SecretKey, EcdsaP256Signature,
     EcdsaP384, EcdsaP384PublicKey, EcdsaP384SecretKey, EcdsaP384Signature,
     EcdsaP521, EcdsaP521PublicKey, EcdsaP521SecretKey, EcdsaP521Signature,
 };
-use api::Signature;
+use dcrypt_api::Signature;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use hex;
 // Import P-192 constants
-use algorithms::ec::p192 as ec_p192;
+use dcrypt_algorithms::ec::p192 as ec_p192;
 
 
 use super::super::dispatcher::{insert, HandlerFn, DispatchKey};
@@ -452,7 +452,7 @@ fn create_p521_public_key(qx_hex: &str, qy_hex: &str) -> Result<EcdsaP521PublicK
 }
 
 fn create_der_signature(r: &[u8], s: &[u8]) -> Result<Vec<u8>> {
-    use sign::traditional::ecdsa::common::SignatureComponents;
+    use dcrypt_sign::traditional::ecdsa::common::SignatureComponents;
     let sig = SignatureComponents {
         r: r.to_vec(),
         s: s.to_vec(),
@@ -461,7 +461,7 @@ fn create_der_signature(r: &[u8], s: &[u8]) -> Result<Vec<u8>> {
 }
 
 fn parse_der_signature(der: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
-    use sign::traditional::ecdsa::common::SignatureComponents;
+    use dcrypt_sign::traditional::ecdsa::common::SignatureComponents;
     let sig = SignatureComponents::from_der(der)
         .map_err(|e| EngineError::Crypto(format!("DER parsing failed: {:?}", e)))?;
     Ok((sig.r, sig.s))

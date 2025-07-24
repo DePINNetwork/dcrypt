@@ -6,7 +6,7 @@
 //! ## Example usage
 //!
 //! ```
-//! use algorithms::aead::{ChaCha20Poly1305Cipher, AeadCipher, AeadEncryptOperation, AeadDecryptOperation};
+//! use dcrypt_algorithms::aead::{ChaCha20Poly1305Cipher, AeadCipher, AeadEncryptOperation, AeadDecryptOperation};
 //! use rand::rngs::OsRng;
 //! 
 //! // Generate key and nonce

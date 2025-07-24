@@ -3,8 +3,8 @@
 
 use tests::suites::constant_time::config::TestConfig;
 use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
-use algorithms::stream::chacha::chacha20::{ChaCha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE};
-use algorithms::types::Nonce;
+use dcrypt_algorithms::stream::chacha::chacha20::{ChaCha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE};
+use dcrypt_algorithms::types::Nonce;
 
 #[test]
 fn test_chacha20_constant_time() {

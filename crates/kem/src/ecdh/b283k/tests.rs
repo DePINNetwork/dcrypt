@@ -1,7 +1,7 @@
 // File: crates/kem/src/ecdh/b283k/tests.rs
 use super::*;
-use api::Kem;
-use algorithms::ec::b283k as ec_b283k;
+use dcrypt_api::Kem;
+use dcrypt_algorithms::ec::b283k as ec_b283k;
 use rand::rngs::OsRng;
 
 #[test]

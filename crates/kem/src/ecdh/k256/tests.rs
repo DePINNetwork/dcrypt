@@ -1,7 +1,7 @@
 // File: crates/kem/src/ecdh/k256/tests.rs
 use super::*;
-use api::Kem;
-use algorithms::ec::k256 as ec_k256;
+use dcrypt_api::Kem;
+use dcrypt_algorithms::ec::k256 as ec_k256;
 use rand::rngs::OsRng;
 
 #[test]

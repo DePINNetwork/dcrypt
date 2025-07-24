@@ -3,7 +3,7 @@
 use crate::ec::p521::{self, Point, Scalar, FieldElement};
 use crate::error::Result;
 use rand::rngs::OsRng;
-use params::traditional::ecdsa::NIST_P521;
+use dcrypt_params::traditional::ecdsa::NIST_P521;
 
 // ============================================================================
 // FIELD ARITHMETIC TESTS

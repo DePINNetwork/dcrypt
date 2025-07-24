@@ -7,12 +7,12 @@
 //! for key derivation according to RFC 9180 (HPKE).
 //! This implementation uses compressed point format.
 
-use api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
-use common::security::SecretBuffer;
+use dcrypt_api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
+use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use rand::{CryptoRng, RngCore};
 use crate::error::Error as KemError;
-use algorithms::ec::p192 as ec;
+use dcrypt_algorithms::ec::p192 as ec;
 use super::KEM_KDF_VERSION;
 
 /// ECDH KEM with P-192 curve

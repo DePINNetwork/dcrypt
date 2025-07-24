@@ -24,7 +24,7 @@
 //!   secret keys, and signatures as specified by FIPS 204.
 //! - `sign.rs`: Contains the core `keypair_internal`, `sign_internal`, and `verify_internal` logic.
 
-use api::{Signature as SignatureTrait, Result as ApiResult};
+use dcrypt_api::{Signature as SignatureTrait, Result as ApiResult};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use rand::{CryptoRng, RngCore};
 use core::marker::PhantomData;
@@ -51,7 +51,7 @@ use encoding::{
 // Re-export from params crate for easy access to DilithiumNParams structs.
 // These structs from `dcrypt-params` hold the specific numerical parameters (K, L, eta, gamma1, etc.)
 // that define each Dilithium security level.
-use params::pqc::dilithium::{Dilithium2Params, Dilithium3Params, Dilithium5Params, DilithiumSchemeParams};
+use dcrypt_params::pqc::dilithium::{Dilithium2Params, Dilithium3Params, Dilithium5Params, DilithiumSchemeParams};
 
 // --- Public Key, Secret Key, Signature Data Wrapper Structs ---
 // These structs wrap byte vectors (`Vec<u8>`) that store the serialized representations
@@ -275,9 +275,9 @@ impl<P: DilithiumSchemeParams + Send + Sync + 'static> SignatureTrait for Dilith
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> ApiResult<Self::KeyPair> {
         let (pk_bytes, sk_bytes) = sign::keypair_internal::<P, R>(rng)
-            .map_err(api::Error::from)?;
+            .map_err(dcrypt_api::Error::from)?;
         let sk = DilithiumSecretKey::from_bytes(&sk_bytes)
-            .map_err(api::Error::from)?;
+            .map_err(dcrypt_api::Error::from)?;
         Ok((DilithiumPublicKey(pk_bytes), sk))
     }
 
@@ -287,13 +287,13 @@ impl<P: DilithiumSchemeParams + Send + Sync + 'static> SignatureTrait for Dilith
     fn sign(message: &[u8], secret_key: &Self::SecretKey) -> ApiResult<Self::SignatureData> {
         let mut rng = rand::rngs::OsRng;
         let sig_bytes = sign::sign_internal::<P, _>(message, &secret_key.0, &mut rng)
-            .map_err(api::Error::from)?;
+            .map_err(dcrypt_api::Error::from)?;
         Ok(DilithiumSignatureData(sig_bytes))
     }
 
     fn verify(message: &[u8], signature: &Self::SignatureData, public_key: &Self::PublicKey) -> ApiResult<()> {
         sign::verify_internal::<P>(message, &signature.0, &public_key.0)
-            .map_err(api::Error::from)
+            .map_err(dcrypt_api::Error::from)
     }
 }
 

@@ -5,8 +5,8 @@
 //! and multi-block operations.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
-use algorithms::block::{Aes128, Aes192, Aes256, BlockCipher};
-use algorithms::types::SecretBytes;
+use dcrypt_algorithms::block::{Aes128, Aes192, Aes256, BlockCipher};
+use dcrypt_algorithms::types::SecretBytes;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 

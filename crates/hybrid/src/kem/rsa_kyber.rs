@@ -3,7 +3,7 @@
 //!
 //! This module implements a hybrid KEM that combines RSA-KEM and Kyber.
 
-use api::{Kem as KemTrait, Result};
+use dcrypt_api::{Kem as KemTrait, Result};
 use kem::rsa::RsaKem2048;
 use kem::kyber::Kyber768;
 use zeroize::Zeroize;

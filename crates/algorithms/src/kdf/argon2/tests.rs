@@ -1,5 +1,5 @@
 use super::*; // Imports items from the parent module (argon2/mod.rs)
-use common::security::SecretVec;
+use dcrypt_common::security::SecretVec;
 use hex; // For decoding expected hex strings in RFC vectors
 use rand::RngCore; // For fill_bytes
 use std::ops::Deref; // For deref() method on Zeroizing

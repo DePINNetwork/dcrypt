@@ -1,6 +1,6 @@
 // File: dcrypt-kem/src/mceliece/mod.rs
 
-use api::{Kem, Result};
+use dcrypt_api::{Kem, Result};
 use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
 

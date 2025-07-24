@@ -6,7 +6,7 @@
 //! ## Example usage
 //!
 //! ```
-//! use algorithms::block::{TypedAes128, TypedCbc, BlockCipher, BlockCipherMode, CipherAlgorithm};
+//! use dcrypt_algorithms::block::{TypedAes128, TypedCbc, BlockCipher, BlockCipherMode, CipherAlgorithm};
 //! use rand::rngs::OsRng;
 //! 
 //! // Generate a random key and nonce

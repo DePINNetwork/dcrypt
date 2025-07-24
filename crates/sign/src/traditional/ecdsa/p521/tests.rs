@@ -2,13 +2,13 @@
 
 use super::*;
 use crate::traditional::ecdsa::common::SignatureComponents;
-use api::Signature as SignatureTrait;
-use api::error::Error as ApiError;
+use dcrypt_api::Signature as SignatureTrait;
+use dcrypt_api::error::Error as ApiError;
 use rand::rngs::OsRng;
 use std::fs;
 use std::path::PathBuf;
-use algorithms::hash::sha2::Sha512;
-use algorithms::hash::HashFunction;
+use dcrypt_algorithms::hash::sha2::Sha512;
+use dcrypt_algorithms::hash::HashFunction;
 
 /* ------------------------------------------------------------------------- */
 /*                       Helper: canonicalise curve/hash                     */

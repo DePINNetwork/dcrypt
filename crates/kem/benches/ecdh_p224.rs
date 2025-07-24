@@ -3,7 +3,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BatchSize};
 use kem::ecdh::p224::{EcdhP224, EcdhP224PublicKey, EcdhP224SecretKey, EcdhP224Ciphertext};
-use api::Kem;
+use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 
 fn bench_p224_keypair(c: &mut Criterion) {

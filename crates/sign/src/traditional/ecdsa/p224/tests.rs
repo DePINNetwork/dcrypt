@@ -1,5 +1,5 @@
 use super::*;
-use api::Signature as SignatureTrait;
+use dcrypt_api::Signature as SignatureTrait;
 use rand::rngs::OsRng;
 
 #[test]

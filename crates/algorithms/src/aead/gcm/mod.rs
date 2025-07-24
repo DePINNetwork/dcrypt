@@ -37,20 +37,20 @@ use std::sync::atomic::{compiler_fence, Ordering};
 use portable_atomic::{compiler_fence, Ordering};
 
 // Import security types from dcrypt-core - FIXED PATH
-use common::security::{SecretBuffer, SecureZeroingType};
+use dcrypt_common::security::{SecretBuffer, SecureZeroingType};
 
 // Fix import paths by using crate:: for internal modules
 use crate::block::BlockCipher;
-use api::traits::AuthenticatedCipher;
-use api::traits::SymmetricCipher;
-use api::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
+use dcrypt_api::traits::AuthenticatedCipher;
+use dcrypt_api::traits::SymmetricCipher;
+use dcrypt_api::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
 
 use crate::types::SecretBytes;
 use crate::types::Nonce; // Using generic Nonce type
 use crate::types::nonce::AesGcmCompatible; // Import the AesGcmCompatible trait
 use crate::error::{Error, Result, validate};
-use api::error::Error as CoreError;
-use api::types::Ciphertext;
+use dcrypt_api::error::Error as CoreError;
+use dcrypt_api::types::Ciphertext;
 
 // Import the GHASH module
 mod ghash;

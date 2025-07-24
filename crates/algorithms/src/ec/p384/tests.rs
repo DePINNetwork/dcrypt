@@ -5,7 +5,7 @@ use super::*;
 use crate::ec::p384::{self, Point, Scalar, FieldElement};
 use crate::error::Result;
 use rand::rngs::OsRng;
-use params::traditional::ecdsa::NIST_P384;
+use dcrypt_params::traditional::ecdsa::NIST_P384;
 
 // ============================================================================
 // P-384 FIELD CONSTANTS

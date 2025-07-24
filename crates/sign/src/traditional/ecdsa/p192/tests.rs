@@ -1,7 +1,7 @@
 //! Tests for ECDSA P-192
 
 use super::*; // Import from parent mod (p192/mod.rs)
-use api::Signature; // The main Signature trait
+use dcrypt_api::Signature; // The main Signature trait
 use rand::rngs::OsRng;
 
 #[test]

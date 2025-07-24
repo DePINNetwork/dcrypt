@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BatchSize, BenchmarkId};
-use algorithms::ec::p384::{self, Point, Scalar, FieldElement};
+use dcrypt_algorithms::ec::p384::{self, Point, Scalar, FieldElement};
 use rand::rngs::OsRng;
 use rand::RngCore;
 

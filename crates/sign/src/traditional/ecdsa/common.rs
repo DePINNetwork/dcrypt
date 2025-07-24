@@ -1,6 +1,6 @@
 //! Common utilities for ECDSA implementations
 
-use api::{Result as ApiResult, error::Error as ApiError};
+use dcrypt_api::{Result as ApiResult, error::Error as ApiError};
 
 /// ECDSA signature components (r, s)
 #[derive(Clone, Debug)]

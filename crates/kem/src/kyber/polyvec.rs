@@ -8,9 +8,9 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::Modulus;
-use algorithms::error::Result as AlgoResult;
+use dcrypt_algorithms::poly::polynomial::Polynomial;
+use dcrypt_algorithms::poly::params::Modulus;
+use dcrypt_algorithms::error::Result as AlgoResult;
 use zeroize::Zeroize;
 
 use super::params::{KyberParams, KyberPolyModParams};
@@ -93,7 +93,7 @@ impl<P: KyberParams> PolyVec<P> {
         for i in 0..k {
             for j in (0..KyberPolyModParams::N).step_by(2) {
                 if byte_idx + 2 >= bytes.len() {
-                    return Err(algorithms::error::Error::Processing {
+                    return Err(dcrypt_algorithms::error::Error::Processing {
                         operation: "from_bytes",
                         details: "insufficient data",
                     });

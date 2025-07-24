@@ -27,7 +27,7 @@ pub use aead::chacha20poly1305::{
 pub use cipher::{SymmetricCipher, Aead};
 
 // Re-export the API error system instead of custom error types
-pub use api::error::{Error, Result};
+pub use dcrypt_api::error::{Error, Result};
 
 // Re-export commonly used validation and error handling utilities
-pub use api::error::{validate, ResultExt, SecureErrorHandling, ERROR_REGISTRY};
+pub use dcrypt_api::error::{validate, ResultExt, SecureErrorHandling, ERROR_REGISTRY};

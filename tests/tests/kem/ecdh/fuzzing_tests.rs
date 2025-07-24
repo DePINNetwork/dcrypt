@@ -1,5 +1,5 @@
 // File: crates/tests/src/kem/ecdh_fuzzing.rs
-use api::{Kem, Result as ApiResult};
+use dcrypt_api::{Kem, Result as ApiResult};
 use kem::ecdh::{EcdhP256, EcdhP384};
 use rand::{rngs::OsRng, RngCore};
 

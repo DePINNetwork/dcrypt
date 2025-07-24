@@ -4,7 +4,7 @@
 use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::runner::AcvpEngine;
 use crate::suites::acvp::error::{EngineError, Result};
-use algorithms as alg;
+use dcrypt_algorithms as alg;
 use arrayref::array_ref;
 
 /// Concrete type used by tests: one instance suffices for all suites.

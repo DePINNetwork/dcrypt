@@ -4,12 +4,12 @@
 //! with full Curve25519 arithmetic operations included.
 
 use super::constants::{ED25519_PUBLIC_KEY_SIZE, ED25519_SECRET_KEY_SIZE, ED25519_SIGNATURE_SIZE};
-use api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
+use dcrypt_api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
 use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
-use algorithms::hash::sha2::Sha512;
-use algorithms::hash::HashFunction;
-use internal::constant_time::ct_eq;
+use dcrypt_algorithms::hash::sha2::Sha512;
+use dcrypt_algorithms::hash::HashFunction;
+use dcrypt_internal::constant_time::ct_eq;
 
 // Import curve operations from the refactored modules
 use super::operations;

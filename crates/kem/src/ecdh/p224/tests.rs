@@ -1,5 +1,5 @@
 use super::*;
-use api::Kem as KemTrait; // Use the trait from api
+use dcrypt_api::Kem as KemTrait; // Use the trait from api
 use rand::rngs::OsRng;
 
 #[test]

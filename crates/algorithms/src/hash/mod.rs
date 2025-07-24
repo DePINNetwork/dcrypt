@@ -47,7 +47,7 @@ pub trait HashAlgorithm {
 /// Example usage of the enhanced hash functions:
 ///
 /// ```
-/// use algorithms::hash::{EnhancedSha256, HashFunction};
+/// use dcrypt_algorithms::hash::{EnhancedSha256, HashFunction};
 ///
 /// // One-shot API
 /// let digest = EnhancedSha256::digest(b"hello world").unwrap();

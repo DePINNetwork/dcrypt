@@ -5,7 +5,7 @@ use crate::kyber::{Kyber512, Kyber768, Kyber1024};
 #[cfg(test)]
 use crate::kyber::params::KYBER_SS_BYTES;
 #[cfg(test)]
-use api::Kem;
+use dcrypt_api::Kem;
 #[cfg(test)]
 use rand::SeedableRng;
 #[cfg(test)]

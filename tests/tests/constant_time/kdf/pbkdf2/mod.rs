@@ -3,9 +3,9 @@
 
 use tests::suites::constant_time::config::TestConfig;
 use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
-use algorithms::hash::Sha256;
-use algorithms::kdf::pbkdf2::Pbkdf2;
-use algorithms::kdf::KeyDerivationFunction;
+use dcrypt_algorithms::hash::Sha256;
+use dcrypt_algorithms::kdf::pbkdf2::Pbkdf2;
+use dcrypt_algorithms::kdf::KeyDerivationFunction;
 
 // Helper function instead of impl
 fn create_pbkdf2_config() -> TestConfig {

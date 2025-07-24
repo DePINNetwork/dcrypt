@@ -8,8 +8,8 @@
 
 use super::polyvec::{PolyVecL, PolyVecK};
 use super::arithmetic::{w1_bits_needed};
-use algorithms::poly::serialize::{CoefficientPacker, CoefficientUnpacker, DefaultCoefficientSerde};
-use params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N, DILITHIUM_Q};
+use dcrypt_algorithms::poly::serialize::{CoefficientPacker, CoefficientUnpacker, DefaultCoefficientSerde};
+use dcrypt_params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N, DILITHIUM_Q};
 use crate::error::{Error as SignError};
 
 // ---------------------------------------------------------------------------
@@ -484,7 +484,7 @@ pub fn unpack_signature<P: DilithiumSchemeParams>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use params::pqc::dilithium::Dilithium2Params;
+    use dcrypt_params::pqc::dilithium::Dilithium2Params;
     
     #[test]
     fn test_roundtrip_hints_basic() {

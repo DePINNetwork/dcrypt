@@ -4,14 +4,14 @@
 //! and SP 800-56A Rev. 3: Recommendation for Pair-Wise Key-Establishment Schemes
 //! Using Discrete Logarithm Cryptography
 
-use api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
+use dcrypt_api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
 use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
-use algorithms::ec::p256 as ec;
-use algorithms::hash::sha2::Sha256;
-use algorithms::hash::HashFunction;
-use algorithms::mac::hmac::Hmac;
-use internal::constant_time::ct_eq;
+use dcrypt_algorithms::ec::p256 as ec;
+use dcrypt_algorithms::hash::sha2::Sha256;
+use dcrypt_algorithms::hash::HashFunction;
+use dcrypt_algorithms::mac::hmac::Hmac;
+use dcrypt_internal::constant_time::ct_eq;
 use crate::traditional::ecdsa::common::SignatureComponents;
 
 /// ECDSA signature scheme using NIST P-256 curve (secp256r1)

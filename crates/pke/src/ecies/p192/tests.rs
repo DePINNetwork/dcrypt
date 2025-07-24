@@ -1,7 +1,7 @@
 //! Tests for ECIES P-192
 
 use super::*; // Import from parent mod (p192/mod.rs)
-use api::traits::Pke; // The main PKE trait
+use dcrypt_api::traits::Pke; // The main PKE trait
 use rand::rngs::OsRng;
 
 #[test]

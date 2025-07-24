@@ -2,8 +2,8 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase, FlexValue};
 use crate::suites::acvp::error::{EngineError, Result};
-use algorithms::xof::shake::{ShakeXof128, ShakeXof256};
-use algorithms::xof::ExtendableOutputFunction;
+use dcrypt_algorithms::xof::shake::{ShakeXof128, ShakeXof256};
+use dcrypt_algorithms::xof::ExtendableOutputFunction;
 use hex;
 
 use super::super::dispatcher::{insert, HandlerFn, DispatchKey};

@@ -2,13 +2,13 @@
 
 use super::*; // Imports items from the parent module (p256/mod.rs)
 use crate::traditional::ecdsa::common::SignatureComponents; // For DER parsing tests
-use api::Signature as SignatureTrait;
-use api::error::Error as ApiError; // Use the API error type
+use dcrypt_api::Signature as SignatureTrait;
+use dcrypt_api::error::Error as ApiError; // Use the API error type
 use rand::rngs::OsRng;
 use std::fs;
 use std::path::PathBuf;
-use algorithms::hash::sha2::Sha256;
-use algorithms::hash::HashFunction;
+use dcrypt_algorithms::hash::sha2::Sha256;
+use dcrypt_algorithms::hash::HashFunction;
 
 /* ------------------------------------------------------------------------- */
 /*                       Helper: canonicalise curve/hash                     */

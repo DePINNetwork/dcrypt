@@ -3,7 +3,7 @@
 //! This module provides the high-level operations used by the Ed25519
 //! signature scheme implementation.
 
-use internal::constant_time::ct_eq;
+use dcrypt_internal::constant_time::ct_eq;
 use super::scalar::{Scalar, compute_s as scalar_compute_s, reduce_512_to_scalar as scalar_reduce_512};
 use super::point::{EdwardsPoint, CompressedPoint};
 

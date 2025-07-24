@@ -12,18 +12,18 @@ use std::{println, vec::Vec};
 use alloc::{println, vec::Vec};
 
 // Core DCRYPT API traits and types
-use api::error::{Error as CoreError, Result as CoreResult};
-use api::Ciphertext as ApiCiphertext;
-use api::traits::SymmetricCipher as ApiSymmetricCipherTrait; // Import the trait
-use api::traits::symmetric::{EncryptOperation, DecryptOperation}; // Import operation traits
+use dcrypt_api::error::{Error as CoreError, Result as CoreResult};
+use dcrypt_api::Ciphertext as ApiCiphertext;
+use dcrypt_api::traits::SymmetricCipher as ApiSymmetricCipherTrait; // Import the trait
+use dcrypt_api::traits::symmetric::{EncryptOperation, DecryptOperation}; // Import operation traits
 
 
 // Algorithms crate components
-use algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
-use algorithms::hash::sha2::Sha256;
-use algorithms::hash::HashFunction; // Import the trait for new, update, finalize
-use algorithms::mac::hmac::Hmac;
-use algorithms::types::{Nonce, Digest, SecretBytes};
+use dcrypt_algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
+use dcrypt_algorithms::hash::sha2::Sha256;
+use dcrypt_algorithms::hash::HashFunction; // Import the trait for new, update, finalize
+use dcrypt_algorithms::mac::hmac::Hmac;
+use dcrypt_algorithms::types::{Nonce, Digest, SecretBytes};
 
 
 // Randomness (requires a no_std compatible RNG or specific target features)

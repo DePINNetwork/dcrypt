@@ -32,7 +32,7 @@ use crate::kdf::hkdf::Hkdf;
 use crate::hash::sha2::Sha256;
 use crate::kdf::KeyDerivationFunction as KdfTrait;
 use rand::{CryptoRng, RngCore};
-use params::traditional::ecdsa::NIST_P256;
+use dcrypt_params::traditional::ecdsa::NIST_P256;
 
 /// Get the standard base point G of the P-256 curve
 /// 

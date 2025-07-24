@@ -1,6 +1,6 @@
 // File: dcrypt-hybrid/src/kem/ecdh_kyber.rs
 
-use api::{Kem as KemTrait, Result};
+use dcrypt_api::{Kem as KemTrait, Result};
 use kem::ecdh::EcdhP256;
 use kem::kyber::Kyber768;
 use zeroize::Zeroize;

@@ -1,4 +1,4 @@
-use algorithms::{
+use dcrypt_algorithms::{
     aead::ChaCha20Poly1305,
     types::Nonce,  // Import the generic Nonce type
 };

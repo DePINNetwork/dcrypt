@@ -4,9 +4,9 @@
 //! with its extended 24-byte nonce for various message sizes and configurations.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
-use algorithms::aead::xchacha20poly1305::{XChaCha20Poly1305, XCHACHA20POLY1305_NONCE_SIZE};
-use algorithms::aead::chacha20poly1305::CHACHA20POLY1305_KEY_SIZE;
-use algorithms::types::Nonce;
+use dcrypt_algorithms::aead::xchacha20poly1305::{XChaCha20Poly1305, XCHACHA20POLY1305_NONCE_SIZE};
+use dcrypt_algorithms::aead::chacha20poly1305::CHACHA20POLY1305_KEY_SIZE;
+use dcrypt_algorithms::types::Nonce;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
@@ -251,7 +251,7 @@ fn bench_xchacha20poly1305_nonce_advantage(c: &mut Criterion) {
 
 /// Compare XChaCha20-Poly1305 vs ChaCha20-Poly1305 setup overhead
 fn bench_xchacha20poly1305_vs_chacha20_setup(c: &mut Criterion) {
-    use algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
+    use dcrypt_algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
     
     let mut group = c.benchmark_group("xchacha20_vs_chacha20_setup");
     let mut rng = ChaCha8Rng::seed_from_u64(42);

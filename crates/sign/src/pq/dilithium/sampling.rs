@@ -1,11 +1,11 @@
 //! Sampling functions for Dilithium implementing FIPS 203 algorithms.
 
-use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::{DilithiumParams, Modulus};
+use dcrypt_algorithms::poly::polynomial::Polynomial;
+use dcrypt_algorithms::poly::params::{DilithiumParams, Modulus};
 use super::polyvec::{PolyVecL, PolyVecK};
-use params::pqc::dilithium::DilithiumSchemeParams;
-use algorithms::xof::shake::ShakeXof256;
-use algorithms::xof::ExtendableOutputFunction;
+use dcrypt_params::pqc::dilithium::DilithiumSchemeParams;
+use dcrypt_algorithms::xof::shake::ShakeXof256;
+use dcrypt_algorithms::xof::ExtendableOutputFunction;
 use crate::error::{Error as SignError};
 
 /// Samples a polynomial with coefficients from CBD_eta (Algorithm 22).

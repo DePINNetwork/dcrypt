@@ -1,7 +1,7 @@
 //! Common functionality for ChaCha20Poly1305-based ciphers
 
 use zeroize::Zeroize;
-use algorithms::aead::chacha20poly1305::{
+use dcrypt_algorithms::aead::chacha20poly1305::{
     CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_NONCE_SIZE
 };
 use crate::error::{Result, validate, validate_format, validate_key_derivation};
@@ -52,7 +52,7 @@ impl ChaCha20Poly1305Key {
         
         let b64_part = &serialized["DCRYPT-CHACHA20POLY1305-KEY:".len()..];
         let key_bytes = base64::decode(b64_part)
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "base64 decode", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()
@@ -98,7 +98,7 @@ impl ChaCha20Poly1305Nonce {
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
         let bytes = base64::decode(s)
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "nonce base64 decode", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()
@@ -150,7 +150,7 @@ impl ChaCha20Poly1305CiphertextPackage {
         )?;
         
         let nonce_bytes = base64::decode(parts[0])
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "nonce base64 decode", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()
@@ -162,7 +162,7 @@ impl ChaCha20Poly1305CiphertextPackage {
         nonce.copy_from_slice(&nonce_bytes);
         
         let ciphertext = base64::decode(parts[1])
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "ciphertext base64 decode", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()

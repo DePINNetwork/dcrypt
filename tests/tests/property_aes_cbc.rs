@@ -1,10 +1,10 @@
 //! Property-based tests for AES-CBC implementation
 
 use proptest::prelude::*;
-use algorithms::block::aes::{Aes128, Aes192, Aes256};
-use algorithms::block::modes::cbc::Cbc;
-use algorithms::block::BlockCipher;
-use algorithms::types::{SecretBytes, Nonce};
+use dcrypt_algorithms::block::aes::{Aes128, Aes192, Aes256};
+use dcrypt_algorithms::block::modes::cbc::Cbc;
+use dcrypt_algorithms::block::BlockCipher;
+use dcrypt_algorithms::types::{SecretBytes, Nonce};
 
 /// Generate data that's a multiple of 16 bytes (AES block size)
 fn block_aligned_data() -> impl Strategy<Value = Vec<u8>> {

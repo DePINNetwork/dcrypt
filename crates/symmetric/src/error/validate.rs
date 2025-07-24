@@ -28,7 +28,7 @@ pub fn key_derivation(condition: bool, algorithm: &'static str, details: &'stati
 }
 
 // Re-export primitive validations for convenience
-pub use api::error::validate::{
+pub use dcrypt_api::error::validate::{
     parameter,
     length,
     min_length,

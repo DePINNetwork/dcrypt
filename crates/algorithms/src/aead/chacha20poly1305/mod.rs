@@ -17,12 +17,12 @@ use crate::types::SecretBytes;
 use crate::types::Nonce;
 use crate::types::Tag;
 use crate::types::nonce::ChaCha20Compatible;
-use api::types::Ciphertext;
-use api::traits::{AuthenticatedCipher, SymmetricCipher};
-use api::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
-use api::error::Error as CoreError;
+use dcrypt_api::types::Ciphertext;
+use dcrypt_api::traits::{AuthenticatedCipher, SymmetricCipher};
+use dcrypt_api::traits::symmetric::{Operation, EncryptOperation, DecryptOperation};
+use dcrypt_api::error::Error as CoreError;
 // Import SecretBuffer for secure key storage
-use common::security::SecretBuffer;
+use dcrypt_common::security::SecretBuffer;
 use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 

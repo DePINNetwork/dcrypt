@@ -16,7 +16,7 @@ use crate::types::sealed::Sealed;
 use crate::types::{ValidKeySize, ValidSecretKeySize, ValidPublicKeySize};
 
 // Import security types from dcrypt-core
-use common::security::SecretBuffer;
+use dcrypt_common::security::SecretBuffer;
 
 // Add these imports to fix the "cannot find type" errors
 use crate::types::algorithms::{

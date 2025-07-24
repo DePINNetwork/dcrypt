@@ -3,7 +3,7 @@
 //!
 //! This module implements a hybrid signature scheme that combines ECDSA and Dilithium.
 
-use api::{Signature as SignatureTrait, Result};
+use dcrypt_api::{Signature as SignatureTrait, Result};
 use sign::traditional::ecdsa::EcdsaP384;
 use sign::pq::dilithium::Dilithium3;
 use zeroize::Zeroize;

@@ -50,7 +50,7 @@ pub struct Params<const S: usize> where Salt<S>: Argon2Compatible {
 ```rust
 use dcrypt_algorithms::kdf::argon2::{Argon2, Algorithm, Params};
 use dcrypt_algorithms::types::Salt;
-use common::security::SecretVec;
+use dcrypt_common::security::SecretVec;
 
 // Create a salt
 const SALT_SIZE: usize = 16;

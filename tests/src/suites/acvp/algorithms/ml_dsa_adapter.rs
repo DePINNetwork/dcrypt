@@ -3,20 +3,20 @@
 //! This module provides conversion between ACVP format (no tr, different padding) 
 //! and standard FIPS 204 format.
 
-use sign::error::Error as SignError;
-use sign::pq::dilithium::{
+use dcrypt_sign::error::Error as SignError;
+use dcrypt_sign::pq::dilithium::{
     DilithiumSecretKey,
     DilithiumPublicKey,
 };
-use params::pqc::dilithium::{Dilithium2Params, Dilithium3Params, Dilithium5Params, DilithiumSchemeParams, DILITHIUM_N};
-use algorithms::hash::sha3::Sha3_256;
-use algorithms::hash::HashFunction;
-use algorithms::poly::serialize::{CoefficientPacker, CoefficientUnpacker, DefaultCoefficientSerde};
-use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::DilithiumParams;
-use algorithms::xof::shake::ShakeXof128;
-use algorithms::xof::ExtendableOutputFunction;
-use algorithms::poly::params::Modulus;
+use dcrypt_params::pqc::dilithium::{Dilithium2Params, Dilithium3Params, Dilithium5Params, DilithiumSchemeParams, DILITHIUM_N};
+use dcrypt_algorithms::hash::sha3::Sha3_256;
+use dcrypt_algorithms::hash::HashFunction;
+use dcrypt_algorithms::poly::serialize::{CoefficientPacker, CoefficientUnpacker, DefaultCoefficientSerde};
+use dcrypt_algorithms::poly::polynomial::Polynomial;
+use dcrypt_algorithms::poly::params::DilithiumParams;
+use dcrypt_algorithms::xof::shake::ShakeXof128;
+use dcrypt_algorithms::xof::ExtendableOutputFunction;
+use dcrypt_algorithms::poly::params::Modulus;
 
 /// Adapter for handling ACVP's non-standard secret key format
 pub struct AcvpSecretKeyAdapter;
@@ -260,7 +260,7 @@ impl AcvpSecretKeyAdapter {
             for c in temp_poly.coeffs.iter_mut() {
                 let signed = (*c as i32) - (eta as i32);
                 if signed < 0 {
-                    *c = (signed + algorithms::poly::params::DilithiumParams::Q as i32) as u32;
+                    *c = (signed + dcrypt_algorithms::poly::params::DilithiumParams::Q as i32) as u32;
                 } else {
                     *c = signed as u32;
                 }
@@ -292,7 +292,7 @@ impl AcvpSecretKeyAdapter {
             for c in temp_poly.coeffs.iter_mut() {
                 let signed = (*c as i32) - (eta as i32);
                 if signed < 0 {
-                    *c = (signed + algorithms::poly::params::DilithiumParams::Q as i32) as u32;
+                    *c = (signed + dcrypt_algorithms::poly::params::DilithiumParams::Q as i32) as u32;
                 } else {
                     *c = signed as u32;
                 }
@@ -321,7 +321,7 @@ impl AcvpSecretKeyAdapter {
             
             for c in temp_poly.coeffs.iter_mut() {
                 let signed = (*c as i32) - t0_offset;
-                *c = ((signed + algorithms::poly::params::DilithiumParams::Q as i32) % algorithms::poly::params::DilithiumParams::Q as i32) as u32;
+                *c = ((signed + dcrypt_algorithms::poly::params::DilithiumParams::Q as i32) % dcrypt_algorithms::poly::params::DilithiumParams::Q as i32) as u32;
             }
             
             vec.polys[i] = temp_poly;
@@ -507,9 +507,9 @@ impl AcvpSecretKeyAdapter {
             let mut temp_poly = s1_vec.polys[i].clone();
             // Map from [-η, η] to [0, 2η]
             for c in temp_poly.coeffs.iter_mut() {
-                let centered = (*c as i64).rem_euclid(params::pqc::dilithium::DILITHIUM_Q as i64) as i32;
-                let adjusted = if centered > (params::pqc::dilithium::DILITHIUM_Q / 2) as i32 {
-                    centered - params::pqc::dilithium::DILITHIUM_Q as i32
+                let centered = (*c as i64).rem_euclid(dcrypt_params::pqc::dilithium::DILITHIUM_Q as i64) as i32;
+                let adjusted = if centered > (dcrypt_params::pqc::dilithium::DILITHIUM_Q / 2) as i32 {
+                    centered - dcrypt_params::pqc::dilithium::DILITHIUM_Q as i32
                 } else {
                     centered
                 };
@@ -524,9 +524,9 @@ impl AcvpSecretKeyAdapter {
         for i in 0..P::K_DIM {
             let mut temp_poly = s2_vec.polys[i].clone();
             for c in temp_poly.coeffs.iter_mut() {
-                let centered = (*c as i64).rem_euclid(params::pqc::dilithium::DILITHIUM_Q as i64) as i32;
-                let adjusted = if centered > (params::pqc::dilithium::DILITHIUM_Q / 2) as i32 {
-                    centered - params::pqc::dilithium::DILITHIUM_Q as i32
+                let centered = (*c as i64).rem_euclid(dcrypt_params::pqc::dilithium::DILITHIUM_Q as i64) as i32;
+                let adjusted = if centered > (dcrypt_params::pqc::dilithium::DILITHIUM_Q / 2) as i32 {
+                    centered - dcrypt_params::pqc::dilithium::DILITHIUM_Q as i32
                 } else {
                     centered
                 };
@@ -542,9 +542,9 @@ impl AcvpSecretKeyAdapter {
         for i in 0..P::K_DIM {
             let mut temp_poly = t0_vec.polys[i].clone();
             for c in temp_poly.coeffs.iter_mut() {
-                let centered = (*c as i64).rem_euclid(params::pqc::dilithium::DILITHIUM_Q as i64) as i32;
-                let adjusted = if centered > (params::pqc::dilithium::DILITHIUM_Q / 2) as i32 {
-                    centered - params::pqc::dilithium::DILITHIUM_Q as i32
+                let centered = (*c as i64).rem_euclid(dcrypt_params::pqc::dilithium::DILITHIUM_Q as i64) as i32;
+                let adjusted = if centered > (dcrypt_params::pqc::dilithium::DILITHIUM_Q / 2) as i32 {
+                    centered - dcrypt_params::pqc::dilithium::DILITHIUM_Q as i32
                 } else {
                     centered
                 };

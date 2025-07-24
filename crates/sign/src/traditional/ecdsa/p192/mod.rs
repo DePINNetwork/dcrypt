@@ -5,14 +5,14 @@
 //! Using Discrete Logarithm Cryptography. SHA-256 is used as the hash function
 //! as recommended for P-192.
 
-use api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
+use dcrypt_api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
 use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
-use algorithms::ec::p192 as ec; // Use P-192 algorithms
-use algorithms::hash::sha2::Sha256; // Use Sha256
-use algorithms::hash::HashFunction;
-use algorithms::mac::hmac::Hmac;
-use internal::constant_time::ct_eq;
+use dcrypt_algorithms::ec::p192 as ec; // Use P-192 algorithms
+use dcrypt_algorithms::hash::sha2::Sha256; // Use Sha256
+use dcrypt_algorithms::hash::HashFunction;
+use dcrypt_algorithms::mac::hmac::Hmac;
+use dcrypt_internal::constant_time::ct_eq;
 use crate::traditional::ecdsa::common::SignatureComponents;
 
 /// ECDSA signature scheme using NIST P-192 curve (secp192r1)
@@ -289,7 +289,7 @@ fn deterministic_k_hedged_p192<H: HashFunction + Clone, R: RngCore + CryptoRng>(
 fn reduce_bytes_to_scalar_p192(bytes: &[u8; ec::P192_SCALAR_SIZE]) -> ApiResult<ec::Scalar> {
     ec::Scalar::new(*bytes).map_err(|algo_err| {
         match algo_err {
-            algorithms::error::Error::Parameter { ref name, ref reason }
+            dcrypt_algorithms::error::Error::Parameter { ref name, ref reason }
                 if name.as_ref() == "P-192 Scalar" && reason.as_ref().contains("Scalar cannot be zero") =>
             {
                 ApiError::InvalidSignature {

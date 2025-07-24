@@ -2,7 +2,7 @@
 
 use crate::ec::b283k::constants::B283K_SCALAR_SIZE;
 use crate::error::{Error, Result, validate};
-use common::security::SecretBuffer;
+use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// sect283k1 scalar value for use in elliptic curve operations

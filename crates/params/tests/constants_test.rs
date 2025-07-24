@@ -1,22 +1,22 @@
 // Test importing and accessing various constants
 
 // Traditional cryptography constants
-use params::traditional::rsa::{
+use dcrypt_params::traditional::rsa::{
     RSA_MODULUS_2048, RSA_MODULUS_4096, RSA_PUBLIC_EXPONENT
 };
-use params::traditional::ed25519::{
+use dcrypt_params::traditional::ed25519::{
     ED25519_PUBLIC_KEY_SIZE, ED25519_SECRET_KEY_SIZE, ED25519_SIGNATURE_SIZE
 };
-use params::traditional::ecdsa::NIST_P256;
+use dcrypt_params::traditional::ecdsa::NIST_P256;
 
 // Post-quantum cryptography constants
-use params::pqc::kyber::{KYBER_N, KYBER_Q, KYBER768};
-use params::pqc::dilithium::{DILITHIUM_N, DILITHIUM_Q, DILITHIUM3};
-use params::pqc::ntru::NTRU_HPS_2048_509;
+use dcrypt_params::pqc::kyber::{KYBER_N, KYBER_Q, KYBER768};
+use dcrypt_params::pqc::dilithium::{DILITHIUM_N, DILITHIUM_Q, DILITHIUM3};
+use dcrypt_params::pqc::ntru::NTRU_HPS_2048_509;
 
 // Utility constants
-use params::utils::hash::SHA256_OUTPUT_SIZE;
-use params::utils::symmetric::{AES256_KEY_SIZE, CHACHA20_KEY_SIZE};
+use dcrypt_params::utils::hash::SHA256_OUTPUT_SIZE;
+use dcrypt_params::utils::symmetric::{AES256_KEY_SIZE, CHACHA20_KEY_SIZE};
 
 #[test]
 fn test_rsa_constants() {

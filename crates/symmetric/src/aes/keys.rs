@@ -1,7 +1,7 @@
 //! Key types for AES-based ciphers
 
 use zeroize::Zeroize;
-use params::utils::symmetric::{AES128_KEY_SIZE, AES256_KEY_SIZE};
+use dcrypt_params::utils::symmetric::{AES128_KEY_SIZE, AES256_KEY_SIZE};
 use crate::error::{Result, validate, validate_format, validate_key_derivation};
 use std::fmt;
 use base64;
@@ -49,7 +49,7 @@ impl Aes128Key {
         
         let b64_part = &serialized["DCRYPT-AES128-KEY:".len()..];
         let key_bytes = base64::decode(b64_part)
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "base64 decode", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()
@@ -109,7 +109,7 @@ impl Aes256Key {
         
         let b64_part = &serialized["DCRYPT-AES256-KEY:".len()..];
         let key_bytes = base64::decode(b64_part)
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "base64 decode", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()

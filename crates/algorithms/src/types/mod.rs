@@ -23,10 +23,10 @@ pub use tag::Tag;
 pub use key::{SymmetricKey, AsymmetricSecretKey, AsymmetricPublicKey};
 
 // Import and re-export core types
-pub use api::types::{SecretBytes, SecretVec, Key, Ciphertext};
+pub use dcrypt_api::types::{SecretBytes, SecretVec, Key, Ciphertext};
 
 // Import and re-export security types from dcrypt-core
-pub use common::security::{
+pub use dcrypt_common::security::{
     SecretBuffer, 
     EphemeralSecret, 
     ZeroizeGuard,

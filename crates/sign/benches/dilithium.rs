@@ -5,7 +5,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use sign::pq::dilithium::{Dilithium2, Dilithium3, Dilithium5};
-use api::Signature;
+use dcrypt_api::Signature;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 

@@ -4,12 +4,12 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
-use sign::pq::dilithium::{
+use dcrypt_sign::pq::dilithium::{
     Dilithium2, Dilithium3, Dilithium5,
     DilithiumPublicKey, DilithiumSecretKey, DilithiumSignatureData,
 };
 use super::ml_dsa_adapter::AcvpSecretKeyAdapter; // Use the local adapter
-use api::Signature;
+use dcrypt_api::Signature;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use hex;

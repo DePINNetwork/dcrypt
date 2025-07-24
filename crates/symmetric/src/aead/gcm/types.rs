@@ -30,7 +30,7 @@ impl GcmNonce {
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
         let bytes = base64::decode(s)
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "nonce base64", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()
@@ -82,7 +82,7 @@ impl AesCiphertextPackage {
         )?;
         
         let nonce_bytes = base64::decode(parts[0])
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "nonce base64", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()
@@ -94,7 +94,7 @@ impl AesCiphertextPackage {
         nonce.copy_from_slice(&nonce_bytes);
         
         let ciphertext = base64::decode(parts[1])
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "ciphertext base64", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()

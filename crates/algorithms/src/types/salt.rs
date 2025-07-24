@@ -113,7 +113,7 @@ impl<const N: usize> fmt::Debug for Salt<N> {
 
 impl<const N: usize> ConstantTimeEq for Salt<N> {
     fn ct_eq(&self, other: &Self) -> bool {
-        internal::constant_time::ct_eq(self.data, other.data)
+        dcrypt_internal::constant_time::ct_eq(self.data, other.data)
     }
 }
 

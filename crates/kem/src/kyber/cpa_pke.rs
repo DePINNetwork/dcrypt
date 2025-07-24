@@ -8,11 +8,11 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use algorithms::error::Result as AlgoResult;
-use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::Modulus; // Add this import
-use algorithms::xof::shake::{ShakeXof128, ShakeXof256};
-use algorithms::xof::ExtendableOutputFunction;
+use dcrypt_algorithms::error::Result as AlgoResult;
+use dcrypt_algorithms::poly::polynomial::Polynomial;
+use dcrypt_algorithms::poly::params::Modulus; // Add this import
+use dcrypt_algorithms::xof::shake::{ShakeXof128, ShakeXof256};
+use dcrypt_algorithms::xof::ExtendableOutputFunction;
 use rand::{CryptoRng, RngCore};
 use zeroize::Zeroizing;
 

@@ -69,7 +69,7 @@
 use super::{ExtendableOutputFunction, KeyedXof, DeriveKeyXof, Blake3Algorithm};
 use crate::error::{Error, Result, validate};
 use crate::xof::XofAlgorithm;
-use common::security::{SecretBuffer, EphemeralSecret};
+use dcrypt_common::security::{SecretBuffer, EphemeralSecret};
 use zeroize::Zeroize;
 
 #[cfg(not(feature = "std"))]

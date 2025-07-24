@@ -77,13 +77,13 @@
 use alloc::vec::Vec;
 
 use crate::error::{Result, validate, from_primitive_error};
-use algorithms::block::aes::{Aes128, Aes256};
-use algorithms::aead::Gcm;
-use algorithms::block::BlockCipher;
-use api::types::SecretBytes;
+use dcrypt_algorithms::block::aes::{Aes128, Aes256};
+use dcrypt_algorithms::aead::Gcm;
+use dcrypt_algorithms::block::BlockCipher;
+use dcrypt_api::types::SecretBytes;
 // Import the new Nonce type
-use algorithms::types::Nonce;
-use algorithms::error::Error as PrimitiveError;
+use dcrypt_algorithms::types::Nonce;
+use dcrypt_algorithms::error::Error as PrimitiveError;
 
 use crate::aes::keys::{Aes128Key, Aes256Key};
 use crate::cipher::{SymmetricCipher as OurSymmetricCipher, Aead};
@@ -185,7 +185,7 @@ impl Aead for Aes128Gcm {
         gcm.internal_decrypt(ciphertext, aad)
             .map_err(|e| match e {
                 PrimitiveError::Authentication { .. } => 
-                    api::error::Error::AuthenticationFailed { 
+                    dcrypt_api::error::Error::AuthenticationFailed { 
                         context: "AES-128-GCM",
                         #[cfg(feature = "std")]
                         message: "authentication tag verification failed".to_string(),
@@ -265,7 +265,7 @@ impl Aead for Aes256Gcm {
         gcm.internal_decrypt(ciphertext, aad)
             .map_err(|e| match e {
                 PrimitiveError::Authentication { .. } => 
-                    api::error::Error::AuthenticationFailed { 
+                    dcrypt_api::error::Error::AuthenticationFailed { 
                         context: "AES-256-GCM",
                         #[cfg(feature = "std")]
                         message: "authentication tag verification failed".to_string(),

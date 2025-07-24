@@ -3,8 +3,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::fmt;
-use api::error::Error as CoreError;
-use algorithms::error::Error as PrimitiveError;
+use dcrypt_api::error::Error as CoreError;
+use dcrypt_algorithms::error::Error as PrimitiveError;
 
 /// Error type for KEM operations
 #[derive(Debug)]
@@ -192,4 +192,4 @@ impl From<Error> for CoreError {
 pub mod validate;
 
 // Re-export core error handling traits
-pub use api::error::{ResultExt, SecureErrorHandling};
+pub use dcrypt_api::error::{ResultExt, SecureErrorHandling};

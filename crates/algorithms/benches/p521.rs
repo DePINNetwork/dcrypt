@@ -1,9 +1,9 @@
 //! P-521 elliptic curve benchmarks
 
-use algorithms::ec::p521::{self, FieldElement, Point, Scalar};
+use dcrypt_algorithms::ec::p521::{self, FieldElement, Point, Scalar};
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use rand::rngs::OsRng;
-use params::traditional::ecdsa::NIST_P521;
+use dcrypt_params::traditional::ecdsa::NIST_P521;
 
 /// Benchmark field arithmetic operations
 fn bench_field_operations(c: &mut Criterion) {

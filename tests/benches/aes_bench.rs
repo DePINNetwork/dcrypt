@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
-use algorithms::block::aes::{Aes128, Aes192, Aes256};
-use algorithms::block::modes::cbc::Cbc;
-use algorithms::types::{SecretBytes, Nonce};
+use dcrypt_algorithms::block::aes::{Aes128, Aes192, Aes256};
+use dcrypt_algorithms::block::modes::cbc::Cbc;
+use dcrypt_algorithms::types::{SecretBytes, Nonce};
 
 fn bench_aes_cbc(c: &mut Criterion) {
     let mut group = c.benchmark_group("AES-CBC");

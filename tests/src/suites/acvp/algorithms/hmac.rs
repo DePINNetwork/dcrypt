@@ -2,10 +2,10 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
-use algorithms::mac::hmac::Hmac;
-use algorithms::hash::sha2::{Sha224, Sha256, Sha384, Sha512};
-use algorithms::hash::sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
-use algorithms::hash::sha1::Sha1;
+use dcrypt_algorithms::mac::hmac::Hmac;
+use dcrypt_algorithms::hash::sha2::{Sha224, Sha256, Sha384, Sha512};
+use dcrypt_algorithms::hash::sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
+use dcrypt_algorithms::hash::sha1::Sha1;
 use hex;
 
 use super::super::dispatcher::{insert, HandlerFn, DispatchKey};

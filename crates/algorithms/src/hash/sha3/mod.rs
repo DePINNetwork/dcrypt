@@ -14,7 +14,7 @@ use core::sync::atomic::{compiler_fence, Ordering};
 
 // ──────────────────────────────── constants ────────────────────────────────
 
-use params::utils::hash::{
+use dcrypt_params::utils::hash::{
     SHA3_224_OUTPUT_SIZE, SHA3_256_OUTPUT_SIZE, SHA3_384_OUTPUT_SIZE, SHA3_512_OUTPUT_SIZE,
 };
 

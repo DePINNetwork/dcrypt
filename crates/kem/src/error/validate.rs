@@ -51,7 +51,7 @@ pub fn serialization(condition: bool, context: &'static str, details: &'static s
 }
 
 // Re-export primitive validations for convenience
-pub use api::error::validate::{
+pub use dcrypt_api::error::validate::{
     parameter,
     length,
     min_length,

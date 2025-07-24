@@ -1,7 +1,7 @@
 //! Tests for ECDH KEM P-192
 
 use super::*; // Import from parent mod (p192/mod.rs)
-use api::Kem; // The main KEM trait
+use dcrypt_api::Kem; // The main KEM trait
 use rand::rngs::OsRng;
 
 #[test]

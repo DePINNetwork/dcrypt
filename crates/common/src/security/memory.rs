@@ -3,7 +3,7 @@
 //! This module provides traits and utilities for ensuring memory safety
 //! in cryptographic operations.
 
-use api::Result;
+use dcrypt_api::Result;
 
 // Handle Vec and Box imports based on features
 #[cfg(feature = "std")]

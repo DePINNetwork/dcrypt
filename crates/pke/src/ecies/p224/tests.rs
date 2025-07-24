@@ -1,5 +1,5 @@
 use super::*;
-use api::traits::Pke as PkeTrait;
+use dcrypt_api::traits::Pke as PkeTrait;
 use rand::rngs::OsRng;
 
 #[test]

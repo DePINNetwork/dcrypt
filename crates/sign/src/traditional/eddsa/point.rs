@@ -125,7 +125,7 @@ impl EdwardsPoint {
     /// Check if this point is on the curve (for debugging)
     #[cfg(test)]
     pub fn is_on_curve(&self) -> bool {
-        use internal::constant_time::ct_eq;
+        use dcrypt_internal::constant_time::ct_eq;
         
         // Check: -X² + Y² = Z² + d·X²·Y²·Z⁻²
         let xx = self.x.square();

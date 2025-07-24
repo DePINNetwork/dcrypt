@@ -3,10 +3,10 @@
 //! 
 //! All functions are spec-compliant with FIPS 204, matching the reference implementation exactly.
 
-use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::{DilithiumParams, Modulus};
+use dcrypt_algorithms::poly::polynomial::Polynomial;
+use dcrypt_algorithms::poly::params::{DilithiumParams, Modulus};
 use super::polyvec::{PolyVecL, PolyVecK};
-use params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N, DILITHIUM_Q}; 
+use dcrypt_params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N, DILITHIUM_Q}; 
 use crate::error::{Error as SignError};
 
 /// Dilithium modulus Q

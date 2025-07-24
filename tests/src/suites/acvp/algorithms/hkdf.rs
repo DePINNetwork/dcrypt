@@ -2,11 +2,11 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
-use algorithms::kdf::hkdf::Hkdf;
-use algorithms::hash::sha2::{Sha224, Sha256, Sha384, Sha512, Sha512_224, Sha512_256};
-use algorithms::hash::sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
-use algorithms::hash::sha1::Sha1;
-use algorithms::kdf::KeyDerivationFunction;
+use dcrypt_algorithms::kdf::hkdf::Hkdf;
+use dcrypt_algorithms::hash::sha2::{Sha224, Sha256, Sha384, Sha512, Sha512_224, Sha512_256};
+use dcrypt_algorithms::hash::sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
+use dcrypt_algorithms::hash::sha1::Sha1;
+use dcrypt_algorithms::kdf::KeyDerivationFunction;
 use hex;
 
 use super::super::dispatcher::{insert, HandlerFn, DispatchKey};

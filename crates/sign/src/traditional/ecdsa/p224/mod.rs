@@ -4,14 +4,14 @@
 //! and SP 800-56A Rev. 3: Recommendation for Pair-Wise Key-Establishment Schemes
 //! Using Discrete Logarithm Cryptography. SHA-224 is used as the hash function.
 
-use api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
+use dcrypt_api::{Signature as SignatureTrait, Result as ApiResult, error::Error as ApiError};
 use zeroize::Zeroize; // ZeroizeOnDrop is implicitly handled by ec::Scalar's own Drop
 use rand::{CryptoRng, RngCore};
-use algorithms::ec::p224 as ec;
-use algorithms::hash::sha2::{Sha224, Sha224Algorithm}; // Import Sha224Algorithm for BLOCK_SIZE
-use algorithms::hash::{HashFunction, HashAlgorithm}; // Import HashAlgorithm for BLOCK_SIZE
-use algorithms::mac::hmac::Hmac;
-use internal::constant_time::ct_eq;
+use dcrypt_algorithms::ec::p224 as ec;
+use dcrypt_algorithms::hash::sha2::{Sha224, Sha224Algorithm}; // Import Sha224Algorithm for BLOCK_SIZE
+use dcrypt_algorithms::hash::{HashFunction, HashAlgorithm}; // Import HashAlgorithm for BLOCK_SIZE
+use dcrypt_algorithms::mac::hmac::Hmac;
+use dcrypt_internal::constant_time::ct_eq;
 use crate::traditional::ecdsa::common::SignatureComponents;
 
 /// ECDSA signature scheme using NIST P-224 curve (secp224r1)
@@ -288,7 +288,7 @@ fn deterministic_k_hedged_p224<R: RngCore + CryptoRng>(
 fn reduce_bytes_to_scalar_p224(bytes: &[u8; ec::P224_SCALAR_SIZE]) -> ApiResult<ec::Scalar> {
     ec::Scalar::new(*bytes).map_err(|algo_err| {
         match algo_err {
-            algorithms::error::Error::Parameter { ref name, ref reason }
+            dcrypt_algorithms::error::Error::Parameter { ref name, ref reason }
                 if name.as_ref() == "P-224 Scalar" && reason.as_ref().contains("Scalar cannot be zero") =>
             {
                 ApiError::InvalidSignature {

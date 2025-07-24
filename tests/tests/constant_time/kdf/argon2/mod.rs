@@ -3,12 +3,12 @@
 
 use tests::suites::constant_time::config::TestConfig;
 use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
-use algorithms::kdf::argon2::{Argon2, Algorithm, Params};
-use algorithms::kdf::PasswordHashFunction; // Added missing trait import
-use algorithms::types::Salt;
-use api::types::SecretBytes;
+use dcrypt_algorithms::kdf::argon2::{Argon2, Algorithm, Params};
+use dcrypt_algorithms::kdf::PasswordHashFunction; // Added missing trait import
+use dcrypt_algorithms::types::Salt;
+use dcrypt_api::types::SecretBytes;
 // We need to keep the import but it's likely available through another module
-use algorithms::kdf; // This should provide access to Zeroizing through re-export
+use dcrypt_algorithms::kdf; // This should provide access to Zeroizing through re-export
 
 // Helper function instead of impl
 fn create_argon2_config() -> TestConfig {
@@ -63,7 +63,7 @@ fn test_argon2id_verify_constant_time() {
     let hash_result = argon2.hash_password(correct_password.as_ref()).expect("Hashing failed");
     
     // Create a PasswordHash struct using the actual implementation's method
-    let stored_hash = algorithms::kdf::PasswordHash {
+    let stored_hash = dcrypt_algorithms::kdf::PasswordHash {
         algorithm: "argon2id".to_string(),
         params: [
             ("v".to_string(), "19".to_string()),
@@ -175,14 +175,14 @@ fn test_argon2_constant_time_compare() {
     
     // Warm-up
     for _ in 0..config.num_warmup {
-        let _ = algorithms::kdf::common::constant_time_eq(&hash1, &hash2);
+        let _ = dcrypt_algorithms::kdf::common::constant_time_eq(&hash1, &hash2);
     }
     
     let tester = TimingTester::new(config.num_samples, config.num_iterations);
     
     // Measure comparison timing for hashes differing in the first byte
     let t1 = tester.measure(|| {
-        algorithms::kdf::common::constant_time_eq(&hash1, &hash2); // Added semicolon
+        dcrypt_algorithms::kdf::common::constant_time_eq(&hash1, &hash2); // Added semicolon
     });
     
     // Create hash3 that matches hash1 except for the last byte
@@ -195,7 +195,7 @@ fn test_argon2_constant_time_compare() {
     
     // Measure comparison timing for hashes differing in the last byte
     let t2 = tester.measure(|| {
-        algorithms::kdf::common::constant_time_eq(&hash1, &hash3); // Added semicolon
+        dcrypt_algorithms::kdf::common::constant_time_eq(&hash1, &hash3); // Added semicolon
     });
     
     // Analyze if comparison is constant-time

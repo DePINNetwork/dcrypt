@@ -8,10 +8,10 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use algorithms::error::{Result as AlgoResult, Error as AlgoError};
-use algorithms::hash::sha3::{Sha3_256, Sha3_512};
-use algorithms::hash::HashFunction;
-use algorithms::poly::params::Modulus;
+use dcrypt_algorithms::error::{Result as AlgoResult, Error as AlgoError};
+use dcrypt_algorithms::hash::sha3::{Sha3_256, Sha3_512};
+use dcrypt_algorithms::hash::HashFunction;
+use dcrypt_algorithms::poly::params::Modulus;
 use rand::{CryptoRng, RngCore};
 use zeroize::{Zeroizing, Zeroize};
 use subtle::ConstantTimeEq;

@@ -22,10 +22,10 @@ use super::encoding::{
     pack_public_key, unpack_public_key, pack_secret_key, unpack_secret_key,
     pack_signature, unpack_signature,
 };
-use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::{DilithiumParams};  // Removed unused Modulus trait import
-use algorithms::poly::ntt::montgomery_reduce;
-use params::pqc::dilithium::{
+use dcrypt_algorithms::poly::polynomial::Polynomial;
+use dcrypt_algorithms::poly::params::{DilithiumParams};  // Removed unused Modulus trait import
+use dcrypt_algorithms::poly::ntt::montgomery_reduce;
+use dcrypt_params::pqc::dilithium::{
     DilithiumSchemeParams, Dilithium2Params, Dilithium3Params, Dilithium5Params,
     DILITHIUM_N, DILITHIUM_Q,
 };
@@ -92,9 +92,9 @@ fn test_dilithium2_sign_verify() {
     use super::arithmetic::{highbits_polyvec, use_hint_polyveck, make_hint_polyveck};
     use super::sampling::sample_challenge_c;
     use super::encoding::{unpack_signature, unpack_public_key, unpack_secret_key, pack_polyveck_w1};
-    use algorithms::xof::shake::ShakeXof256;
-    use algorithms::xof::ExtendableOutputFunction;
-    use algorithms::poly::params::Modulus;
+    use dcrypt_algorithms::xof::shake::ShakeXof256;
+    use dcrypt_algorithms::xof::ExtendableOutputFunction;
+    use dcrypt_algorithms::poly::params::Modulus;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     

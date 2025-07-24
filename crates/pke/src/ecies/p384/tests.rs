@@ -1,7 +1,7 @@
 // File: crates/pke/src/ecies/p384/tests.rs
 use super::*;
 use rand::rngs::OsRng;
-use api::error::Error as ApiError; // Alias for clarity
+use dcrypt_api::error::Error as ApiError; // Alias for clarity
 
 #[test]
 fn test_ecies_p384_keypair_generation() {

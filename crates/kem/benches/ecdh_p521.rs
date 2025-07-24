@@ -3,7 +3,7 @@
 
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
 use kem::ecdh::p521::{EcdhP521, EcdhP521PublicKey, EcdhP521SecretKey};
-use api::Kem;
+use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 
 fn bench_p521_keypair(c: &mut Criterion) {

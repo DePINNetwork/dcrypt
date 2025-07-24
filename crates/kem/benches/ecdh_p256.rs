@@ -9,7 +9,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use kem::ecdh::p256::EcdhP256;
-use api::Kem;
+use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;

@@ -32,7 +32,7 @@ use crate::kdf::hkdf::Hkdf;
 use crate::hash::sha2::Sha512;
 use crate::kdf::KeyDerivationFunction as KdfTrait;
 use rand::{CryptoRng, RngCore};
-use params::traditional::ecdsa::NIST_P521;
+use dcrypt_params::traditional::ecdsa::NIST_P521;
 
 /// Get the standard base point G of the P-521 curve
 /// 

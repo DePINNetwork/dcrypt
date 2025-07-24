@@ -2,12 +2,12 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
-use algorithms::kdf::pbkdf2::{Pbkdf2, Pbkdf2Params};
-use algorithms::hash::sha2::{Sha224, Sha256, Sha384, Sha512};
-use algorithms::hash::sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
-use algorithms::hash::sha1::Sha1;
-use algorithms::kdf::{KeyDerivationFunction, ParamProvider};
-use algorithms::types::Salt;
+use dcrypt_algorithms::kdf::pbkdf2::{Pbkdf2, Pbkdf2Params};
+use dcrypt_algorithms::hash::sha2::{Sha224, Sha256, Sha384, Sha512};
+use dcrypt_algorithms::hash::sha3::{Sha3_224, Sha3_256, Sha3_384, Sha3_512};
+use dcrypt_algorithms::hash::sha1::Sha1;
+use dcrypt_algorithms::kdf::{KeyDerivationFunction, ParamProvider};
+use dcrypt_algorithms::types::Salt;
 use hex;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 

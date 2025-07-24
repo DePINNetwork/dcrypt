@@ -27,15 +27,15 @@ pub enum EngineError {
 pub type Result<T> = std::result::Result<T, EngineError>;
 
 // Helper for converting algorithm errors
-impl From<algorithms::error::Error> for EngineError {
-    fn from(e: algorithms::error::Error) -> Self {
+impl From<dcrypt_algorithms::error::Error> for EngineError {
+    fn from(e: dcrypt_algorithms::error::Error) -> Self {
         EngineError::Crypto(e.to_string())
     }
 }
 
 // Implement From<api::Error> for EngineError
-impl From<api::error::Error> for EngineError {
-    fn from(api_err: api::error::Error) -> Self {
+impl From<dcrypt_api::error::Error> for EngineError {
+    fn from(api_err: dcrypt_api::error::Error) -> Self {
         // Convert api::Error to a String and then into EngineError::Crypto
         // This is a general conversion. Specific mappings could be added if needed.
         EngineError::Crypto(api_err.to_string())
@@ -43,8 +43,8 @@ impl From<api::error::Error> for EngineError {
 }
 
 // Implement From<sign::error::Error> for EngineError
-impl From<sign::error::Error> for EngineError {
-    fn from(sign_err: sign::error::Error) -> Self {
+impl From<dcrypt_sign::error::Error> for EngineError {
+    fn from(sign_err: dcrypt_sign::error::Error) -> Self {
         // Convert sign::Error to EngineError::Crypto
         EngineError::Crypto(sign_err.to_string())
     }

@@ -2,7 +2,7 @@
 
 use crate::ec::k256::constants::K256_SCALAR_SIZE;
 use crate::error::{Error, Result, validate};
-use common::security::SecretBuffer;
+use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// secp256k1 scalar value for use in elliptic curve operations

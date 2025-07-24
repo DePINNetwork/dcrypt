@@ -6,7 +6,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use crate::types::Nonce;
 use crate::types::nonce::ChaCha20Compatible;
-use common::security::{SecretBuffer, EphemeralSecret};
+use dcrypt_common::security::{SecretBuffer, EphemeralSecret};
 
 /// Size of ChaCha20 key in bytes
 pub const CHACHA20_KEY_SIZE: usize = 32;

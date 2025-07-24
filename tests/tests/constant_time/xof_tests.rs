@@ -3,7 +3,7 @@
 
 use tests::suites::constant_time::config::TestConfig;
 use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
-use algorithms::xof::{ExtendableOutputFunction, ShakeXof256, Blake3Xof};
+use dcrypt_algorithms::xof::{ExtendableOutputFunction, ShakeXof256, Blake3Xof};
 
 #[test]
 fn test_shake256_constant_time() {

@@ -1,6 +1,6 @@
 // File: dcrypt-hybrid/src/kem/ecdh_ntru.rs
 
-use api::{Kem as KemTrait, Result};
+use dcrypt_api::{Kem as KemTrait, Result};
 use kem::ecdh::EcdhP384;
 use kem::ntru::NtruHps;
 use zeroize::Zeroize;

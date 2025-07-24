@@ -1,5 +1,5 @@
 // File: tests/tests/src/kem/ecdh/mod.rs
-use api::{Kem, Result as ApiResult};
+use dcrypt_api::{Kem, Result as ApiResult};
 use kem::ecdh::{
     EcdhP256, EcdhP256PublicKey, EcdhP256SecretKey, EcdhP256SharedSecret, EcdhP256Ciphertext,
     EcdhP384, EcdhP384PublicKey, EcdhP384SecretKey, EcdhP384SharedSecret, EcdhP384Ciphertext

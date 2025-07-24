@@ -8,9 +8,9 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use algorithms::error::{Result as AlgoResult, Error as AlgoError};
-use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::Modulus;
+use dcrypt_algorithms::error::{Result as AlgoResult, Error as AlgoError};
+use dcrypt_algorithms::poly::polynomial::Polynomial;
+use dcrypt_algorithms::poly::params::Modulus;
 
 use super::params::{KyberParams, KyberPolyModParams, KYBER_RHO_SEED_BYTES};
 use super::polyvec::PolyVec;

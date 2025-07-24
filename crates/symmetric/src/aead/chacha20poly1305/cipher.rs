@@ -4,11 +4,11 @@
 //! algorithm as defined in RFC 8439.
 
 use crate::error::{Result, validate, from_primitive_error};
-use algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
-use algorithms::aead::xchacha20poly1305::XChaCha20Poly1305;
-use algorithms::aead::chacha20poly1305::CHACHA20POLY1305_TAG_SIZE;
-use algorithms::types::Nonce; // Import the generic Nonce type
-use algorithms::error::Error as PrimitiveError;
+use dcrypt_algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
+use dcrypt_algorithms::aead::xchacha20poly1305::XChaCha20Poly1305;
+use dcrypt_algorithms::aead::chacha20poly1305::CHACHA20POLY1305_TAG_SIZE;
+use dcrypt_algorithms::types::Nonce; // Import the generic Nonce type
+use dcrypt_algorithms::error::Error as PrimitiveError;
 use rand::RngCore;
 use super::common::{ChaCha20Poly1305Key, ChaCha20Poly1305Nonce, ChaCha20Poly1305CiphertextPackage};
 use crate::cipher::{SymmetricCipher, Aead};
@@ -62,7 +62,7 @@ impl Aead for ChaCha20Poly1305Cipher {
         self.cipher.decrypt(&primitives_nonce, ciphertext, aad)
             .map_err(|e| match e {
                 PrimitiveError::Authentication { .. } => 
-                    api::error::Error::AuthenticationFailed { 
+                    dcrypt_api::error::Error::AuthenticationFailed { 
                         context: "ChaCha20Poly1305",
                         #[cfg(feature = "std")]
                         message: "authentication tag verification failed".to_string(),
@@ -169,7 +169,7 @@ impl XChaCha20Poly1305Nonce {
     /// Creates a nonce from a base64 string
     pub fn from_string(s: &str) -> Result<Self> {
         let bytes = base64::decode(s)
-            .map_err(|_| api::error::Error::SerializationError { 
+            .map_err(|_| dcrypt_api::error::Error::SerializationError { 
                 context: "XChaCha20Poly1305 nonce base64 decode", 
                 #[cfg(feature = "std")]
                 message: "invalid base64 encoding".to_string()
@@ -213,7 +213,7 @@ impl Aead for XChaCha20Poly1305Cipher {
         self.cipher.decrypt(&primitives_nonce, ciphertext, aad)
             .map_err(|e| match e {
                 PrimitiveError::Authentication { .. } => 
-                    api::error::Error::AuthenticationFailed { 
+                    dcrypt_api::error::Error::AuthenticationFailed { 
                         context: "XChaCha20Poly1305",
                         #[cfg(feature = "std")]
                         message: "authentication tag verification failed".to_string(),

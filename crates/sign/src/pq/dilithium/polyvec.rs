@@ -6,13 +6,13 @@
 //!
 //! The polynomial type MUST use the algorithms version to get correct NTT scaling factors!
 
-use algorithms::poly::polynomial::Polynomial;
-use algorithms::poly::params::{DilithiumParams, Modulus};
-use algorithms::xof::shake::ShakeXof128;
-use algorithms::xof::ExtendableOutputFunction;
-use algorithms::error::Result as AlgoResult;
+use dcrypt_algorithms::poly::polynomial::Polynomial;
+use dcrypt_algorithms::poly::params::{DilithiumParams, Modulus};
+use dcrypt_algorithms::xof::shake::ShakeXof128;
+use dcrypt_algorithms::xof::ExtendableOutputFunction;
+use dcrypt_algorithms::error::Result as AlgoResult;
 use crate::error::{Error as SignError};
-use params::pqc::dilithium::DilithiumSchemeParams;
+use dcrypt_params::pqc::dilithium::DilithiumSchemeParams;
 use core::marker::PhantomData;
 use zeroize::Zeroize;
 
@@ -155,7 +155,7 @@ impl<P: DilithiumSchemeParams> PolyVecK<P> {
     pub fn sub_centered(&self, other: &Self) -> Self {
         let mut result = Self::zero();
         for i in 0..P::K_DIM {
-            for j in 0..params::pqc::dilithium::DILITHIUM_N {
+            for j in 0..dcrypt_params::pqc::dilithium::DILITHIUM_N {
                 let diff = centered_sub(self.polys[i].coeffs[j], other.polys[i].coeffs[j]);
                 result.polys[i].coeffs[j] = 
                     ((diff as i64).rem_euclid(DilithiumParams::Q as i64)) as u32;

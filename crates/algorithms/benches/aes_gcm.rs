@@ -4,9 +4,9 @@
 //! (128, 192, 256 bits) and various message/AAD sizes.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
-use algorithms::aead::gcm::Gcm;
-use algorithms::block::{Aes128, Aes192, Aes256, BlockCipher};
-use algorithms::types::{SecretBytes, Nonce};
+use dcrypt_algorithms::aead::gcm::Gcm;
+use dcrypt_algorithms::block::{Aes128, Aes192, Aes256, BlockCipher};
+use dcrypt_algorithms::types::{SecretBytes, Nonce};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 

@@ -2,10 +2,10 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
-use algorithms::block::aes::{Aes128, Aes192, Aes256};
-use algorithms::block::modes::ctr::{Ctr, CounterPosition};
-use algorithms::block::BlockCipher;
-use algorithms::types::{Nonce, SecretBytes};
+use dcrypt_algorithms::block::aes::{Aes128, Aes192, Aes256};
+use dcrypt_algorithms::block::modes::ctr::{Ctr, CounterPosition};
+use dcrypt_algorithms::block::BlockCipher;
+use dcrypt_algorithms::types::{Nonce, SecretBytes};
 use arrayref::array_ref;
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;

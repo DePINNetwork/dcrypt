@@ -1,12 +1,12 @@
 // Import specific functions from internal crate
-use internal::{ct_eq, ct_select};
-use internal::zeroing::secure_zero;
+use dcrypt_internal::{ct_eq, ct_select};
+use dcrypt_internal::zeroing::secure_zero;
 
 // Import math functions from common crate
-use common::math_common::{mod_exp, gcd, mod_inv};
+use dcrypt_common::math_common::{mod_exp, gcd, mod_inv};
 
 // Import types and traits from api crate
-use api::{Key, Serialize};
+use dcrypt_api::{Key, Serialize};
 
 #[test]
 fn test_constant_time_compare() {

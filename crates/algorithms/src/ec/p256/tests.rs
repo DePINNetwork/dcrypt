@@ -5,7 +5,7 @@ use super::*;
 use crate::ec::p256::{self, Point, Scalar, FieldElement};
 use crate::error::Result;
 use rand::rngs::OsRng;
-use params::traditional::ecdsa::NIST_P256;
+use dcrypt_params::traditional::ecdsa::NIST_P256;
 
 #[test]
 fn test_compression_roundtrip() {

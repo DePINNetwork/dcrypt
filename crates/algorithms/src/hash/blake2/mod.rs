@@ -21,7 +21,7 @@ use zeroize::Zeroize;
 use crate::error::{validate, Error, Result};
 use crate::hash::{HashAlgorithm, HashFunction};
 use crate::types::Digest;
-use common::security::{EphemeralSecret, SecretBuffer, SecureZeroingType};
+use dcrypt_common::security::{EphemeralSecret, SecretBuffer, SecureZeroingType};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants

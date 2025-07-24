@@ -8,7 +8,7 @@ use crate::error::{Error, Result};
 use crate::hash::HashFunction;
 use subtle::ConstantTimeEq;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use common::security::{SecretBuffer, SecureZeroingType};
+use dcrypt_common::security::{SecretBuffer, SecureZeroingType};
 
 const MAX_BLOCK: usize = 144; // SHA3-224 block size (largest among SHA-2 and SHA-3)
 

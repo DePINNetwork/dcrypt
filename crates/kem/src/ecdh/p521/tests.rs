@@ -1,7 +1,7 @@
 // File: crates/kem/src/ecdh/p521/tests.rs
 use super::*;
-use api::Kem;
-use algorithms::ec::p521;
+use dcrypt_api::Kem;
+use dcrypt_algorithms::ec::p521;
 use rand::rngs::OsRng;
 
 #[test]

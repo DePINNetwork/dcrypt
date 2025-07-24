@@ -17,7 +17,7 @@ use crate::types::{Salt, SecretBytes, ByteSerializable};
 use crate::types::salt::Pbkdf2Compatible;
 
 // Import security types
-use common::security::SecretVec;
+use dcrypt_common::security::SecretVec;
 
 // Conditional imports based on features
 #[cfg(feature = "std")]

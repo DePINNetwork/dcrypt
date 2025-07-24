@@ -10,7 +10,7 @@ use crate::error::{validate, Result};
 use crate::mac::{Mac, MacAlgorithm};
 use crate::types::Tag;
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
-use common::security::SecretBuffer;
+use dcrypt_common::security::SecretBuffer;
 
 /// Size of the Poly1305 key in bytes (32 B)
 pub const POLY1305_KEY_SIZE: usize = 32;

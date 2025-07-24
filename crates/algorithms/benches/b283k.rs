@@ -1,7 +1,7 @@
 //! Benchmarks for sect283k1 binary elliptic curve operations
 
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
-use algorithms::ec::b283k::{
+use dcrypt_algorithms::ec::b283k::{
     FieldElement, Point, Scalar,
     base_point_g, generate_keypair, scalar_mult, scalar_mult_base_g,
     kdf_hkdf_sha384_for_ecdh_kem,

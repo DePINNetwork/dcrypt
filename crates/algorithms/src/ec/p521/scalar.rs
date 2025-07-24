@@ -3,9 +3,9 @@
 use crate::ec::p521::constants::{P521_SCALAR_SIZE, p521_bytes_to_limbs, p521_limbs_to_bytes};
 use crate::ec::p521::field::FieldElement;
 use crate::error::{Error, Result, validate};
-use common::security::SecretBuffer;
+use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use params::traditional::ecdsa::NIST_P521;
+use dcrypt_params::traditional::ecdsa::NIST_P521;
 
 /// P-521 scalar value for use in elliptic curve operations.
 /// Represents integers modulo the curve order n. Used for private keys

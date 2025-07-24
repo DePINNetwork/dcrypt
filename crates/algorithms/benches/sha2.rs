@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
-use algorithms::hash::{Sha224, Sha256, Sha384, Sha512, HashFunction};
-use algorithms::hash::sha2::{Sha512_224, Sha512_256};
+use dcrypt_algorithms::hash::{Sha224, Sha256, Sha384, Sha512, HashFunction};
+use dcrypt_algorithms::hash::sha2::{Sha512_224, Sha512_256};
 
 // Test data sizes
 const SIZES: &[usize] = &[

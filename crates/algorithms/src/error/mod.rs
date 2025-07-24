@@ -14,7 +14,7 @@ use std::fmt;
 #[cfg(not(feature = "std"))]
 use core::fmt;
 
-use api::{Error as CoreError, Result as CoreResult};
+use dcrypt_api::{Error as CoreError, Result as CoreResult};
 
 /// The error type for cryptographic primitives
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -215,7 +215,7 @@ pub fn to_core_result<T>(r: Result<T>, ctx: &'static str) -> CoreResult<T> {
 }
 
 // Re-export core error handling traits for convenience
-pub use api::error::{ResultExt, SecureErrorHandling};
+pub use dcrypt_api::error::{ResultExt, SecureErrorHandling};
 
 // Include the validation submodule
 pub mod validate;

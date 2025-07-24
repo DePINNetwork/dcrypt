@@ -13,8 +13,8 @@ use crate::aead::chacha20poly1305::{
 };
 use crate::types::Nonce;
 use crate::types::nonce::XChaCha20Compatible;
-use api::traits::AuthenticatedCipher;
-use common::security::{SecretBuffer, SecureZeroingType};
+use dcrypt_api::traits::AuthenticatedCipher;
+use dcrypt_common::security::{SecretBuffer, SecureZeroingType};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Size of the XChaCha20Poly1305 nonce in bytes

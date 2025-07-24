@@ -4,8 +4,8 @@
 //! for various message sizes and AAD configurations.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
-use algorithms::aead::chacha20poly1305::{ChaCha20Poly1305, CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_NONCE_SIZE};
-use algorithms::types::Nonce;
+use dcrypt_algorithms::aead::chacha20poly1305::{ChaCha20Poly1305, CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_NONCE_SIZE};
+use dcrypt_algorithms::types::Nonce;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 

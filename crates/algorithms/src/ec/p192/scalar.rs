@@ -2,9 +2,9 @@
 
 use crate::ec::p192::constants::P192_SCALAR_SIZE;
 use crate::error::{Error, Result, validate};
-use common::security::SecretBuffer;
+use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-use params::traditional::ecdsa::NIST_P192;
+use dcrypt_params::traditional::ecdsa::NIST_P192;
 
 /// P-192 scalar: integers mod n, where
 /// n = 0xFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFF (curve order).

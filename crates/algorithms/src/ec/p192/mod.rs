@@ -31,7 +31,7 @@ use crate::kdf::hkdf::Hkdf;
 use crate::hash::sha2::Sha256;
 use crate::kdf::KeyDerivationFunction as KdfTrait;
 use rand::{CryptoRng, RngCore};
-use params::traditional::ecdsa::NIST_P192;
+use dcrypt_params::traditional::ecdsa::NIST_P192;
 
 /// Get the standard base point G of the P-192 curve
 pub fn base_point_g() -> Point {

@@ -2,10 +2,10 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase, FlexValue};
 use crate::suites::acvp::error::{EngineError, Result};
-use sign::traditional::eddsa::{
+use dcrypt_sign::traditional::eddsa::{
     Ed25519, Ed25519PublicKey, Ed25519SecretKey, Ed25519Signature,
 };
-use api::Signature;
+use dcrypt_api::Signature;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use hex;

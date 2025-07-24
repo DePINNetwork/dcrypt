@@ -2,8 +2,8 @@
 
 use crate::suites::acvp::model::{TestGroup, TestCase};
 use crate::suites::acvp::error::{EngineError, Result};
-use algorithms::ec::{p192, p224, p256, p384, p521, k256, b283k};
-use common::security::SecretBuffer;
+use dcrypt_algorithms::ec::{p192, p224, p256, p384, p521, k256, b283k};
+use dcrypt_common::security::SecretBuffer;
 use hex;
 use rand::rngs::OsRng;
 

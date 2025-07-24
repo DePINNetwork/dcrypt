@@ -8,12 +8,12 @@
 //!
 //! This implementation uses compressed point format for optimal bandwidth efficiency.
 
-use api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
-use common::security::SecretBuffer;
+use dcrypt_api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
+use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use rand::{CryptoRng, RngCore};
 use crate::error::Error as KemError;
-use algorithms::ec::p384 as ec_p384;
+use dcrypt_algorithms::ec::p384 as ec_p384;
 use super::KEM_KDF_VERSION;
 
 /// ECDH KEM with P-384 curve

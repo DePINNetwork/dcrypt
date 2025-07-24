@@ -15,7 +15,7 @@ use super::ExtendableOutputFunction;
 use crate::error::{Error, Result, validate};
 
 // Import security types from dcrypt-core
-use common::security::{
+use dcrypt_common::security::{
     SecretBuffer, EphemeralSecret, SecureZeroingType, barrier
 };
 

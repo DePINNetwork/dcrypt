@@ -6,11 +6,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 // Re-export the primary API error system
-pub use api::error::{Error, Result, validate};
-pub use api::error::{ResultExt, SecureErrorHandling, ERROR_REGISTRY};
+pub use dcrypt_api::error::{Error, Result, validate};
+pub use dcrypt_api::error::{ResultExt, SecureErrorHandling, ERROR_REGISTRY};
 
 // Import for conversions
-use algorithms::error::Error as PrimitiveError;
+use dcrypt_algorithms::error::Error as PrimitiveError;
 
 // Helper functions to convert errors (instead of From impls which violate orphan rules)
 
@@ -85,7 +85,7 @@ impl<T> SymmetricResultExt<T> for core::result::Result<T, std::io::Error> {
 }
 
 // Also implement for api::Error results (like SecretBytes operations)
-impl<T> SymmetricResultExt<T> for core::result::Result<T, api::error::Error> {
+impl<T> SymmetricResultExt<T> for core::result::Result<T, dcrypt_api::error::Error> {
     fn map_primitive_err(self) -> Result<T> {
         // Already the right type, just pass through
         self

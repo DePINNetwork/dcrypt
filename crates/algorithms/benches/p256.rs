@@ -2,7 +2,7 @@
 // Comprehensive benchmarks for NIST P-256 elliptic curve operations
 
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-use algorithms::ec::p256::{
+use dcrypt_algorithms::ec::p256::{
     self, FieldElement, Point, Scalar, 
     P256_FIELD_ELEMENT_SIZE, P256_SCALAR_SIZE,
 };

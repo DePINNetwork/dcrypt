@@ -126,7 +126,7 @@ impl<const N: usize> ConstantTimeEq for Digest<N> {
         if self.len != other.len {
             return false;
         }
-        internal::constant_time::ct_eq(&self.data[..self.len], &other.data[..other.len])
+        dcrypt_internal::constant_time::ct_eq(&self.data[..self.len], &other.data[..other.len])
     }
 }
 

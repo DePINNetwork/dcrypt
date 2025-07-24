@@ -17,7 +17,7 @@ use crate::types::Nonce;
 use crate::types::nonce::AesCtrCompatible;
 
 // Import security types for memory safety
-use common::security::barrier;
+use dcrypt_common::security::barrier;
 
 /// Counter position within the counter block
 #[derive(Debug, Clone, Copy, PartialEq)]

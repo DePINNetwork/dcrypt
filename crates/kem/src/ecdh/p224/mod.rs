@@ -6,14 +6,14 @@
 //! Uses HKDF-SHA256 for key derivation and compressed points for ciphertexts.
 //! Includes authentication via HMAC-SHA256 tags to ensure key confirmation.
 
-use api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
-use common::security::SecretBuffer;
+use dcrypt_api::{Kem, Result as ApiResult, Key as ApiKey, error::Error as ApiError};
+use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use rand::{CryptoRng, RngCore};
 use crate::error::Error as KemError;
-use algorithms::ec::p224 as ec; // Use P-224 algorithms
-use algorithms::mac::hmac::Hmac;
-use algorithms::hash::sha2::Sha256;
+use dcrypt_algorithms::ec::p224 as ec; // Use P-224 algorithms
+use dcrypt_algorithms::mac::hmac::Hmac;
+use dcrypt_algorithms::hash::sha2::Sha256;
 use super::KEM_KDF_VERSION; // KDF version from parent ecdh module
 
 /// ECDH KEM with P-224 curve
@@ -195,7 +195,7 @@ impl Kem for EcdhP224 {
             .map_err(ApiError::from)?;
         
         // Constant-time comparison of tags (array to array)
-        use common::security::SecureCompare;
+        use dcrypt_common::security::SecureCompare;
         if !received_tag.secure_eq(&expected_tag) {
             return Err(ApiError::DecryptionFailed {
                 context: "ECDH-P224 decapsulate",

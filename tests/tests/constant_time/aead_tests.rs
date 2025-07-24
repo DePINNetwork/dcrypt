@@ -3,15 +3,15 @@
 
 use tests::suites::constant_time::config::TestConfig;
 use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
-use algorithms::block::aes::Aes128;
-use algorithms::block::BlockCipher;
-use algorithms::aead::gcm::Gcm;
-use api::traits::AuthenticatedCipher;
-use api::traits::symmetric::SymmetricCipher;
-use api::types::SecretBytes;
-use algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
-use algorithms::aead::chacha20poly1305::{CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_NONCE_SIZE};
-use algorithms::types::Nonce;
+use dcrypt_algorithms::block::aes::Aes128;
+use dcrypt_algorithms::block::BlockCipher;
+use dcrypt_algorithms::aead::gcm::Gcm;
+use dcrypt_api::traits::AuthenticatedCipher;
+use dcrypt_api::traits::symmetric::SymmetricCipher;
+use dcrypt_api::types::SecretBytes;
+use dcrypt_algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
+use dcrypt_algorithms::aead::chacha20poly1305::{CHACHA20POLY1305_KEY_SIZE, CHACHA20POLY1305_NONCE_SIZE};
+use dcrypt_algorithms::types::Nonce;
 
 // Helper to set up the GCM instance once - updated to use SecretBytes
 fn make_gcm() -> (Gcm<Aes128>, Vec<u8>, Vec<u8>) {

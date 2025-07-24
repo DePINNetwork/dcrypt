@@ -3,9 +3,9 @@
 
 use tests::suites::constant_time::config::TestConfig;
 use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
-use algorithms::block::aes::Aes128;
-use algorithms::block::BlockCipher;
-use api::types::SecretBytes;
+use dcrypt_algorithms::block::aes::Aes128;
+use dcrypt_algorithms::block::BlockCipher;
+use dcrypt_api::types::SecretBytes;
 
 #[test]
 fn test_aes_constant_time() {

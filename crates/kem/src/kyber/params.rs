@@ -3,8 +3,8 @@
 //! Kyber parameter definitions.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use algorithms::poly::params::{Modulus, NttModulus, PostInvNtt};
-use params::pqc::kyber as global_params; // Using an alias for clarity
+use dcrypt_algorithms::poly::params::{Modulus, NttModulus, PostInvNtt};
+use dcrypt_params::pqc::kyber as global_params; // Using an alias for clarity
 
 /// Common Kyber polynomial degree.
 pub const KYBER_N: usize = global_params::KYBER_N;

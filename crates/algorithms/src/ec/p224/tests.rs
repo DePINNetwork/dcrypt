@@ -4,7 +4,7 @@ use super::*;
 use crate::ec::p224::{self, Point, Scalar, FieldElement};
 use crate::error::Result;
 use rand::rngs::OsRng;
-use params::traditional::ecdsa::NIST_P224;
+use dcrypt_params::traditional::ecdsa::NIST_P224;
 
 // ============================================================================
 // FIELD ARITHMETIC TESTS

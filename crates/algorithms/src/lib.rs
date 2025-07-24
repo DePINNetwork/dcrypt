@@ -88,7 +88,7 @@ pub use types::{
 };
 
 // Re-export security types from dcrypt-core
-pub use common::security::{
+pub use dcrypt_common::security::{
     SecretBuffer, SecretVec, EphemeralSecret, ZeroizeGuard,
     SecureOperation, SecureCompare, SecureOperationExt,
     SecureOperationBuilder, barrier,

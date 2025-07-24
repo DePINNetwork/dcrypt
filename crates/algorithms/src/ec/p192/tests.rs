@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::ec::p192::{FieldElement, Point, Scalar, PointFormat};
-use params::traditional::ecdsa::NIST_P192;
+use dcrypt_params::traditional::ecdsa::NIST_P192;
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 

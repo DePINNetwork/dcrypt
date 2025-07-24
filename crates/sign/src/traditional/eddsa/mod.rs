@@ -15,7 +15,7 @@
 //!
 //! ```
 //! use sign::traditional::eddsa::Ed25519;
-//! use api::Signature;
+//! use dcrypt_api::Signature;
 //! use rand::rngs::OsRng;
 //!
 //! # fn main() -> api::Result<()> {

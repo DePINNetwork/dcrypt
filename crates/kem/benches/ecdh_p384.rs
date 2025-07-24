@@ -3,7 +3,7 @@
 
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
 use kem::ecdh::p384::{EcdhP384};
-use api::Kem;
+use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 
 fn bench_p384_keypair(c: &mut Criterion) {

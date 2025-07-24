@@ -7,9 +7,9 @@ use crate::suites::acvp::model::{TestCase, TestGroup};
 use crate::suites::acvp::error::{EngineError, Result};
 use crate::suites::acvp::dispatcher::{insert, HandlerFn, DispatchKey};
 
-use kem::kyber::{Kyber512, Kyber768, Kyber1024, KyberPublicKey, KyberSecretKey,
+use dcrypt_kem::kyber::{Kyber512, Kyber768, Kyber1024, KyberPublicKey, KyberSecretKey,
                  KyberCiphertext};
-use api::Kem;  // Use the Kem trait from api crate
+use dcrypt_api::Kem;  // Use the Kem trait from api crate
 use rand::{RngCore, CryptoRng};
 use subtle::ConstantTimeEq;
 

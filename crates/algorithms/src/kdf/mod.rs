@@ -9,8 +9,8 @@
 ///
 /// ```
 /// # use rand::rngs::OsRng;
-/// use algorithms::kdf::{TypedHkdf, KeyDerivationFunction, KdfOperation}; 
-/// use algorithms::hash::Sha256;
+/// use dcrypt_algorithms::kdf::{TypedHkdf, KeyDerivationFunction, KdfOperation}; 
+/// use dcrypt_algorithms::hash::Sha256;
 /// 
 /// // Create KDF instance
 /// let kdf = TypedHkdf::<Sha256>::new();

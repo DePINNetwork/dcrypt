@@ -1,8 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId, Throughput};
-use algorithms::kdf::argon2::{Argon2, Algorithm, Params};
-use algorithms::kdf::{KeyDerivationFunction, PasswordHashFunction, KdfOperation};
-use algorithms::types::{Salt, SecretBytes};
-use algorithms::Argon2Compatible;
+use dcrypt_algorithms::kdf::argon2::{Argon2, Algorithm, Params};
+use dcrypt_algorithms::kdf::{KeyDerivationFunction, PasswordHashFunction, KdfOperation};
+use dcrypt_algorithms::types::{Salt, SecretBytes};
+use dcrypt_algorithms::Argon2Compatible;
 
 const PASSWORD: &[u8] = b"correct horse battery staple";
 const SALT_SIZE: usize = 16;

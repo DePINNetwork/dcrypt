@@ -1,6 +1,6 @@
 // File: dcrypt-hybrid/src/sign/rsa_falcon.rs
 
-use api::{Signature as SignatureTrait, Result};
+use dcrypt_api::{Signature as SignatureTrait, Result};
 use sign::traditional::rsa::RsaPss;
 use sign::pq::falcon::Falcon512;
 use zeroize::Zeroize;

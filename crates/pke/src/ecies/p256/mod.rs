@@ -1,11 +1,11 @@
 //! ECIES implementation for NIST P-256.
-use api::traits::Pke;
-use api::error::Error as ApiError;
-use algorithms::ec::p256 as ec;
-use algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
-use algorithms::types::Nonce;
-use api::traits::SymmetricCipher as ApiSymmetricCipherTrait;
-use api::traits::symmetric::{EncryptOperation, DecryptOperation}; // Import operation traits
+use dcrypt_api::traits::Pke;
+use dcrypt_api::error::Error as ApiError;
+use dcrypt_algorithms::ec::p256 as ec;
+use dcrypt_algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
+use dcrypt_algorithms::types::Nonce;
+use dcrypt_api::traits::SymmetricCipher as ApiSymmetricCipherTrait;
+use dcrypt_api::traits::symmetric::{EncryptOperation, DecryptOperation}; // Import operation traits
 use rand::{CryptoRng, RngCore};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -50,7 +50,7 @@ impl Pke for EciesP256 {
 
     fn keypair<R: RngCore + CryptoRng>(
         rng: &mut R,
-    ) -> api::error::Result<(Self::PublicKey, Self::SecretKey)> {
+    ) -> dcrypt_api::error::Result<(Self::PublicKey, Self::SecretKey)> {
         let (sk_scalar, pk_point) = ec::generate_keypair(rng).map_err(|e| ApiError::from(PkeError::from(e)))?;
         Ok((
             EciesP256PublicKey(pk_point.serialize_uncompressed()),
@@ -63,7 +63,7 @@ impl Pke for EciesP256 {
         plaintext: &[u8],
         aad: Option<&[u8]>,
         rng: &mut R,
-    ) -> api::error::Result<Self::Ciphertext> {
+    ) -> dcrypt_api::error::Result<Self::Ciphertext> {
         let pk_recipient_point = ec::Point::deserialize_uncompressed(&pk_recipient.0)
             .map_err(|e| ApiError::from(PkeError::from(e)))?;
         if pk_recipient_point.is_identity() {
@@ -118,7 +118,7 @@ impl Pke for EciesP256 {
         sk_recipient: &Self::SecretKey,
         ciphertext_bytes: &Self::Ciphertext,
         aad: Option<&[u8]>,
-    ) -> api::error::Result<Vec<u8>> {
+    ) -> dcrypt_api::error::Result<Vec<u8>> {
         let ecies_components = EciesCiphertextComponents::deserialize(ciphertext_bytes)
             .map_err(ApiError::from)?;
 
@@ -158,7 +158,7 @@ impl Pke for EciesP256 {
 
         let aead_cipher_impl = ChaCha20Poly1305::new(&encryption_key_arr);
         
-        let aead_ct_api_obj = api::Ciphertext::new(&ecies_components.aead_ciphertext_tag);
+        let aead_ct_api_obj = dcrypt_api::Ciphertext::new(&ecies_components.aead_ciphertext_tag);
 
         let plaintext = <ChaCha20Poly1305 as ApiSymmetricCipherTrait>::decrypt(&aead_cipher_impl)
             .with_nonce(&aead_nonce)

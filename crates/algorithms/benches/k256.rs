@@ -1,6 +1,6 @@
 //! Benchmarks for secp256k1 (K256) elliptic curve operations
 
-use algorithms::ec::k256::{
+use dcrypt_algorithms::ec::k256::{
     base_point_g, generate_keypair, scalar_mult, scalar_mult_base_g,
     FieldElement, Point, Scalar,
     K256_FIELD_ELEMENT_SIZE, K256_SCALAR_SIZE,

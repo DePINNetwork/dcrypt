@@ -13,13 +13,13 @@ use byteorder::{BigEndian, ByteOrder};
 use zeroize::Zeroize;
 
 // Import security types from dcrypt-core
-use common::security::{EphemeralSecret, SecureZeroingType, ZeroizeGuard};
+use dcrypt_common::security::{EphemeralSecret, SecureZeroingType, ZeroizeGuard};
 #[cfg(feature = "std")]
 use std::sync::atomic::{compiler_fence, Ordering};
 #[cfg(not(feature = "std"))]
 use portable_atomic::{compiler_fence, Ordering};
 
-use params::utils::hash::{
+use dcrypt_params::utils::hash::{
     SHA224_OUTPUT_SIZE, SHA256_OUTPUT_SIZE, SHA384_OUTPUT_SIZE, SHA512_OUTPUT_SIZE,
     SHA256_BLOCK_SIZE, SHA512_BLOCK_SIZE,
 };

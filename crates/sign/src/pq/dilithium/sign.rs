@@ -38,13 +38,13 @@ use super::encoding::{
     pack_signature, unpack_signature, pack_polyveck_w1,
 };
 
-use algorithms::hash::sha3::Sha3_256;
-use algorithms::xof::shake::ShakeXof256;
-use algorithms::hash::HashFunction;
-use algorithms::xof::ExtendableOutputFunction;
-use algorithms::poly::params::{DilithiumParams, Modulus}; 
+use dcrypt_algorithms::hash::sha3::Sha3_256;
+use dcrypt_algorithms::xof::shake::ShakeXof256;
+use dcrypt_algorithms::hash::HashFunction;
+use dcrypt_algorithms::xof::ExtendableOutputFunction;
+use dcrypt_algorithms::poly::params::{DilithiumParams, Modulus}; 
 use crate::error::{Error as SignError};
-use params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N};
+use dcrypt_params::pqc::dilithium::{DilithiumSchemeParams, DILITHIUM_N};
 use rand::{CryptoRng, RngCore};
 use subtle::ConstantTimeEq;
 

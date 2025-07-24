@@ -4,7 +4,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
 use kem::kyber::{Kyber512, Kyber768, Kyber1024};
-use api::Kem;
+use dcrypt_api::Kem;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 

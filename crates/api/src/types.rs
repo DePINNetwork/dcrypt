@@ -7,7 +7,7 @@ use core::fmt;
 use core::ops::{Deref, DerefMut};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 use crate::{Error, Result, Serialize};
-use internal::constant_time::ct_eq;
+use dcrypt_internal::constant_time::ct_eq;
 
 /// A fixed-size array of bytes that is securely zeroed when dropped
 ///

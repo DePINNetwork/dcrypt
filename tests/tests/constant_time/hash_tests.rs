@@ -3,7 +3,7 @@
 
 use tests::suites::constant_time::config::TestConfig;
 use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
-use algorithms::hash::{HashFunction, Sha256, Sha3_256};
+use dcrypt_algorithms::hash::{HashFunction, Sha256, Sha3_256};
 
 #[test]
 fn test_sha256_constant_time() {

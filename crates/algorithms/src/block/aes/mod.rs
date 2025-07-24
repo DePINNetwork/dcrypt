@@ -22,12 +22,12 @@ use portable_atomic::{compiler_fence, Ordering};
 use super::BlockCipher;
 use super::CipherAlgorithm;
 use crate::error::{Result, validate};
-use params::utils::symmetric::{
+use dcrypt_params::utils::symmetric::{
     AES128_KEY_SIZE, AES192_KEY_SIZE, AES256_KEY_SIZE, AES_BLOCK_SIZE,
 };
 use rand::{CryptoRng, RngCore};
 use crate::types::SecretBytes;
-use common::security::SecretBuffer;
+use dcrypt_common::security::SecretBuffer;
 
 /// Round constants for AES key expansion
 const RCON: [u32; 11] = [

@@ -6,7 +6,7 @@ use crate::ec::p521::{
     scalar::Scalar,
 };
 use crate::error::{Error, Result, validate};
-use params::traditional::ecdsa::NIST_P521;
+use dcrypt_params::traditional::ecdsa::NIST_P521;
 use subtle::{Choice, ConditionallySelectable};
 
 /// Format of a serialized elliptic curve point

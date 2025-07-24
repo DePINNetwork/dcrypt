@@ -3,9 +3,9 @@
 
 use tests::suites::constant_time::config::TestConfig;
 use tests::suites::constant_time::tester::{TimingTester, generate_test_insights};
-use algorithms::hash::Sha256;
-use algorithms::kdf::hkdf::Hkdf;
-use algorithms::kdf::KeyDerivationFunction;
+use dcrypt_algorithms::hash::Sha256;
+use dcrypt_algorithms::kdf::hkdf::Hkdf;
+use dcrypt_algorithms::kdf::KeyDerivationFunction;
 
 // Helper function instead of impl
 fn create_hkdf_config() -> TestConfig {

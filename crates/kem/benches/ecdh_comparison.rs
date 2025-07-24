@@ -2,7 +2,7 @@
 //! Comparison benchmarks for all ECDH-KEM implementations
 
 use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId, PlotConfiguration, AxisScale};
-use api::Kem;
+use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 
 // Import all ECDH implementations

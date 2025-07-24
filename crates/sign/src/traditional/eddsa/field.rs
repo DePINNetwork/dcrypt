@@ -4,7 +4,7 @@
 //! for the Ed25519 elliptic curve.
 
 use zeroize::Zeroize;
-use internal::constant_time::ct_eq;
+use dcrypt_internal::constant_time::ct_eq;
 use super::constants::{load4, SQRT_M1};
 
 /// Field element representing a value modulo p = 2^255 - 19

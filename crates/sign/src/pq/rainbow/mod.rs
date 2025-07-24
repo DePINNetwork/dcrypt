@@ -1,6 +1,6 @@
 // File: dcrypt-sign/src/rainbow/mod.rs
 
-use api::{Signature as SignatureTrait, Result};
+use dcrypt_api::{Signature as SignatureTrait, Result};
 use zeroize::Zeroize;
 use rand::{CryptoRng, RngCore};
 
