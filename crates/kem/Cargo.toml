@@ -3,9 +3,10 @@ name = "kem"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
-description = "Key Encapsulation Mechanisms for the DCRYPT library"
+description = "Key Encapsulation Mechanisms for the dcrypt library"
 repository.workspace = true
 license.workspace = true
+publish = false 
 
 [features]
 default = ["std"]

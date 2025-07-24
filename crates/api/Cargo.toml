@@ -1,11 +1,12 @@
 [package]
 name = "api"
-version = "0.1.0"
-edition = "2021"
-authors = ["DCRYPT Team <info@dcrypt.example.org>"]
-description = "Public API traits and types for the DCRYPT library"
-repository = "https://github.com/example/dcrypt"
-license = "Apache-2.0"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Public API traits and types for the dcrypt library"
+repository.workspace = true
+license.workspace = true
+publish = false 
 
 [features]
 default = ["std"]

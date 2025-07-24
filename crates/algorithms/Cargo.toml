@@ -1,11 +1,12 @@
 [package]
 name = "algorithms"
-version = "0.1.0"
-edition = "2021"
-authors = ["DCRYPT Team <info@dcrypt.example.org>"]
-description = "Cryptographic primitives for the DCRYPT library"
-repository = "https://github.com/example/dcrypt"
-license = "MIT OR Apache-2.0"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Cryptographic primitives for the dcrypt library"
+repository.workspace = true
+license.workspace = true
+publish = false 
 
 [features]
 # Default features

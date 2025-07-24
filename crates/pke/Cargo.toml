@@ -3,9 +3,11 @@ name = "pke"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
-description = "Public Key Encryption schemes for the DCRYPT library"
+description = "Public Key Encryption schemes for the dcrypt library"
 repository.workspace = true
 license.workspace = true
+publish = false 
+
 
 [features]
 default = ["std"]

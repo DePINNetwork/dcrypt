@@ -1,6 +1,6 @@
 # Constant-Time Implementation Policy
 
-This document outlines our policy for ensuring cryptographic operations in dcrypt-primitives
+This document outlines our policy for ensuring cryptographic operations in dcrypt
 are resistant to timing side-channel attacks.
 
 ## Requirements

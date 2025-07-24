@@ -49,7 +49,7 @@ DCRYPT is a Rust workspace composed of several crates:
 *   **`crates/utils`**: Development utilities (testing helpers, benchmarks, etc.).
 *   **`tests`**: A dedicated crate for integration and specialized tests (e.g., constant-time verification).
 
-For detailed documentation on each crate and module, please see the [DCRYPT Documentation](./dcrypt_docs/README.md).
+For detailed documentation on each crate and module, please see the [DCRYPT Documentation](./docs/README.md).
 
 ## Quick Start
 

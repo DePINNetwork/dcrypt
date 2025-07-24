@@ -3,9 +3,10 @@ name = "symmetric"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
-description = "Symmetric encryption algorithms for the DCRYPT library"
+description = "Symmetric encryption algorithms for the dcrypt library"
 repository.workspace = true
 license.workspace = true
+publish = false 
 
 [features]
 default = ["std"]
