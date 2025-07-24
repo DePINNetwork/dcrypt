@@ -2,7 +2,7 @@
 //!
 //! This module implements the parameter sets defined in FIPS 204 (August 2024)
 //! "Module-Lattice-Based Digital Signature Standard"
-//! https://doi.org/10.6028/NIST.FIPS.204
+//! <https://doi.org/10.6028/NIST.FIPS.204>
 //!
 //! All constants in this file are taken directly from the final FIPS 204 standard,
 //! NOT from earlier CRYSTALS-Dilithium submissions or draft specifications.

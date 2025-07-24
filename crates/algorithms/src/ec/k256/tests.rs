@@ -93,6 +93,69 @@ fn test_point_compression_roundtrip() {
 }
 
 #[test]
+fn test_point_uncompressed_roundtrip() {
+    let g = base_point_g();
+    let uncompressed = g.serialize_uncompressed();
+    assert_eq!(uncompressed[0], 0x04, "Uncompressed point should start with 0x04");
+    
+    let deserialized = Point::deserialize_uncompressed(&uncompressed).unwrap();
+    assert_eq!(g, deserialized);
+
+    // Test with doubled point
+    let g2 = g.double();
+    let uncompressed2 = g2.serialize_uncompressed();
+    let deserialized2 = Point::deserialize_uncompressed(&uncompressed2).unwrap();
+    assert_eq!(g2, deserialized2);
+
+    // Test identity
+    let identity = Point::identity();
+    let uncompressed_id = identity.serialize_uncompressed();
+    assert_eq!(uncompressed_id, [0u8; 65], "Identity should serialize to all zeros");
+    
+    let deserialized_id = Point::deserialize_uncompressed(&uncompressed_id).unwrap();
+    assert!(deserialized_id.is_identity());
+}
+
+#[test]
+fn test_point_uncompressed_invalid() {
+    // Test invalid format byte
+    let mut invalid_format = [0u8; 65];
+    invalid_format[0] = 0x05; // Invalid format byte
+    assert!(Point::deserialize_uncompressed(&invalid_format).is_err());
+
+    // Test point not on curve
+    let mut not_on_curve = [0u8; 65];
+    not_on_curve[0] = 0x04;
+    not_on_curve[1] = 1; // x = 1
+    not_on_curve[33] = 1; // y = 1 (not on curve)
+    assert!(Point::deserialize_uncompressed(&not_on_curve).is_err());
+
+    // Test wrong length
+    let wrong_length = [0u8; 64];
+    assert!(Point::deserialize_uncompressed(&wrong_length).is_err());
+}
+
+#[test]
+fn test_point_validity() {
+    let g = base_point_g();
+    assert!(g.is_valid(), "Generator should be valid");
+
+    let identity = Point::identity();
+    assert!(identity.is_valid(), "Identity should be valid");
+
+    // Test with random valid points
+    let mut rng = OsRng;
+    for _ in 0..10 {
+        let mut scalar_bytes = [0u8; 32];
+        rng.fill(&mut scalar_bytes);
+        if let Ok(scalar) = Scalar::new(scalar_bytes) {
+            let point = g.mul(&scalar).unwrap();
+            assert!(point.is_valid(), "Scalar multiplication should produce valid points");
+        }
+    }
+}
+
+#[test]
 fn test_field_parity() {
     let mut odd_bytes = [0u8; 32];
     odd_bytes[31] = 1; // value = 1 → odd
@@ -125,6 +188,32 @@ fn test_point_compression_property() {
             let decompressed = Point::deserialize_compressed(&compressed).unwrap();
 
             assert_eq!(point, decompressed, "Compression round-trip failed");
+        }
+    }
+}
+
+#[test]
+fn test_point_uncompressed_property() {
+    let mut rng = OsRng;
+
+    // Test with random scalars
+    for _ in 0..50 {
+        let mut scalar_bytes = [0u8; 32];
+        rng.fill(&mut scalar_bytes);
+
+        if let Ok(scalar) = Scalar::new(scalar_bytes) {
+            let point = base_point_g().mul(&scalar).unwrap();
+
+            // Test uncompressed serialization
+            let uncompressed = point.serialize_uncompressed();
+            let deserialized = Point::deserialize_uncompressed(&uncompressed).unwrap();
+
+            assert_eq!(point, deserialized, "Uncompressed round-trip failed");
+            
+            // Verify the format
+            assert_eq!(uncompressed[0], 0x04);
+            assert_eq!(&uncompressed[1..33], &point.x_coordinate_bytes());
+            assert_eq!(&uncompressed[33..65], &point.y_coordinate_bytes());
         }
     }
 }

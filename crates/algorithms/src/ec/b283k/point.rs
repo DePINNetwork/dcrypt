@@ -2,7 +2,7 @@
 
 use crate::ec::b283k::{
     constants::{
-        B283K_FIELD_ELEMENT_SIZE, B283K_POINT_COMPRESSED_SIZE, B283K_POINT_UNCOMPRESSED_SIZE,
+        B283K_FIELD_ELEMENT_SIZE, B283K_POINT_COMPRESSED_SIZE,
     },
     field::FieldElement,
     scalar::Scalar,

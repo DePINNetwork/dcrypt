@@ -20,7 +20,7 @@ fn to_montgomery<M: NttModulus>(val: u32) -> u32 {
     ((val as u64 * M::MONT_R as u64) % M::Q as u64) as u32
 }
 
-/// A polynomial in a ring R_Q = Z_Q[X]/(X^N + 1)
+/// A polynomial in a ring `R_Q = Z_Q[X]/(X^N + 1)`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Polynomial<M: Modulus> {
     /// Coefficients of the polynomial, stored in standard representation
@@ -161,7 +161,7 @@ impl<M: Modulus> Polynomial<M> {
     }
 
     /// Schoolbook polynomial multiplication with NEGACYCLIC reduction for Dilithium
-    /// In ring R_q[x]/(x^N + 1), when degree >= N, we have x^N ≡ -1
+    /// In ring `R_q[x]/(x^N + 1)`, when degree >= N, we have `x^N ≡ -1`
     pub fn schoolbook_mul(&self, other: &Self) -> Self {
         let mut result = Self::zero();
         let n = M::N;

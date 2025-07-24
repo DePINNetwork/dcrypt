@@ -40,7 +40,7 @@ pub fn compute_s(r: &[u8; 32], k: &[u8; 32], a: &[u8], s: &mut [u8; 32]) {
     scalar_compute_s(r, k, a, s);
 }
 
-/// Verify equation [s]B = R + [k]A
+/// Verify equation \[s\]B = R + \[k\]A
 pub fn verify_equation(
     s_bytes: &[u8],
     r_bytes: &[u8],
@@ -62,17 +62,17 @@ pub fn verify_equation(
         .decompress()
         .ok_or("Invalid A point")?;
 
-    // Compute [s]B
+    // Compute \[s\]B
     let mut s_array = [0u8; 32];
     s_array.copy_from_slice(&s_bytes[0..32]);
     let s_scalar = Scalar::from_bytes(&s_array);
     let sb = EdwardsPoint::base_point().scalar_mult(&s_scalar);
 
-    // Compute [k]A
+    // Compute \[k\]A
     let k_scalar = Scalar::from_bytes(k);
     let ka = a_point.scalar_mult(&k_scalar);
 
-    // Compute R + [k]A
+    // Compute R + \[k\]A
     let r_plus_ka = r_point.add(&ka);
 
     // Compare

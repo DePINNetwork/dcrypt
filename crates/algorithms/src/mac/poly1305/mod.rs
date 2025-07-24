@@ -117,7 +117,7 @@ impl Poly1305 {
 
     /// Absorb additional message data into the MAC state.
     ///
-    /// This can be called zero or more times before [`finalize`].  
+    /// This can be called zero or more times before [`Self::finalize`].  
     /// Data is internally buffered in 16-byte blocks.  
     /// Always returns `Ok(())` (provided for API symmetry).
     pub fn update(&mut self, chunk: &[u8]) -> Result<()> {

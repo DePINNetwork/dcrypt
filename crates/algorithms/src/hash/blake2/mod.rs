@@ -1,7 +1,7 @@
 //! BLAKE2 hash function implementations
 //!
 //! This module implements the BLAKE2 family of hash functions as specified in
-//! RFC 7693 (https://www.rfc-editor.org/rfc/rfc7693.html). BLAKE2 is optimized
+//! RFC 7693 (<https://www.rfc-editor.org/rfc/rfc7693.html>). BLAKE2 is optimized
 //! for speed on 64-bit platforms while maintaining high security levels.
 //!
 //! Supported variants:

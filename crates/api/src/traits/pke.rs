@@ -21,7 +21,7 @@ pub trait Pke {
     type SecretKey: Zeroize + AsRef<[u8]> + Clone;
 
     /// Ciphertext type produced by the PKE scheme.
-    /// This is typically a Vec<u8> containing the serialized ciphertext components.
+    /// This is typically a `Vec<u8>` containing the serialized ciphertext components.
     type Ciphertext: AsRef<[u8]> + Clone;
 
     /// Returns the PKE algorithm name.
@@ -39,7 +39,7 @@ pub trait Pke {
     /// * `rng` - A cryptographically secure random number generator.
     ///
     /// # Returns
-    /// The resulting ciphertext as a byte vector.
+    /// The resulting ciphertext as a `Vec<u8>`.
     fn encrypt<R: RngCore + CryptoRng>(
         pk_recipient: &Self::PublicKey,
         plaintext: &[u8],
@@ -55,7 +55,7 @@ pub trait Pke {
     /// * `aad` - Optional Associated Additional Data that was authenticated.
     ///
     /// # Returns
-    /// The original plaintext as a byte vector if decryption and authentication (if applicable) succeed.
+    /// The original plaintext as a `Vec<u8>` if decryption and authentication (if applicable) succeed.
     fn decrypt(
         sk_recipient: &Self::SecretKey,
         ciphertext: &Self::Ciphertext,

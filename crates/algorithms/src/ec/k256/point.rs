@@ -85,6 +85,14 @@ impl Point {
         self.is_identity.into()
     }
 
+    /// Check if this point is valid (on the curve).
+    pub fn is_valid(&self) -> bool {
+        if self.is_identity() {
+            return true;
+        }
+        Self::is_on_curve(&self.x, &self.y)
+    }
+
     /// Get the x-coordinate of this point as bytes.
     pub fn x_coordinate_bytes(&self) -> [u8; K256_FIELD_ELEMENT_SIZE] {
         self.x.to_bytes()
@@ -93,6 +101,51 @@ impl Point {
     /// Get the y-coordinate of this point as bytes.
     pub fn y_coordinate_bytes(&self) -> [u8; K256_FIELD_ELEMENT_SIZE] {
         self.y.to_bytes()
+    }
+
+    /// Serialize this point in uncompressed format.
+    pub fn serialize_uncompressed(&self) -> [u8; K256_POINT_UNCOMPRESSED_SIZE] {
+        let mut out = [0u8; K256_POINT_UNCOMPRESSED_SIZE];
+        if self.is_identity() {
+            return out;
+        }
+        out[0] = 0x04;
+        out[1..33].copy_from_slice(&self.x.to_bytes());
+        out[33..].copy_from_slice(&self.y.to_bytes());
+        out
+    }
+
+    /// Deserialize a point from uncompressed format.
+    ///
+    /// Returns an error if the bytes don't represent a valid point.
+    pub fn deserialize_uncompressed(bytes: &[u8]) -> Result<Self> {
+        validate::length(
+            "K256 Uncompressed Point",
+            bytes.len(),
+            K256_POINT_UNCOMPRESSED_SIZE,
+        )?;
+        
+        // Check for identity (all zeros)
+        if bytes.iter().all(|&b| b == 0) {
+            return Ok(Self::identity());
+        }
+        
+        // Check format byte
+        if bytes[0] != 0x04 {
+            return Err(Error::param(
+                "K256 Point",
+                "Invalid uncompressed point prefix (expected 0x04)",
+            ));
+        }
+        
+        // Extract coordinates
+        let mut x_bytes = [0u8; K256_FIELD_ELEMENT_SIZE];
+        let mut y_bytes = [0u8; K256_FIELD_ELEMENT_SIZE];
+        x_bytes.copy_from_slice(&bytes[1..33]);
+        y_bytes.copy_from_slice(&bytes[33..65]);
+        
+        // Create point and validate it's on the curve
+        Self::new_uncompressed(&x_bytes, &y_bytes)
     }
 
     /// Serialize this point in compressed format.

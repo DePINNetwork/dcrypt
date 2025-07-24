@@ -1,7 +1,7 @@
 //! sect283k1 scalar arithmetic operations
 
 use crate::ec::b283k::constants::B283K_SCALAR_SIZE;
-use crate::error::{validate, Error, Result};
+use crate::error::{Error, Result};
 use dcrypt_common::security::SecretBuffer;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -55,12 +55,12 @@ impl Scalar {
         }
 
         let mut is_ge = false;
-        for i in 0..B283K_SCALAR_SIZE {
-            if bytes[i] > Self::ORDER[i] {
+        for (i, (&byte, &order_byte)) in bytes.iter().zip(Self::ORDER.iter()).enumerate() {
+            if byte > order_byte {
                 is_ge = true;
                 break;
             }
-            if bytes[i] < Self::ORDER[i] {
+            if byte < order_byte {
                 break;
             }
             if i == B283K_SCALAR_SIZE - 1 {

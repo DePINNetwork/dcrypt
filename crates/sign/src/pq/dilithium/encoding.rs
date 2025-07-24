@@ -227,14 +227,20 @@ pub fn pack_secret_key<P: DilithiumSchemeParams>(
     let expected_size = P::SECRET_KEY_BYTES;
     let actual_size = sk_bytes.len();
 
-    if actual_size < expected_size {
-        // Add zero padding to match FIPS 204 specification
-        sk_bytes.resize(expected_size, 0u8);
-    } else if actual_size > expected_size {
-        return Err(SignError::Serialization(format!(
-            "Secret key size exceeds maximum: expected {}, got {}",
-            expected_size, actual_size
-        )));
+    match actual_size.cmp(&expected_size) {
+        std::cmp::Ordering::Less => {
+            // Add zero padding to match FIPS 204 specification
+            sk_bytes.resize(expected_size, 0u8);
+        }
+        std::cmp::Ordering::Greater => {
+            return Err(SignError::Serialization(format!(
+                "Secret key size exceeds maximum: expected {}, got {}",
+                expected_size, actual_size
+            )));
+        }
+        std::cmp::Ordering::Equal => {
+            // Size is exactly as expected, no action needed
+        }
     }
 
     Ok(sk_bytes)

@@ -72,8 +72,8 @@ impl FieldElement {
     /// In binary fields, addition is performed using XOR.
     pub fn add(&self, other: &Self) -> Self {
         let mut res = [0u64; 5];
-        for i in 0..5 {
-            res[i] = self.0[i] ^ other.0[i];
+        for (i, (a, b)) in self.0.iter().zip(other.0.iter()).enumerate() {
+            res[i] = a ^ b;
         }
         FieldElement(res)
     }
@@ -119,7 +119,7 @@ impl FieldElement {
             return Err(Error::param("FieldElement B283k", "Inversion of zero"));
         }
         // Fermat's Little Theorem: a^(2^m - 2)
-        let mut res = self.clone();
+        let mut res = *self;
         for _ in 1..282 {
             res = res.square();
             res = res.mul(self);
@@ -133,7 +133,7 @@ impl FieldElement {
     /// In binary fields of characteristic 2, sqrt(x) = x^(2^(m-1)).
     pub fn sqrt(&self) -> Self {
         // sqrt(x) = x^(2^(m-1))
-        let mut res = self.clone();
+        let mut res = *self;
         for _ in 0..282 {
             res = res.square();
         }
@@ -144,9 +144,14 @@ impl FieldElement {
     fn shl1(&self) -> Self {
         let mut r = [0u64; 5];
         r[0] = self.0[0] << 1;
-        for i in 1..5 {
-            r[i] = (self.0[i] << 1) | (self.0[i - 1] >> 63);
+        
+        // Use zip to iterate over current and previous elements
+        for (i, (&curr, &prev)) in self.0[1..].iter()
+            .zip(self.0[..4].iter())
+            .enumerate() {
+            r[i + 1] = (curr << 1) | (prev >> 63);
         }
+        
         // Ensure we don't have bits beyond position 282
         r[4] &= (1u64 << 28) - 1; // Allow up to bit 283 for overflow detection
         FieldElement(r)
@@ -155,9 +160,14 @@ impl FieldElement {
     // Shift right by 1
     fn shr1(&self) -> Self {
         let mut r = [0u64; 5];
-        for i in 0..4 {
-            r[i] = (self.0[i] >> 1) | (self.0[i + 1] << 63);
+        
+        // Use zip to iterate over current and next elements
+        for (i, (&curr, &next)) in self.0[..4].iter()
+            .zip(self.0[1..].iter())
+            .enumerate() {
+            r[i] = (curr >> 1) | (next << 63);
         }
+        
         r[4] = self.0[4] >> 1;
         FieldElement(r)
     }
@@ -167,8 +177,8 @@ impl FieldElement {
     /// The trace is Tr(z) = z + z^2 + z^4 + ... + z^(2^(m-1)).
     /// For compressed points, it's used to disambiguate the y-coordinate.
     pub fn trace(&self) -> u64 {
-        let mut res = self.clone();
-        let mut temp = self.clone();
+        let mut res = *self;
+        let mut temp = *self;
         for _ in 0..282 {
             temp = temp.square();
             res = res.add(&temp);

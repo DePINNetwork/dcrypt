@@ -119,7 +119,7 @@ impl SignatureTrait for Ed25519 {
         expanded[31] &= 127; // Clear bit 255
         expanded[31] |= 64; // Set bit 254
 
-        // Step 4: Derive public key A = [scalar]B
+        // Step 4: Derive public key A = \[scalar\]B
         let mut public_key = [0u8; ED25519_PUBLIC_KEY_SIZE];
         operations::derive_public_key(&expanded[0..32], &mut public_key).map_err(|e| {
             ApiError::InvalidParameter {
@@ -147,7 +147,7 @@ impl SignatureTrait for Ed25519 {
     ///
     /// The signing process follows RFC 8032:
     /// 1. r = SHA-512(prefix || message) mod L
-    /// 2. R = [r]B
+    /// 2. R = \[r\]B
     /// 3. k = SHA-512(R || A || message) mod L
     /// 4. s = (r + k*a) mod L
     /// 5. Return (R, s)
@@ -165,7 +165,7 @@ impl SignatureTrait for Ed25519 {
         let mut r = [0u8; 32];
         operations::reduce_512_to_scalar(r_hash.as_ref(), &mut r);
 
-        // Step 2: Compute R = [r]B
+        // Step 2: Compute R = \[r\]B
         let r_point = operations::scalar_mult_base(&r);
 
         // Step 3: Get public key A (we recompute it, but could cache)
@@ -203,7 +203,7 @@ impl SignatureTrait for Ed25519 {
     /// Verify an Ed25519 signature
     ///
     /// The verification process checks that:
-    /// [s]B = R + [k]A
+    /// \[s\]B = R + \[k\]A
     /// where k = SHA-512(R || A || message) mod L
     fn verify(
         message: &[u8],
@@ -250,7 +250,7 @@ impl SignatureTrait for Ed25519 {
         let mut k = [0u8; 32];
         operations::reduce_512_to_scalar(k_hash.as_ref(), &mut k);
 
-        // Verify the signature equation: [s]B = R + [k]A
+        // Verify the signature equation: \[s\]B = R + \[k\]A
         let mut check = [0u8; 32];
         operations::verify_equation(s_bytes, r_bytes, &k, &public_key.0, &mut check).map_err(
             |e| ApiError::InvalidSignature {
