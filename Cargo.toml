@@ -114,10 +114,8 @@ proptest = "1.0"
 shared-version = true
 
 # How to handle version updates for dependencies
+# "upgrade" means update all workspace members' versions in lockstep
 dependent-version = "upgrade"
-
-# Use exact versions for internal dependencies
-exactly = true
 
 # Don't automatically push or tag - we'll do it manually
 push = false
@@ -131,6 +129,10 @@ consolidate-commits = true
 
 # Commit message template
 pre-release-commit-message = "chore: release version {{version}}"
+
+# Sign commits for security (optional - remove if you don't have GPG set up)
+sign-commit = false
+sign-tag = false
 
 # For the root package specifically
 [package.metadata.release]
