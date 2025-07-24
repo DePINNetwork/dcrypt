@@ -5,8 +5,8 @@ use dcrypt_algorithms::stream::chacha::chacha20::{
     ChaCha20, CHACHA20_KEY_SIZE, CHACHA20_NONCE_SIZE,
 };
 use dcrypt_algorithms::types::Nonce;
-use tests::suites::constant_time::config::TestConfig;
-use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
+use dcrypt_tests::suites::constant_time::config::TestConfig;
+use dcrypt_tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
 
 #[test]
 fn test_chacha20_constant_time() {

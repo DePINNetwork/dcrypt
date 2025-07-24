@@ -11,5 +11,5 @@ pub mod stream_tests;
 pub mod xof_tests;
 
 // Re-export common modules used by tests
-pub use tests::suites::constant_time::config::TestConfig;
-pub use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
+pub use dcrypt_tests::suites::constant_time::config::TestConfig;
+pub use dcrypt_tests::suites::constant_time::tester::{generate_test_insights, TimingTester};

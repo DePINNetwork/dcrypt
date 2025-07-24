@@ -9,11 +9,9 @@ use dcrypt_algorithms::aead::gcm::Gcm;
 use dcrypt_algorithms::block::aes::Aes128;
 use dcrypt_algorithms::block::BlockCipher;
 use dcrypt_algorithms::types::Nonce;
-use dcrypt_api::traits::symmetric::SymmetricCipher;
-use dcrypt_api::traits::AuthenticatedCipher;
 use dcrypt_api::types::SecretBytes;
-use tests::suites::constant_time::config::TestConfig;
-use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
+use dcrypt_tests::suites::constant_time::config::TestConfig;
+use dcrypt_tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
 
 // Helper to set up the GCM instance once - updated to use SecretBytes
 fn make_gcm() -> (Gcm<Aes128>, Vec<u8>, Vec<u8>) {

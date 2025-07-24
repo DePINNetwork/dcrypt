@@ -4,8 +4,8 @@
 use dcrypt_algorithms::block::aes::Aes128;
 use dcrypt_algorithms::block::BlockCipher;
 use dcrypt_api::types::SecretBytes;
-use tests::suites::constant_time::config::TestConfig;
-use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
+use dcrypt_tests::suites::constant_time::config::TestConfig;
+use dcrypt_tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
 
 #[test]
 fn test_aes_constant_time() {

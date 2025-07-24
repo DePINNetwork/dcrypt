@@ -5,10 +5,8 @@ use dcrypt_algorithms::kdf::argon2::{Algorithm, Argon2, Params};
 use dcrypt_algorithms::kdf::PasswordHashFunction; // Added missing trait import
 use dcrypt_algorithms::types::Salt;
 use dcrypt_api::types::SecretBytes;
-use tests::suites::constant_time::config::TestConfig;
-use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
-// We need to keep the import but it's likely available through another module
-use dcrypt_algorithms::kdf; // This should provide access to Zeroizing through re-export
+use dcrypt_tests::suites::constant_time::config::TestConfig;
+use dcrypt_tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
 
 // Helper function instead of impl
 fn create_argon2_config() -> TestConfig {

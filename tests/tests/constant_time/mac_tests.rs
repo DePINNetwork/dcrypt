@@ -3,8 +3,8 @@
 
 use dcrypt_algorithms::hash::Sha256;
 use dcrypt_algorithms::mac::hmac::Hmac;
-use tests::suites::constant_time::config::TestConfig;
-use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
+use dcrypt_tests::suites::constant_time::config::TestConfig;
+use dcrypt_tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
 
 #[test]
 fn test_hmac_sha256_constant_time() {

@@ -2,8 +2,8 @@
 // Constant-time tests for hash functions
 
 use dcrypt_algorithms::hash::{HashFunction, Sha256, Sha3_256};
-use tests::suites::constant_time::config::TestConfig;
-use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
+use dcrypt_tests::suites::constant_time::config::TestConfig;
+use dcrypt_tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
 
 #[test]
 fn test_sha256_constant_time() {

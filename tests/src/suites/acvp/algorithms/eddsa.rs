@@ -1,10 +1,10 @@
 //! ACVP handlers for EdDSA operations
 
 use crate::suites::acvp::error::{EngineError, Result};
-use crate::suites::acvp::model::{FlexValue, TestCase, TestGroup};
+use crate::suites::acvp::model::{TestCase, TestGroup};
 use dcrypt_api::Signature;
 use dcrypt_sign::traditional::eddsa::{
-    Ed25519, Ed25519PublicKey, Ed25519SecretKey, Ed25519Signature,
+    Ed25519, Ed25519PublicKey, Ed25519Signature,
 };
 use hex;
 use rand::SeedableRng;

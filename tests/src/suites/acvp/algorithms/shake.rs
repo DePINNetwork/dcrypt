@@ -1,7 +1,7 @@
 //! ACVP handlers for SHAKE extendable output functions
 
 use crate::suites::acvp::error::{EngineError, Result};
-use crate::suites::acvp::model::{FlexValue, TestCase, TestGroup};
+use crate::suites::acvp::model::{TestCase, TestGroup};
 use dcrypt_algorithms::xof::shake::{ShakeXof128, ShakeXof256};
 use dcrypt_algorithms::xof::ExtendableOutputFunction;
 use hex;

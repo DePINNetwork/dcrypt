@@ -1,7 +1,6 @@
 //! Loads ACVP test vectors from JSON files.
 
-use crate::suites::acvp::model::{FlexValue, SuiteMeta, TestSuite};
-use once_cell::sync::Lazy;
+use crate::suites::acvp::model::{FlexValue, TestSuite};
 use std::collections::HashMap;
 use std::{
     fs,

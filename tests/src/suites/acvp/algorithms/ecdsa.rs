@@ -6,23 +6,18 @@ use dcrypt_api::Signature;
 use dcrypt_sign::traditional::ecdsa::{
     EcdsaP192,
     EcdsaP192PublicKey,
-    EcdsaP192SecretKey,
     EcdsaP192Signature, // Added P-192
     EcdsaP224,
     EcdsaP224PublicKey,
-    EcdsaP224SecretKey,
     EcdsaP224Signature,
     EcdsaP256,
     EcdsaP256PublicKey,
-    EcdsaP256SecretKey,
     EcdsaP256Signature,
     EcdsaP384,
     EcdsaP384PublicKey,
-    EcdsaP384SecretKey,
     EcdsaP384Signature,
     EcdsaP521,
     EcdsaP521PublicKey,
-    EcdsaP521SecretKey,
     EcdsaP521Signature,
 };
 use hex;

@@ -1,5 +1,5 @@
 // tests/acvp_tests.rs
-use tests::suites::acvp::{engine::DcryptEngine, loader, runner::Runner};
+use dcrypt_tests::suites::acvp::{engine::DcryptEngine, loader, runner::Runner};
 
 #[test]
 fn test_aes_cbc_acvp() {

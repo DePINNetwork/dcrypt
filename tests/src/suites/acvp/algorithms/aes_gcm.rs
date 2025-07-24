@@ -191,21 +191,8 @@ pub(crate) fn aes_gcm_encrypt(group: &TestGroup, case: &TestCase) -> Result<()> 
     Ok(())
 }
 
-/// Helper function to lookup values in test case or group defaults
-fn lookup<'a>(case: &'a TestCase, group: &'a TestGroup, names: &[&str]) -> Option<String> {
-    for &name in names {
-        if let Some(v) = case.inputs.get(name) {
-            return Some(v.as_string());
-        }
-        if let Some(v) = group.defaults.get(name) {
-            return Some(v.as_string());
-        }
-    }
-    None
-}
-
 /// Standard AES-GCM AFT decrypt
-pub(crate) fn aes_gcm_decrypt(group: &TestGroup, case: &TestCase) -> Result<()> {
+pub(crate) fn aes_gcm_decrypt(_group: &TestGroup, case: &TestCase) -> Result<()> {
     // Get inputs
     let key_hex = case
         .inputs

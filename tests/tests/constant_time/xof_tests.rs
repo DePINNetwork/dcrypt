@@ -2,8 +2,8 @@
 // Constant-time tests for XOF (Extendable Output Function) algorithms
 
 use dcrypt_algorithms::xof::{Blake3Xof, ExtendableOutputFunction, ShakeXof256};
-use tests::suites::constant_time::config::TestConfig;
-use tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
+use dcrypt_tests::suites::constant_time::config::TestConfig;
+use dcrypt_tests::suites::constant_time::tester::{generate_test_insights, TimingTester};
 
 #[test]
 fn test_shake256_constant_time() {

@@ -3,7 +3,7 @@
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
-use super::error::{EngineError, Result};
+use super::error::Result;
 use super::model::{TestCase, TestGroup};
 
 /// Registry key for looking up handlers

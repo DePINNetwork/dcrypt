@@ -41,6 +41,28 @@ proptest! {
     }
 
     #[test]
+    fn aes192_cbc_roundtrip(
+        key in any::<[u8; 24]>(),
+        iv in any::<[u8; 16]>(),
+        data in block_aligned_data()
+    ) {
+        let secret_key = SecretBytes::<24>::new(key);
+        let nonce = Nonce::<16>::new(iv);
+
+        // Encrypt
+        let cipher = Aes192::new(&secret_key);
+        let cbc_enc = Cbc::new(cipher, &nonce).unwrap();
+        let ciphertext = cbc_enc.encrypt(&data).unwrap();
+
+        // Decrypt
+        let cipher = Aes192::new(&secret_key);
+        let cbc_dec = Cbc::new(cipher, &nonce).unwrap();
+        let plaintext = cbc_dec.decrypt(&ciphertext).unwrap();
+
+        prop_assert_eq!(plaintext, data);
+    }
+
+    #[test]
     fn aes256_cbc_roundtrip(
         key in any::<[u8; 32]>(),
         iv in any::<[u8; 16]>(),
@@ -65,7 +87,7 @@ proptest! {
     #[test]
     fn different_keys_produce_different_ciphertexts(
         key1 in any::<[u8; 16]>(),
-        key2 in any::<[u8; 16]>().prop_filter("keys must be different", |k2| true),
+        key2 in any::<[u8; 16]>(),
         iv in any::<[u8; 16]>(),
         data in block_aligned_data().prop_filter("non-empty data", |d| !d.is_empty())
     ) {
@@ -92,7 +114,7 @@ proptest! {
     fn different_ivs_produce_different_ciphertexts(
         key in any::<[u8; 16]>(),
         iv1 in any::<[u8; 16]>(),
-        iv2 in any::<[u8; 16]>().prop_filter("IVs must be different", |iv| true),
+        iv2 in any::<[u8; 16]>(),
         data in block_aligned_data().prop_filter("non-empty data", |d| !d.is_empty())
     ) {
         prop_assume!(iv1 != iv2);
