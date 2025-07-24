@@ -96,8 +96,11 @@ fn test_point_compression_roundtrip() {
 fn test_point_uncompressed_roundtrip() {
     let g = base_point_g();
     let uncompressed = g.serialize_uncompressed();
-    assert_eq!(uncompressed[0], 0x04, "Uncompressed point should start with 0x04");
-    
+    assert_eq!(
+        uncompressed[0], 0x04,
+        "Uncompressed point should start with 0x04"
+    );
+
     let deserialized = Point::deserialize_uncompressed(&uncompressed).unwrap();
     assert_eq!(g, deserialized);
 
@@ -110,8 +113,11 @@ fn test_point_uncompressed_roundtrip() {
     // Test identity
     let identity = Point::identity();
     let uncompressed_id = identity.serialize_uncompressed();
-    assert_eq!(uncompressed_id, [0u8; 65], "Identity should serialize to all zeros");
-    
+    assert_eq!(
+        uncompressed_id, [0u8; 65],
+        "Identity should serialize to all zeros"
+    );
+
     let deserialized_id = Point::deserialize_uncompressed(&uncompressed_id).unwrap();
     assert!(deserialized_id.is_identity());
 }
@@ -150,7 +156,10 @@ fn test_point_validity() {
         rng.fill(&mut scalar_bytes);
         if let Ok(scalar) = Scalar::new(scalar_bytes) {
             let point = g.mul(&scalar).unwrap();
-            assert!(point.is_valid(), "Scalar multiplication should produce valid points");
+            assert!(
+                point.is_valid(),
+                "Scalar multiplication should produce valid points"
+            );
         }
     }
 }
@@ -209,7 +218,7 @@ fn test_point_uncompressed_property() {
             let deserialized = Point::deserialize_uncompressed(&uncompressed).unwrap();
 
             assert_eq!(point, deserialized, "Uncompressed round-trip failed");
-            
+
             // Verify the format
             assert_eq!(uncompressed[0], 0x04);
             assert_eq!(&uncompressed[1..33], &point.x_coordinate_bytes());

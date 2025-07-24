@@ -144,14 +144,12 @@ impl FieldElement {
     fn shl1(&self) -> Self {
         let mut r = [0u64; 5];
         r[0] = self.0[0] << 1;
-        
+
         // Use zip to iterate over current and previous elements
-        for (i, (&curr, &prev)) in self.0[1..].iter()
-            .zip(self.0[..4].iter())
-            .enumerate() {
+        for (i, (&curr, &prev)) in self.0[1..].iter().zip(self.0[..4].iter()).enumerate() {
             r[i + 1] = (curr << 1) | (prev >> 63);
         }
-        
+
         // Ensure we don't have bits beyond position 282
         r[4] &= (1u64 << 28) - 1; // Allow up to bit 283 for overflow detection
         FieldElement(r)
@@ -160,14 +158,12 @@ impl FieldElement {
     // Shift right by 1
     fn shr1(&self) -> Self {
         let mut r = [0u64; 5];
-        
+
         // Use zip to iterate over current and next elements
-        for (i, (&curr, &next)) in self.0[..4].iter()
-            .zip(self.0[1..].iter())
-            .enumerate() {
+        for (i, (&curr, &next)) in self.0[..4].iter().zip(self.0[1..].iter()).enumerate() {
             r[i] = (curr >> 1) | (next << 63);
         }
-        
+
         r[4] = self.0[4] >> 1;
         FieldElement(r)
     }

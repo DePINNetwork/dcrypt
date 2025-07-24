@@ -124,12 +124,12 @@ impl Point {
             bytes.len(),
             K256_POINT_UNCOMPRESSED_SIZE,
         )?;
-        
+
         // Check for identity (all zeros)
         if bytes.iter().all(|&b| b == 0) {
             return Ok(Self::identity());
         }
-        
+
         // Check format byte
         if bytes[0] != 0x04 {
             return Err(Error::param(
@@ -137,13 +137,13 @@ impl Point {
                 "Invalid uncompressed point prefix (expected 0x04)",
             ));
         }
-        
+
         // Extract coordinates
         let mut x_bytes = [0u8; K256_FIELD_ELEMENT_SIZE];
         let mut y_bytes = [0u8; K256_FIELD_ELEMENT_SIZE];
         x_bytes.copy_from_slice(&bytes[1..33]);
         y_bytes.copy_from_slice(&bytes[33..65]);
-        
+
         // Create point and validate it's on the curve
         Self::new_uncompressed(&x_bytes, &y_bytes)
     }
