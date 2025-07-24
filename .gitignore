@@ -8,3 +8,5 @@ output.txt
 VERSION_STRATEGY.md
 SECURITY.md
 release-beta.sh
+/.cargo/
+~/.cargo/credentials.toml
