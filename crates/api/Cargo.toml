@@ -1,12 +1,12 @@
 [package]
-name = "api"
+name = "dcrypt-api"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 description = "Public API traits and types for the dcrypt library"
 repository.workspace = true
 license.workspace = true
-publish = false 
+publish = true 
 
 [features]
 default = ["std"]
@@ -21,7 +21,7 @@ thiserror = { version = "1.0.37", optional = true }
 subtle = { version = "2.4.1" }
 serde = { version = "1.0.147", features = ["derive"], optional = true }
 rand = { version = "0.8.5", optional = false }
-internal = { path = "../internal", version = "0.1.0" }
+dcrypt-internal = { path = "../internal", version = "0.1.0" }
 
 [dev-dependencies]
 rand = { version = "0.8.5" }

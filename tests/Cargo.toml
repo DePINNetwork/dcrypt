@@ -8,15 +8,15 @@ repository.workspace = true
 license.workspace = true
 
 [dependencies]
-kem = { path = "../crates/kem", version = "0.1.0" }
-sign = { path = "../crates/sign", version = "0.1.0" }
-algorithms = { path = "../crates/algorithms", version = "0.1.0"}
-params = { path = "../crates/params", version = "0.1.0" }
-symmetric = { path = "../crates/symmetric", version = "0.1.0" }
-hybrid = { path = "../crates/hybrid", version = "0.1.0" }
-api = { path = "../crates/api", default-features = false }
-common = { path = "../crates/common" , version = "0.1.0" }
-internal = { path = "../crates/internal" , version = "0.1.0" }
+dcrypt-kem = { path = "../crates/kem", version = "0.1.0" }
+dcrypt-sign = { path = "../crates/sign", version = "0.1.0" }
+dcrypt-algorithms = { path = "../crates/algorithms", version = "0.1.0"}
+dcrypt-params = { path = "../crates/params", version = "0.1.0" }
+dcrypt-symmetric = { path = "../crates/symmetric", version = "0.1.0" }
+dcrypt-hybrid = { path = "../crates/hybrid", version = "0.1.0" }
+dcrypt-api = { path = "../crates/api", default-features = false }
+dcrypt-common = { path = "../crates/common" , version = "0.1.0" }
+dcrypt-internal = { path = "../crates/internal" , version = "0.1.0" }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 statrs = "0.16"

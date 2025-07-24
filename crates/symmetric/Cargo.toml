@@ -1,37 +1,37 @@
 [package]
-name = "symmetric"
+name = "dcrypt-symmetric"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 description = "Symmetric encryption algorithms for the dcrypt library"
 repository.workspace = true
 license.workspace = true
-publish = false 
+publish = true
 
 [features]
 default = ["std"]
 std = [
-    "api/std", 
-    "common/std", 
-    "internal/std"
+    "dcrypt-api/std", 
+    "dcrypt-common/std", 
+    "dcrypt-internal/std"
 ]
 no_std = [
-    "api/no_std", 
-    "common/no_std", 
-    "internal/no_std"
+    "dcrypt-api/no_std", 
+    "dcrypt-common/no_std", 
+    "dcrypt-internal/no_std"
 ]
 serde = [
     "dep:serde", 
-    "api/serde", 
-    "common/serde"
+    "dcrypt-api/serde", 
+    "dcrypt-common/serde"
 ]
 
 [dependencies]
-api = { path = "../api", version = "0.1.0", default-features = false }
-common = { path = "../common", version = "0.1.0", default-features = false }
-internal = { path = "../internal", version = "0.1.0", default-features = false }
-params = { path = "../params", version = "0.1.0" }
-algorithms = { path = "../algorithms", version = "0.1.0" }
+dcrypt-api = { path = "../api", version = "0.1.0", default-features = false }
+dcrypt-common = { path = "../common", version = "0.1.0", default-features = false }
+dcrypt-internal = { path = "../internal", version = "0.1.0", default-features = false }
+dcrypt-params = { path = "../params", version = "0.1.0" }
+dcrypt-algorithms = { path = "../algorithms", version = "0.1.0" }
 zeroize = { workspace = true }
 serde = { workspace = true, optional = true }
 base64 = "0.13"

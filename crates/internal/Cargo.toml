@@ -1,12 +1,12 @@
 [package]
-name = "internal"
+name = "dcrypt-internal"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 description = "Internal utilities for the dcrypt library"
 repository.workspace = true
 license.workspace = true
-publish = false 
+publish = true 
 
 [features]
 default = ["std"]

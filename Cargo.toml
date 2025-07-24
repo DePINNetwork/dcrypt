@@ -11,17 +11,19 @@ categories.workspace = true
 keywords.workspace = true
 
 [dependencies]
-# Internal crates (not published separately)
-api = { path = "crates/api" }
-common = { path = "crates/common" }
-internal = { path = "crates/internal" }
-params = { path = "crates/params" }
-algorithms = { path = "crates/algorithms" }
-symmetric = { path = "crates/symmetric" }
-kem = { path = "crates/kem" }
-sign = { path = "crates/sign" }
-pke = { path = "crates/pke" }
-hybrid = { path = "crates/hybrid" }
+# Core dependencies (always included)
+dcrypt-api = { version = "0.1.0", path = "crates/api" }
+dcrypt-common = { version = "0.1.0", path = "crates/common" }
+dcrypt-internal = { version = "0.1.0", path = "crates/internal" }
+dcrypt-params = { version = "0.1.0", path = "crates/params" }
+
+# Optional algorithm crates
+dcrypt-algorithms = { version = "0.1.0", path = "crates/algorithms", optional = true }
+dcrypt-symmetric = { version = "0.1.0", path = "crates/symmetric", optional = true }
+dcrypt-kem = { version = "0.1.0", path = "crates/kem", optional = true }
+dcrypt-sign = { version = "0.1.0", path = "crates/sign", optional = true }
+dcrypt-pke = { version = "0.1.0", path = "crates/pke", optional = true }
+dcrypt-hybrid = { version = "0.1.0", path = "crates/hybrid", optional = true }
 
 # Re-export workspace dependencies that users might need
 rand = { workspace = true, optional = true }
@@ -31,13 +33,41 @@ serde = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = true }
 
 [features]
-default = ["std"]
-std = ["rand?/std"]  # Use ? to make it optional
+# Default includes common traditional algorithms
+default = ["std", "traditional"]
+
+# Standard library support
+std = [
+    "rand?/std",
+    "dcrypt-api/std",
+    "dcrypt-common/std",
+    "dcrypt-internal/std",
+    "dcrypt-algorithms?/std",
+    "dcrypt-symmetric?/std",
+    "dcrypt-kem?/std",
+    "dcrypt-sign?/std",
+    "dcrypt-pke?/std",
+    "dcrypt-hybrid?/std"
+]
+
+# Algorithm categories
+traditional = ["dep:dcrypt-algorithms", "dep:dcrypt-symmetric", "dcrypt-kem?/traditional", "dcrypt-sign?/traditional", "dep:dcrypt-pke"]
+post-quantum = ["dcrypt-kem?/post-quantum", "dcrypt-sign?/post-quantum"]
+hybrid = ["dep:dcrypt-hybrid", "traditional", "post-quantum"]
+
+# Individual components
+algorithms = ["dep:dcrypt-algorithms"]
+symmetric = ["dep:dcrypt-symmetric"]
+kem = ["dep:dcrypt-kem"]
+sign = ["dep:dcrypt-sign"]
+pke = ["dep:dcrypt-pke"]
+
+# Other features
 alloc = []
 serde = ["dep:serde", "dep:thiserror"]
-full = ["std", "alloc", "serde"]
+full = ["std", "alloc", "serde", "traditional", "post-quantum", "hybrid"]
 
-# Your existing workspace configuration stays exactly the same
+# Workspace configuration
 [workspace]
 members = [
     "crates/api",

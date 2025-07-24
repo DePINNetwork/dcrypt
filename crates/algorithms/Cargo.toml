@@ -1,12 +1,12 @@
 [package]
-name = "algorithms"
+name = "dcrypt-algorithms"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 description = "Cryptographic primitives for the dcrypt library"
 repository.workspace = true
 license.workspace = true
-publish = false 
+publish = true
 
 [features]
 # Default features
@@ -22,17 +22,17 @@ std = [
     "getrandom/std",
     "serde_json",
     # Forward std to dependencies
-    "api/std",
-    "common/std",
-    "internal/std",
+    "dcrypt-api/std",
+    "dcrypt-common/std",
+    "dcrypt-internal/std",
     # Enable all algorithm features with std
     "hash", "xof", "aead", "block", "kdf", "mac", "stream", "ec"
 ]
 
 # Allocator support - provides Vec, Box, String, etc.
 alloc = [
-    "api/alloc",
-    "common/alloc",
+    "dcrypt-api/alloc",
+    "dcrypt-common/alloc",
 ]
 
 # Algorithm feature groups
@@ -50,10 +50,10 @@ serde_json = ["dep:serde_json", "dep:serde"]
 
 [dependencies]
 # Internal dependencies
-api = { path = "../api", version = "0.1.0", default-features = false }
-common = { path = "../common", version = "0.1.0", default-features = false }
-internal = { path = "../internal", version = "0.1.0", default-features = false }
-params = { path = "../params", version = "0.1.0" }
+dcrypt-api = { path = "../api", version = "0.1.0", default-features = false }
+dcrypt-common = { path = "../common", version = "0.1.0", default-features = false }
+dcrypt-internal = { path = "../internal", version = "0.1.0", default-features = false }
+dcrypt-params = { path = "../params", version = "0.1.0" }
 
 # Core cryptographic dependencies
 zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
@@ -135,4 +135,3 @@ harness = false
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
-

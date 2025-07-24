@@ -1,12 +1,9 @@
 [package]
-name = "params"
+name = "dcrypt-params"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 description = "Constant values for dcrypt library"
 repository.workspace = true
 license.workspace = true
-publish = false 
-
-# We don't need any features for a constants-only crate
-# It's always no_std compatible
+publish = true
