@@ -9,3 +9,5 @@ VERSION_STRATEGY.md
 SECURITY.md
 /.cargo/
 ~/.cargo/credentials.toml
+release-dcrypt.sh
+verify-publish-ready.sh

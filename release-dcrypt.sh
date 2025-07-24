@@ -13,6 +13,7 @@ NC='\033[0m'
 VERSION=""
 DRY_RUN=true
 SKIP_TESTS=false
+SKIP_CHECKS=false
 CURRENT_VERSION="0.9.0-beta.1"
 
 # Parse arguments
@@ -30,17 +31,26 @@ while [[ $# -gt 0 ]]; do
             SKIP_TESTS=true
             shift
             ;;
+        --skip-checks)
+            SKIP_CHECKS=true
+            shift
+            ;;
         --help)
             echo "Usage: $0 --version VERSION [OPTIONS]"
             echo ""
             echo "Options:"
             echo "  --version VERSION   Version to release (e.g., 0.9.0-beta.2)"
             echo "  --execute          Actually perform the release (default: dry-run)"
-            echo "  --skip-tests       Skip running tests (not recommended)"
+            echo "  --skip-tests       Skip running tests (use if already verified)"
+            echo "  --skip-checks      Skip format/clippy checks (use if already verified)"
             echo ""
             echo "Examples:"
-            echo "  $0 --version 0.9.0-beta.2        # Dry run for beta.2"
-            echo "  $0 --version 0.9.0 --execute     # Release stable 0.9.0"
+            echo "  $0 --version 0.9.0-beta.2                    # Full dry run"
+            echo "  $0 --version 0.9.0-beta.2 --skip-tests      # Skip tests (faster)"
+            echo "  $0 --version 0.9.0 --execute                # Release stable 0.9.0"
+            echo ""
+            echo "Note: Skipping tests is only recommended if you've already"
+            echo "      verified all tests pass with 'cargo test --all'"
             exit 0
             ;;
         *)
@@ -63,6 +73,11 @@ echo -e "${BLUE}═════════════════════�
 echo -e "Current version: ${YELLOW}${CURRENT_VERSION}${NC}"
 echo -e "New version: ${GREEN}${VERSION}${NC}"
 echo -e "Mode: ${YELLOW}$([ "$DRY_RUN" = true ] && echo "DRY RUN" || echo "EXECUTE")${NC}"
+if [ "$SKIP_TESTS" = true ] || [ "$SKIP_CHECKS" = true ]; then
+    echo -e "Flags:"
+    [ "$SKIP_TESTS" = true ] && echo -e "  ${YELLOW}--skip-tests${NC} (tests will not be run)"
+    [ "$SKIP_CHECKS" = true ] && echo -e "  ${YELLOW}--skip-checks${NC} (fmt/clippy will not be run)"
+fi
 echo ""
 
 # Function to run a command with nice output
@@ -115,11 +130,26 @@ if [ "$SKIP_TESTS" = false ]; then
     echo -e "${BLUE}─────────────${NC}"
     run_step "Running unit tests" cargo test --all
     run_step "Running doc tests" cargo test --all --doc
-    run_step "Checking formatting" cargo fmt --all -- --check
-    run_step "Running clippy" cargo clippy --all-targets --all-features -- -D warnings
-    run_step "Building documentation" cargo doc --workspace --no-deps
+    
+    if [ "$SKIP_CHECKS" = false ]; then
+        run_step "Checking formatting" cargo fmt --all -- --check
+        run_step "Running clippy" cargo clippy --all-targets --all-features -- -D warnings
+        run_step "Building documentation" cargo doc --workspace --no-deps
+    else
+        echo -e "${YELLOW}⚠ Skipping format/clippy checks${NC}"
+    fi
 else
-    echo -e "${YELLOW}⚠ Skipping tests (not recommended!)${NC}"
+    echo ""
+    echo -e "${YELLOW}⚠ Skipping tests (--skip-tests flag used)${NC}"
+    echo -e "${YELLOW}  Make sure you've already verified all tests pass!${NC}"
+    if [ "$DRY_RUN" = false ]; then
+        echo -ne "${RED}  Are you sure tests have passed? (y/N): ${NC}"
+        read -r response
+        if [ "$response" != "y" ]; then
+            echo "Aborting release"
+            exit 1
+        fi
+    fi
 fi
 
 # Verify publishing metadata
@@ -213,10 +243,23 @@ if [ "$DRY_RUN" = false ]; then
     echo "   https://crates.io/crates/dcrypt"
     echo "5. Test installation:"
     echo "   cargo add dcrypt@=${VERSION}"
+    
+    if [ "$SKIP_TESTS" = true ]; then
+        echo ""
+        echo -e "${YELLOW}⚠️  IMPORTANT: Tests were skipped during release!${NC}"
+        echo "   Please verify the release works correctly."
+    fi
 else
     echo ""
     echo -e "${GREEN}Dry run completed successfully!${NC}"
     echo ""
     echo -e "${YELLOW}To perform the actual release:${NC}"
-    echo -e "  $0 --version ${VERSION} --execute"
+    if [ "$SKIP_TESTS" = true ]; then
+        echo -e "  $0 --version ${VERSION} --execute --skip-tests"
+        echo ""
+        echo -e "${YELLOW}⚠️  WARNING: You're skipping tests. Only do this if you've${NC}"
+        echo -e "${YELLOW}   already verified all tests pass with: cargo test --all${NC}"
+    else
+        echo -e "  $0 --version ${VERSION} --execute"
+    fi
 fi
