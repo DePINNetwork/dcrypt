@@ -78,11 +78,10 @@ impl AsRef<[u8]> for EcdsaP384SecretKey {
     }
 }
 
-impl AsMut<[u8]> for EcdsaP384SecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.bytes
-    }
-}
+// REMOVED: AsMut<[u8]> for EcdsaP384SecretKey
+// This implementation was removed for security reasons. Direct mutation of secret
+// key bytes could create invalid keys outside the valid range [1, n-1], leading
+// to security vulnerabilities.
 
 impl AsRef<[u8]> for EcdsaP384Signature {
     fn as_ref(&self) -> &[u8] {

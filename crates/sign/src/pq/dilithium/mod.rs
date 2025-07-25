@@ -110,11 +110,8 @@ impl AsRef<[u8]> for DilithiumSecretKey {
     }
 }
 
-impl AsMut<[u8]> for DilithiumSecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// NOTE: AsMut<[u8]> implementation removed for security reasons.
+// Use from_bytes() and to_bytes() for safe secret key manipulation.
 
 impl DilithiumSecretKey {
     /// Create from FIPS 204 format bytes

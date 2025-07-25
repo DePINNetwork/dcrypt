@@ -84,7 +84,6 @@ fn main() -> dcrypt_symmetric::error::Result<()> {
 
 ```rust
 // Note: This example assumes 'dcrypt-kem' and 'dcrypt-api' crates.
-// Kyber implementation in the provided snapshot is a placeholder.
 
 use dcrypt_kem::kyber::{Kyber768, KyberPublicKey, KyberSecretKey, KyberCiphertext, KyberSharedSecret};
 use dcrypt_api::Kem; // Core KEM trait

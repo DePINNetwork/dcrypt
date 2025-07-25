@@ -62,11 +62,7 @@ impl AsRef<[u8]> for EcdsaP192SecretKey {
         &self.bytes
     }
 }
-impl AsMut<[u8]> for EcdsaP192SecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.bytes
-    }
-}
+// REMOVED: AsMut<[u8]> for EcdsaP192SecretKey - Security: prevent direct mutation of secret key bytes
 impl AsRef<[u8]> for EcdsaP192Signature {
     fn as_ref(&self) -> &[u8] {
         &self.0

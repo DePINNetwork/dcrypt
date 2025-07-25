@@ -1,5 +1,5 @@
 [package]
-name = "dcrypt_tests"
+name = "dcrypt-tests"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

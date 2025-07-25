@@ -82,8 +82,8 @@ pub(crate) fn eddsa_keygen(group: &TestGroup, case: &TestCase) -> Result<()> {
         .map_err(|e| EngineError::Crypto(format!("Ed25519 keypair generation failed: {:?}", e)))?;
 
     // Ed25519 uses the seed (first 32 bytes) as the private key in ACVP
-    let d_bytes = secret_key.as_ref(); // AsRef<[u8]> returns the seed
-    let q_bytes = public_key.as_ref(); // The 32-byte public key
+    let d_bytes = secret_key.seed(); // Use the seed() method instead of as_ref()
+    let q_bytes = &public_key.0; // Access the public field directly
 
     // Store outputs
     case.outputs
@@ -208,13 +208,13 @@ pub(crate) fn eddsa_siggen(group: &TestGroup, case: &TestCase) -> Result<()> {
         // Output results
         case.outputs
             .borrow_mut()
-            .insert("d".into(), hex::encode(secret_key.as_ref()));
+            .insert("d".into(), hex::encode(secret_key.seed()));
         case.outputs
             .borrow_mut()
-            .insert("q".into(), hex::encode(public_key.as_ref()));
+            .insert("q".into(), hex::encode(&public_key.0));
         case.outputs
             .borrow_mut()
-            .insert("signature".into(), hex::encode(signature.as_ref()));
+            .insert("signature".into(), hex::encode(&signature.0));
     } else {
         // Generate new keypair
         let mut rng = ChaCha20Rng::from_entropy();
@@ -229,13 +229,13 @@ pub(crate) fn eddsa_siggen(group: &TestGroup, case: &TestCase) -> Result<()> {
         // Output results
         case.outputs
             .borrow_mut()
-            .insert("d".into(), hex::encode(secret_key.as_ref()));
+            .insert("d".into(), hex::encode(secret_key.seed()));
         case.outputs
             .borrow_mut()
-            .insert("q".into(), hex::encode(public_key.as_ref()));
+            .insert("q".into(), hex::encode(&public_key.0));
         case.outputs
             .borrow_mut()
-            .insert("signature".into(), hex::encode(signature.as_ref()));
+            .insert("signature".into(), hex::encode(&signature.0));
     }
 
     Ok(())
