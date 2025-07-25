@@ -44,4 +44,4 @@ name = "aes_bench"
 harness = false
 
 [package.metadata.release]
-publish = true
+publish = false
