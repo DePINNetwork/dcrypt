@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0-beta.2] - 2025-07-25
+
+### Changed
+- **BREAKING**: Hardened signature API to prevent secret key corruption
+  - Removed `AsMut<[u8]>` from all signature secret key types (Dilithium, ECDSA, Ed25519)
+  - Redesigned signature traits to prevent direct byte access to secret keys
+  - Split Signature trait into core + optional extension traits:
+    - `SignatureSerialize`: Safe import/export with Zeroizing
+    - `SignatureDerive`: Deterministic key derivation
+    - `SignatureMessageLimits`: Algorithm constraints
+    - `SignatureBatchVerify`: Efficient batch operations
+
+### Security
+- Prevented accidental corruption of secret key material by removing direct mutation ability
+- Keys can now only be accessed through safe, validated methods that maintain invariants
+- Affected algorithms must use explicit serialization methods rather than AsRef/AsMut
+
+### Removed
+- Release automation scripts (moved to separate tooling)
+
 ## [0.9.0-beta.1] - 2025-07-24
 
 ### Added
@@ -25,4 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Not recommended for production use yet
 - Seeking community feedback on API design and implementation
 
+[Unreleased]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.2...HEAD
+[0.9.0-beta.2]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.1...v0.9.0-beta.2
 [0.9.0-beta.1]: https://github.com/DePINNetwork/dcrypt/releases/tag/v0.9.0-beta.1

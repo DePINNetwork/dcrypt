@@ -11,3 +11,4 @@ SECURITY.md
 ~/.cargo/credentials.toml
 release-dcrypt.sh
 verify-publish-ready.sh
+.release-state.json

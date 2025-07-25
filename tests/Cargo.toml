@@ -14,7 +14,7 @@ dcrypt-algorithms = { path = "../crates/algorithms", version = "=0.9.0-beta.2" }
 dcrypt-params = { path = "../crates/params", version = "=0.9.0-beta.2" }
 dcrypt-symmetric = { path = "../crates/symmetric", version = "=0.9.0-beta.2" }
 dcrypt-hybrid = { path = "../crates/hybrid", version = "=0.9.0-beta.2" }
-dcrypt-api = { path = "../crates/api", default-features = false }
+dcrypt-api = { version = "=0.9.0-beta.2", path = "../crates/api" }
 dcrypt-common = { path = "../crates/common" , version = "=0.9.0-beta.2" }
 dcrypt-internal = { path = "../crates/internal" , version = "=0.9.0-beta.2" }
 rand = { workspace = true }
