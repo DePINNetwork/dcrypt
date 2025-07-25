@@ -65,7 +65,7 @@ pke = ["dep:dcrypt-pke"]
 # Other features
 alloc = []
 serde = ["dep:serde", "dep:thiserror"]
-full = ["std", "alloc", "serde", "traditional", "post-quantum", "hybrid"]
+full = ["std", "alloc", "serde", "traditional", "post-quantum", "hybrid", "algorithms", "symmetric", "kem", "sign", "pke"]
 
 # Workspace configuration
 [workspace]
