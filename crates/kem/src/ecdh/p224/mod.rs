@@ -13,7 +13,7 @@ use dcrypt_algorithms::mac::hmac::Hmac;
 use dcrypt_api::{error::Error as ApiError, Kem, Key as ApiKey, Result as ApiResult};
 use dcrypt_common::security::SecretBuffer;
 use rand::{CryptoRng, RngCore};
-use zeroize::{Zeroize, ZeroizeOnDrop}; // KDF version from parent ecdh module
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing}; // KDF version from parent ecdh module
 
 /// ECDH KEM with P-224 curve
 pub struct EcdhP224;
@@ -33,6 +33,163 @@ pub struct EcdhP224SharedSecret(ApiKey);
 /// Ciphertext for ECDH-P224 KEM (compressed ephemeral public key + authentication tag)
 #[derive(Clone)]
 pub struct EcdhP224Ciphertext([u8; ec::P224_CIPHERTEXT_SIZE]);
+
+// Public key methods
+impl EcdhP224PublicKey {
+    /// Create a public key from bytes with validation
+    /// 
+    /// # Arguments
+    /// * `bytes` - The compressed point representation (29 bytes for P-224)
+    /// 
+    /// # Returns
+    /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
+    /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
+    pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        // Validate length
+        if bytes.len() != ec::P224_POINT_COMPRESSED_SIZE {
+            return Err(ApiError::InvalidLength {
+                context: "EcdhP224PublicKey::from_bytes",
+                expected: ec::P224_POINT_COMPRESSED_SIZE,
+                actual: bytes.len(),
+            });
+        }
+        
+        // Validate it's a valid point on the curve
+        let point = ec::Point::deserialize_compressed(bytes)
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        // Reject the identity point
+        if point.is_identity() {
+            return Err(ApiError::InvalidKey {
+                context: "EcdhP224PublicKey::from_bytes",
+                #[cfg(feature = "std")]
+                message: "Public key cannot be the identity point".to_string(),
+            });
+        }
+        
+        // Create the key
+        let mut key_bytes = [0u8; ec::P224_POINT_COMPRESSED_SIZE];
+        key_bytes.copy_from_slice(bytes);
+        Ok(Self(key_bytes))
+    }
+    
+    /// Export the public key to bytes
+    /// 
+    /// # Returns
+    /// The compressed point representation (29 bytes for P-224)
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+}
+
+// Secret key methods
+impl EcdhP224SecretKey {
+    /// Create a secret key from bytes with validation
+    /// 
+    /// # Arguments
+    /// * `bytes` - The scalar value (28 bytes for P-224)
+    /// 
+    /// # Returns
+    /// * `Ok(SecretKey)` if the bytes represent a valid scalar
+    /// * `Err` if the bytes are invalid (wrong length or out of range)
+    /// 
+    /// # Security
+    /// The input bytes should be treated as sensitive material and zeroized after use
+    pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        // Validate length
+        if bytes.len() != ec::P224_SCALAR_SIZE {
+            return Err(ApiError::InvalidLength {
+                context: "EcdhP224SecretKey::from_bytes",
+                expected: ec::P224_SCALAR_SIZE,
+                actual: bytes.len(),
+            });
+        }
+        
+        // Create a secret buffer from the bytes
+        let mut buffer_bytes = [0u8; ec::P224_SCALAR_SIZE];
+        buffer_bytes.copy_from_slice(bytes);
+        let buffer = SecretBuffer::new(buffer_bytes);
+        
+        // Validate the scalar is in valid range [1, n-1]
+        let scalar = ec::Scalar::from_secret_buffer(buffer.clone())
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        // The scalar is valid, so we can use the buffer
+        drop(scalar); // Explicitly drop to ensure zeroization
+        Ok(Self(buffer))
+    }
+    
+    /// Export the secret key to bytes (with zeroization on drop)
+    /// 
+    /// # Returns
+    /// The scalar value wrapped in `Zeroizing` (28 bytes for P-224)
+    /// 
+    /// # Security
+    /// The returned value will be automatically zeroized when dropped
+    pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.as_ref().to_vec())
+    }
+}
+
+// Shared secret methods
+impl EcdhP224SharedSecret {
+    /// Export the shared secret to bytes
+    /// 
+    /// # Returns
+    /// The derived shared secret bytes
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.as_ref().to_vec()
+    }
+}
+
+// Ciphertext methods
+impl EcdhP224Ciphertext {
+    /// Create a ciphertext from bytes with validation
+    /// 
+    /// # Arguments
+    /// * `bytes` - The authenticated ciphertext (45 bytes for P-224: 29 bytes compressed point + 16 bytes tag)
+    /// 
+    /// # Returns
+    /// * `Ok(Ciphertext)` if the bytes represent a valid authenticated ciphertext
+    /// * `Err` if the bytes are invalid
+    pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        // Validate length
+        if bytes.len() != ec::P224_CIPHERTEXT_SIZE {
+            return Err(ApiError::InvalidLength {
+                context: "EcdhP224Ciphertext::from_bytes",
+                expected: ec::P224_CIPHERTEXT_SIZE,
+                actual: bytes.len(),
+            });
+        }
+        
+        // Validate the ephemeral public key part
+        let pk_bytes = &bytes[..ec::P224_POINT_COMPRESSED_SIZE];
+        let point = ec::Point::deserialize_compressed(pk_bytes)
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        // Reject the identity point
+        if point.is_identity() {
+            return Err(ApiError::InvalidCiphertext {
+                context: "EcdhP224Ciphertext::from_bytes",
+                #[cfg(feature = "std")]
+                message: "Ephemeral public key cannot be the identity point".to_string(),
+            });
+        }
+        
+        // Create the ciphertext (includes both ephemeral key and tag)
+        let mut ct_bytes = [0u8; ec::P224_CIPHERTEXT_SIZE];
+        ct_bytes.copy_from_slice(bytes);
+        Ok(Self(ct_bytes))
+    }
+    
+    /// Export the ciphertext to bytes
+    /// 
+    /// # Returns
+    /// The authenticated ciphertext (45 bytes for P-224: compressed ephemeral public key + tag)
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+}
 
 // AsRef/AsMut implementations
 impl AsRef<[u8]> for EcdhP224PublicKey {

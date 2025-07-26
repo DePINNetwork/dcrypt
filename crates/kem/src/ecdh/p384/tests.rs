@@ -4,6 +4,23 @@ use dcrypt_algorithms::ec::p384;
 use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 
+#[cfg(test)]
+mod test_utils {
+    use dcrypt_common::security::SecretBuffer;
+    
+    /// Convert a slice to a SecretBuffer of the specified size
+    /// This is a test-only utility for creating SecretBuffers from slices
+    pub fn secret_buffer_from_slice<const N: usize>(slice: &[u8]) -> SecretBuffer<N> {
+        assert_eq!(slice.len(), N, "Slice length must match SecretBuffer size");
+        let mut buffer = [0u8; N];
+        buffer.copy_from_slice(slice);
+        SecretBuffer::new(buffer)
+    }
+}
+
+#[cfg(test)]
+use test_utils::secret_buffer_from_slice;
+
 #[test]
 fn test_p384_kem_basic_flow() {
     let mut rng = OsRng;
@@ -333,4 +350,103 @@ fn test_p384_kem_invalid_compressed_prefix() {
 
         assert!(result.is_err(), "Prefix {:02x} should be rejected", prefix);
     }
+}
+
+// Add these tests to crates/kem/src/ecdh/p384/tests.rs
+
+#[test]
+fn test_p384_public_key_serialization() {
+    let mut rng = OsRng;
+    let (pk, _) = EcdhP384::keypair(&mut rng).unwrap();
+    
+    // Round-trip
+    let bytes = pk.to_bytes();
+    assert_eq!(bytes.len(), 49);
+    let restored = EcdhP384PublicKey::from_bytes(&bytes).unwrap();
+    assert_eq!(pk.as_ref(), restored.as_ref());
+}
+
+#[test]
+fn test_p384_secret_key_serialization() {
+    let mut rng = OsRng;
+    let (_, sk) = EcdhP384::keypair(&mut rng).unwrap();
+    
+    // Export and verify length
+    let bytes = sk.to_bytes();
+    assert_eq!(bytes.len(), 48);
+    
+    // Import and verify functionality
+    let restored = EcdhP384SecretKey::from_bytes(&bytes).unwrap();
+    
+    // Generate same public key from both
+    let pk1 = ec_p384::scalar_mult_base_g(
+        &ec_p384::Scalar::from_secret_buffer(secret_buffer_from_slice::<48>(sk.as_ref())).unwrap()
+    ).unwrap();
+    let pk2 = ec_p384::scalar_mult_base_g(
+        &ec_p384::Scalar::from_secret_buffer(secret_buffer_from_slice::<48>(restored.as_ref())).unwrap()
+    ).unwrap();
+    assert_eq!(pk1.serialize_compressed(), pk2.serialize_compressed());
+}
+
+#[test]
+fn test_p384_ciphertext_serialization() {
+    let mut rng = OsRng;
+    let (pk, _) = EcdhP384::keypair(&mut rng).unwrap();
+    let (ct, _) = EcdhP384::encapsulate(&mut rng, &pk).unwrap();
+    
+    // Round-trip
+    let bytes = ct.to_bytes();
+    assert_eq!(bytes.len(), 49);
+    let restored = EcdhP384Ciphertext::from_bytes(&bytes).unwrap();
+    assert_eq!(ct.as_ref(), restored.as_ref());
+}
+
+#[test]
+fn test_p384_shared_secret_size() {
+    let mut rng = OsRng;
+    let (pk, sk) = EcdhP384::keypair(&mut rng).unwrap();
+    let (ct, ss) = EcdhP384::encapsulate(&mut rng, &pk).unwrap();
+    
+    // P-384 uses SHA-384, so 48-byte shared secrets
+    assert_eq!(ss.to_bytes().len(), 48);
+    
+    let ss_dec = EcdhP384::decapsulate(&sk, &ct).unwrap();
+    assert_eq!(ss_dec.to_bytes().len(), 48);
+}
+
+#[test]
+fn test_p384_invalid_public_key() {
+    // Wrong length
+    assert!(EcdhP384PublicKey::from_bytes(&[0u8; 48]).is_err());
+    assert!(EcdhP384PublicKey::from_bytes(&[0u8; 50]).is_err());
+    
+    // Identity point
+    assert!(EcdhP384PublicKey::from_bytes(&[0u8; 49]).is_err());
+    
+    // Invalid compression prefix
+    let mut invalid = [0u8; 49];
+    invalid[0] = 0x04; // Uncompressed format not supported
+    assert!(EcdhP384PublicKey::from_bytes(&invalid).is_err());
+}
+
+#[test]
+fn test_p384_full_kem_with_serialization() {
+    let mut rng = OsRng;
+    
+    // Generate and serialize
+    let (pk, sk) = EcdhP384::keypair(&mut rng).unwrap();
+    let pk_bytes = pk.to_bytes();
+    let sk_bytes = sk.to_bytes();
+    
+    // Restore and use
+    let pk_restored = EcdhP384PublicKey::from_bytes(&pk_bytes).unwrap();
+    let sk_restored = EcdhP384SecretKey::from_bytes(&sk_bytes).unwrap();
+    
+    // KEM operation
+    let (ct, ss1) = EcdhP384::encapsulate(&mut rng, &pk_restored).unwrap();
+    let ct_bytes = ct.to_bytes();
+    let ct_restored = EcdhP384Ciphertext::from_bytes(&ct_bytes).unwrap();
+    let ss2 = EcdhP384::decapsulate(&sk_restored, &ct_restored).unwrap();
+    
+    assert_eq!(ss1.to_bytes(), ss2.to_bytes());
 }

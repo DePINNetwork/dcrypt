@@ -13,4 +13,4 @@ pub const P384_POINT_UNCOMPRESSED_SIZE: usize = 1 + 2 * P384_FIELD_ELEMENT_SIZE;
 pub const P384_POINT_COMPRESSED_SIZE: usize = 1 + P384_FIELD_ELEMENT_SIZE; // 49 bytes: 0x02/0x03 || x
 
 /// Size of the KDF output for P-384 ECDH-KEM shared secret derivation
-pub const P384_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE: usize = 32;
+pub const P384_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE: usize = 48;

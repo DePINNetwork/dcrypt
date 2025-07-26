@@ -13,7 +13,7 @@ use dcrypt_algorithms::ec::p521 as ec_p521;
 use dcrypt_api::{error::Error as ApiError, Kem, Key as ApiKey, Result as ApiResult};
 use dcrypt_common::security::SecretBuffer;
 use rand::{CryptoRng, RngCore};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 /// ECDH KEM with P-521 curve
 pub struct EcdhP521;
@@ -33,6 +33,162 @@ pub struct EcdhP521SharedSecret(ApiKey);
 /// Ciphertext for ECDH-P521 KEM (compressed ephemeral public key)
 #[derive(Clone)]
 pub struct EcdhP521Ciphertext([u8; ec_p521::P521_POINT_COMPRESSED_SIZE]);
+
+// Public key methods
+impl EcdhP521PublicKey {
+    /// Create a public key from bytes with validation
+    /// 
+    /// # Arguments
+    /// * `bytes` - The compressed point representation (67 bytes for P-521)
+    /// 
+    /// # Returns
+    /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
+    /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
+    pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        // Validate length
+        if bytes.len() != ec_p521::P521_POINT_COMPRESSED_SIZE {
+            return Err(ApiError::InvalidLength {
+                context: "EcdhP521PublicKey::from_bytes",
+                expected: ec_p521::P521_POINT_COMPRESSED_SIZE,
+                actual: bytes.len(),
+            });
+        }
+        
+        // Validate it's a valid point on the curve
+        let point = ec_p521::Point::deserialize_compressed(bytes)
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        // Reject the identity point
+        if point.is_identity() {
+            return Err(ApiError::InvalidKey {
+                context: "EcdhP521PublicKey::from_bytes",
+                #[cfg(feature = "std")]
+                message: "Public key cannot be the identity point".to_string(),
+            });
+        }
+        
+        // Create the key
+        let mut key_bytes = [0u8; ec_p521::P521_POINT_COMPRESSED_SIZE];
+        key_bytes.copy_from_slice(bytes);
+        Ok(Self(key_bytes))
+    }
+    
+    /// Export the public key to bytes
+    /// 
+    /// # Returns
+    /// The compressed point representation (67 bytes for P-521)
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+}
+
+// Secret key methods
+impl EcdhP521SecretKey {
+    /// Create a secret key from bytes with validation
+    /// 
+    /// # Arguments
+    /// * `bytes` - The scalar value (66 bytes for P-521)
+    /// 
+    /// # Returns
+    /// * `Ok(SecretKey)` if the bytes represent a valid scalar
+    /// * `Err` if the bytes are invalid (wrong length or out of range)
+    /// 
+    /// # Security
+    /// The input bytes should be treated as sensitive material and zeroized after use
+    pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        // Validate length
+        if bytes.len() != ec_p521::P521_SCALAR_SIZE {
+            return Err(ApiError::InvalidLength {
+                context: "EcdhP521SecretKey::from_bytes",
+                expected: ec_p521::P521_SCALAR_SIZE,
+                actual: bytes.len(),
+            });
+        }
+        
+        // Create a secret buffer from the bytes
+        let mut buffer_bytes = [0u8; ec_p521::P521_SCALAR_SIZE];
+        buffer_bytes.copy_from_slice(bytes);
+        let buffer = SecretBuffer::new(buffer_bytes);
+        
+        // Validate the scalar is in valid range [1, n-1]
+        let scalar = ec_p521::Scalar::from_secret_buffer(buffer.clone())
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        // The scalar is valid, so we can use the buffer
+        drop(scalar); // Explicitly drop to ensure zeroization
+        Ok(Self(buffer))
+    }
+    
+    /// Export the secret key to bytes (with zeroization on drop)
+    /// 
+    /// # Returns
+    /// The scalar value wrapped in `Zeroizing` (66 bytes for P-521)
+    /// 
+    /// # Security
+    /// The returned value will be automatically zeroized when dropped
+    pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.as_ref().to_vec())
+    }
+}
+
+// Shared secret methods
+impl EcdhP521SharedSecret {
+    /// Export the shared secret to bytes
+    /// 
+    /// # Returns
+    /// The derived shared secret bytes (64 bytes for P-521 with SHA-512)
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.as_ref().to_vec()
+    }
+}
+
+// Ciphertext methods
+impl EcdhP521Ciphertext {
+    /// Create a ciphertext from bytes with validation
+    /// 
+    /// # Arguments
+    /// * `bytes` - The compressed ephemeral public key (67 bytes for P-521)
+    /// 
+    /// # Returns
+    /// * `Ok(Ciphertext)` if the bytes represent a valid ephemeral key
+    /// * `Err` if the bytes are invalid
+    pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        // Validate length
+        if bytes.len() != ec_p521::P521_POINT_COMPRESSED_SIZE {
+            return Err(ApiError::InvalidLength {
+                context: "EcdhP521Ciphertext::from_bytes",
+                expected: ec_p521::P521_POINT_COMPRESSED_SIZE,
+                actual: bytes.len(),
+            });
+        }
+        
+        // Validate it's a valid point on the curve
+        let point = ec_p521::Point::deserialize_compressed(bytes)
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        // Reject the identity point
+        if point.is_identity() {
+            return Err(ApiError::InvalidCiphertext {
+                context: "EcdhP521Ciphertext::from_bytes",
+                #[cfg(feature = "std")]
+                message: "Ephemeral public key cannot be the identity point".to_string(),
+            });
+        }
+        
+        // Create the ciphertext
+        let mut ct_bytes = [0u8; ec_p521::P521_POINT_COMPRESSED_SIZE];
+        ct_bytes.copy_from_slice(bytes);
+        Ok(Self(ct_bytes))
+    }
+    
+    /// Export the ciphertext to bytes
+    /// 
+    /// # Returns
+    /// The compressed ephemeral public key (67 bytes for P-521)
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+}
 
 // AsRef/AsMut implementations
 impl AsRef<[u8]> for EcdhP521PublicKey {

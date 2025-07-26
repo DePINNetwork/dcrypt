@@ -4,6 +4,23 @@ use dcrypt_algorithms::ec::p521;
 use dcrypt_api::Kem;
 use rand::rngs::OsRng;
 
+#[cfg(test)]
+mod test_utils {
+    use dcrypt_common::security::SecretBuffer;
+    
+    /// Convert a slice to a SecretBuffer of the specified size
+    /// This is a test-only utility for creating SecretBuffers from slices
+    pub fn secret_buffer_from_slice<const N: usize>(slice: &[u8]) -> SecretBuffer<N> {
+        assert_eq!(slice.len(), N, "Slice length must match SecretBuffer size");
+        let mut buffer = [0u8; N];
+        buffer.copy_from_slice(slice);
+        SecretBuffer::new(buffer)
+    }
+}
+
+#[cfg(test)]
+use test_utils::secret_buffer_from_slice;
+
 #[test]
 fn test_p521_kem_basic_flow() {
     let mut rng = OsRng;
@@ -381,4 +398,105 @@ fn test_p521_kem_cross_consistency() {
     // Decapsulation
     let ss_dec = EcdhP521::decapsulate(&sk521, &ct).unwrap();
     assert_eq!(ss.as_ref(), ss_dec.as_ref());
+}
+
+// Add these tests to crates/kem/src/ecdh/p521/tests.rs
+
+#[test]
+fn test_p521_public_key_serialization() {
+    let mut rng = OsRng;
+    let (pk, _) = EcdhP521::keypair(&mut rng).unwrap();
+    
+    // Round-trip
+    let bytes = pk.to_bytes();
+    assert_eq!(bytes.len(), 67);
+    let restored = EcdhP521PublicKey::from_bytes(&bytes).unwrap();
+    assert_eq!(pk.as_ref(), restored.as_ref());
+}
+
+#[test]
+fn test_p521_secret_key_serialization() {
+    let mut rng = OsRng;
+    let (_, sk) = EcdhP521::keypair(&mut rng).unwrap();
+    
+    // Export and verify length
+    let bytes = sk.to_bytes();
+    assert_eq!(bytes.len(), 66); // P-521 has 66-byte scalars
+    
+    // Import and verify functionality
+    let restored = EcdhP521SecretKey::from_bytes(&bytes).unwrap();
+    
+    // Generate same public key from both
+    let pk1 = ec_p521::scalar_mult_base_g(
+        &ec_p521::Scalar::from_secret_buffer(secret_buffer_from_slice::<66>(sk.as_ref())).unwrap()
+    ).unwrap();
+    let pk2 = ec_p521::scalar_mult_base_g(
+        &ec_p521::Scalar::from_secret_buffer(secret_buffer_from_slice::<66>(restored.as_ref())).unwrap()
+    ).unwrap();
+    assert_eq!(pk1.serialize_compressed(), pk2.serialize_compressed());
+}
+
+#[test]
+fn test_p521_ciphertext_serialization() {
+    let mut rng = OsRng;
+    let (pk, _) = EcdhP521::keypair(&mut rng).unwrap();
+    let (ct, _) = EcdhP521::encapsulate(&mut rng, &pk).unwrap();
+    
+    // Round-trip
+    let bytes = ct.to_bytes();
+    assert_eq!(bytes.len(), 67);
+    let restored = EcdhP521Ciphertext::from_bytes(&bytes).unwrap();
+    assert_eq!(ct.as_ref(), restored.as_ref());
+}
+
+#[test]
+fn test_p521_shared_secret_size() {
+    let mut rng = OsRng;
+    let (pk, sk) = EcdhP521::keypair(&mut rng).unwrap();
+    let (ct, ss) = EcdhP521::encapsulate(&mut rng, &pk).unwrap();
+    
+    // P-521 uses SHA-512, so 64-byte shared secrets
+    assert_eq!(ss.to_bytes().len(), 64);
+    
+    let ss_dec = EcdhP521::decapsulate(&sk, &ct).unwrap();
+    assert_eq!(ss_dec.to_bytes().len(), 64);
+}
+
+#[test]
+fn test_p521_invalid_public_key() {
+    // Wrong length
+    assert!(EcdhP521PublicKey::from_bytes(&[0u8; 66]).is_err());
+    assert!(EcdhP521PublicKey::from_bytes(&[0u8; 68]).is_err());
+    
+    // Identity point
+    assert!(EcdhP521PublicKey::from_bytes(&[0u8; 67]).is_err());
+}
+
+#[test]
+fn test_p521_invalid_secret_key() {
+    // Wrong length - P-521 uses 66-byte scalars
+    assert!(EcdhP521SecretKey::from_bytes(&[0u8; 65]).is_err());
+    assert!(EcdhP521SecretKey::from_bytes(&[0u8; 67]).is_err());
+}
+
+#[test]
+fn test_p521_full_kem_with_serialization() {
+    let mut rng = OsRng;
+    
+    // Generate and serialize
+    let (pk, sk) = EcdhP521::keypair(&mut rng).unwrap();
+    let pk_bytes = pk.to_bytes();
+    let sk_bytes = sk.to_bytes();
+    
+    // Restore and use
+    let pk_restored = EcdhP521PublicKey::from_bytes(&pk_bytes).unwrap();
+    let sk_restored = EcdhP521SecretKey::from_bytes(&sk_bytes).unwrap();
+    
+    // KEM operation
+    let (ct, ss1) = EcdhP521::encapsulate(&mut rng, &pk_restored).unwrap();
+    let ct_bytes = ct.to_bytes();
+    let ct_restored = EcdhP521Ciphertext::from_bytes(&ct_bytes).unwrap();
+    let ss2 = EcdhP521::decapsulate(&sk_restored, &ct_restored).unwrap();
+    
+    assert_eq!(ss1.to_bytes(), ss2.to_bytes());
 }

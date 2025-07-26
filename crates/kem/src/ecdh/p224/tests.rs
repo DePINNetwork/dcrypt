@@ -2,6 +2,23 @@ use super::*;
 use dcrypt_api::Kem as KemTrait; // Use the trait from api
 use rand::rngs::OsRng;
 
+#[cfg(test)]
+mod test_utils {
+    use dcrypt_common::security::SecretBuffer;
+    
+    /// Convert a slice to a SecretBuffer of the specified size
+    /// This is a test-only utility for creating SecretBuffers from slices
+    pub fn secret_buffer_from_slice<const N: usize>(slice: &[u8]) -> SecretBuffer<N> {
+        assert_eq!(slice.len(), N, "Slice length must match SecretBuffer size");
+        let mut buffer = [0u8; N];
+        buffer.copy_from_slice(slice);
+        SecretBuffer::new(buffer)
+    }
+}
+
+#[cfg(test)]
+use test_utils::secret_buffer_from_slice;
+
 #[test]
 fn test_ecdh_p224_kem_keypair_generation() {
     let keypair_result = EcdhP224::keypair(&mut OsRng);
@@ -99,4 +116,104 @@ fn test_ecdh_p224_kem_ciphertext_structure() {
     // Verify the tag portion has the expected length
     let tag_portion = &ciphertext.as_ref()[ec::P224_POINT_COMPRESSED_SIZE..];
     assert_eq!(tag_portion.len(), ec::P224_TAG_SIZE);
+}
+
+// Add these tests to crates/kem/src/ecdh/p224/tests.rs
+
+#[test]
+fn test_p224_public_key_serialization() {
+    let mut rng = OsRng;
+    let (pk, _) = EcdhP224::keypair(&mut rng).unwrap();
+    
+    // Round-trip
+    let bytes = pk.to_bytes();
+    assert_eq!(bytes.len(), 29);
+    let restored = EcdhP224PublicKey::from_bytes(&bytes).unwrap();
+    assert_eq!(pk.as_ref(), restored.as_ref());
+}
+
+#[test]
+fn test_p224_secret_key_serialization() {
+    let mut rng = OsRng;
+    let (_, sk) = EcdhP224::keypair(&mut rng).unwrap();
+    
+    // Export and verify length
+    let bytes = sk.to_bytes();
+    assert_eq!(bytes.len(), 28);
+    
+    // Import and verify functionality
+    let restored = EcdhP224SecretKey::from_bytes(&bytes).unwrap();
+    
+    // Generate same public key from both
+    let pk1 = ec::scalar_mult_base_g(
+        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<28>(sk.as_ref())).unwrap()
+    ).unwrap();
+    let pk2 = ec::scalar_mult_base_g(
+        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<28>(restored.as_ref())).unwrap()
+    ).unwrap();
+    assert_eq!(pk1.serialize_compressed(), pk2.serialize_compressed());
+}
+
+#[test]
+fn test_p224_authenticated_ciphertext_serialization() {
+    let mut rng = OsRng;
+    let (pk, _) = EcdhP224::keypair(&mut rng).unwrap();
+    let (ct, _) = EcdhP224::encapsulate(&mut rng, &pk).unwrap();
+    
+    // Round-trip - P224 has authenticated ciphertext!
+    let bytes = ct.to_bytes();
+    assert_eq!(bytes.len(), 45); // 29 + 16 byte tag
+    let restored = EcdhP224Ciphertext::from_bytes(&bytes).unwrap();
+    assert_eq!(ct.as_ref(), restored.as_ref());
+    
+    // Verify structure
+    let pk_part = &bytes[..29];
+    let tag_part = &bytes[29..];
+    assert_eq!(pk_part.len(), 29);
+    assert_eq!(tag_part.len(), 16);
+}
+
+#[test]
+fn test_p224_invalid_public_key() {
+    // Wrong length
+    assert!(EcdhP224PublicKey::from_bytes(&[0u8; 28]).is_err());
+    assert!(EcdhP224PublicKey::from_bytes(&[0u8; 30]).is_err());
+    
+    // Identity point
+    assert!(EcdhP224PublicKey::from_bytes(&[0u8; 29]).is_err());
+}
+
+#[test]
+fn test_p224_invalid_ciphertext() {
+    // Wrong length for authenticated ciphertext
+    assert!(EcdhP224Ciphertext::from_bytes(&[0u8; 29]).is_err());
+    assert!(EcdhP224Ciphertext::from_bytes(&[0u8; 44]).is_err());
+    assert!(EcdhP224Ciphertext::from_bytes(&[0u8; 46]).is_err());
+    
+    // Valid length but invalid point
+    assert!(EcdhP224Ciphertext::from_bytes(&[0u8; 45]).is_err());
+}
+
+#[test]
+fn test_p224_full_kem_with_serialization() {
+    let mut rng = OsRng;
+    
+    // Generate and serialize
+    let (pk, sk) = EcdhP224::keypair(&mut rng).unwrap();
+    let pk_bytes = pk.to_bytes();
+    let sk_bytes = sk.to_bytes();
+    
+    // Restore and use
+    let pk_restored = EcdhP224PublicKey::from_bytes(&pk_bytes).unwrap();
+    let sk_restored = EcdhP224SecretKey::from_bytes(&sk_bytes).unwrap();
+    
+    // KEM operation with authenticated ciphertext
+    let (ct, ss1) = EcdhP224::encapsulate(&mut rng, &pk_restored).unwrap();
+    let ct_bytes = ct.to_bytes();
+    assert_eq!(ct_bytes.len(), 45); // Verify authenticated format
+    
+    let ct_restored = EcdhP224Ciphertext::from_bytes(&ct_bytes).unwrap();
+    let ss2 = EcdhP224::decapsulate(&sk_restored, &ct_restored).unwrap();
+    
+    assert_eq!(ss1.to_bytes(), ss2.to_bytes());
 }
