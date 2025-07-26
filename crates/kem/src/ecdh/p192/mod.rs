@@ -7,7 +7,6 @@
 //! for key derivation according to RFC 9180 (HPKE).
 //! This implementation uses compressed point format.
 
-use super::KEM_KDF_VERSION;
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p192 as ec;
 use dcrypt_api::{error::Error as ApiError, Kem, Key as ApiKey, Result as ApiResult};
@@ -137,8 +136,7 @@ impl Kem for EcdhP192 {
         kdf_ikm.extend_from_slice(&ephemeral_point.serialize_compressed());
         kdf_ikm.extend_from_slice(&public_key_recipient.0);
 
-        let info_string = format!("ECDH-P192-KEM {}", KEM_KDF_VERSION);
-        let ss_bytes = ec::kdf_hkdf_sha256_for_ecdh_kem(&kdf_ikm, Some(info_string.as_bytes()))
+        let ss_bytes = ec::kdf_hkdf_sha256_for_ecdh_kem(&kdf_ikm, Some(&b"ECDH-P192-KEM"[..]))
             .map_err(|e| ApiError::from(KemError::from(e)))?;
 
         let shared_secret = EcdhP192SharedSecret(ApiKey::new(&ss_bytes));
@@ -181,8 +179,7 @@ impl Kem for EcdhP192 {
         kdf_ikm.extend_from_slice(&ciphertext_ephemeral_pk.0);
         kdf_ikm.extend_from_slice(&q_r_point.serialize_compressed());
 
-        let info_string = format!("ECDH-P192-KEM {}", KEM_KDF_VERSION);
-        let ss_bytes = ec::kdf_hkdf_sha256_for_ecdh_kem(&kdf_ikm, Some(info_string.as_bytes()))
+        let ss_bytes = ec::kdf_hkdf_sha256_for_ecdh_kem(&kdf_ikm, Some(&b"ECDH-P192-KEM"[..]))
             .map_err(|e| ApiError::from(KemError::from(e)))?;
 
         Ok(EcdhP192SharedSecret(ApiKey::new(&ss_bytes)))

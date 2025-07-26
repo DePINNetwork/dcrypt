@@ -8,7 +8,6 @@
 //!
 //! This implementation uses compressed point format for optimal bandwidth efficiency.
 
-use super::KEM_KDF_VERSION;
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p521 as ec_p521;
 use dcrypt_api::{error::Error as ApiError, Kem, Key as ApiKey, Result as ApiResult};
@@ -160,9 +159,8 @@ impl Kem for EcdhP521 {
         kdf_ikm.extend_from_slice(&ephemeral_point.serialize_compressed());
         kdf_ikm.extend_from_slice(&public_key_recipient.0);
 
-        // 8. Derive the shared secret with domain separation and version
-        let info_string = format!("ECDH-P521-KEM {}", KEM_KDF_VERSION);
-        let info = Some(info_string.as_bytes());
+        // 8. Derive the shared secret with domain separation
+        let info: Option<&[u8]> = Some(b"ECDH-P521-KEM");
         let ss_bytes = ec_p521::kdf_hkdf_sha512_for_ecdh_kem(&kdf_ikm, info)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
 
@@ -229,8 +227,7 @@ impl Kem for EcdhP521 {
         kdf_ikm.extend_from_slice(&q_r_point.serialize_compressed());
 
         // 8. Derive the shared secret with same domain separation
-        let info_string = format!("ECDH-P521-KEM {}", KEM_KDF_VERSION);
-        let info = Some(info_string.as_bytes());
+        let info: Option<&[u8]> = Some(b"ECDH-P521-KEM");
         let ss_bytes = ec_p521::kdf_hkdf_sha512_for_ecdh_kem(&kdf_ikm, info)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
 

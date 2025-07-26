@@ -8,7 +8,6 @@
 //!
 //! This implementation uses compressed point format for optimal bandwidth efficiency.
 
-use super::KEM_KDF_VERSION;
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::b283k as ec_b283k;
 use dcrypt_api::{error::Error as ApiError, Kem, Key as ApiKey, Result as ApiResult};
@@ -146,8 +145,7 @@ impl Kem for EcdhB283k {
         kdf_ikm.extend_from_slice(&ephemeral_point.serialize_compressed());
         kdf_ikm.extend_from_slice(&public_key_recipient.0);
 
-        let info_string = format!("ECDH-B283k-KEM {}", KEM_KDF_VERSION);
-        let info = Some(info_string.as_bytes());
+        let info: Option<&[u8]> = Some(b"ECDH-B283k-KEM");
         let ss_bytes = ec_b283k::kdf_hkdf_sha384_for_ecdh_kem(&kdf_ikm, info)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
 
@@ -198,8 +196,7 @@ impl Kem for EcdhB283k {
         kdf_ikm.extend_from_slice(&ciphertext_ephemeral_pk.0);
         kdf_ikm.extend_from_slice(&q_r_point.serialize_compressed());
 
-        let info_string = format!("ECDH-B283k-KEM {}", KEM_KDF_VERSION);
-        let info = Some(info_string.as_bytes());
+        let info: Option<&[u8]> = Some(b"ECDH-B283k-KEM");
         let ss_bytes = ec_b283k::kdf_hkdf_sha384_for_ecdh_kem(&kdf_ikm, info)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
 

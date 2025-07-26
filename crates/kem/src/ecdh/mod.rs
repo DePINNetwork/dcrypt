@@ -48,6 +48,3 @@ pub use k256::{
 pub use b283k::{
     EcdhB283k, EcdhB283kCiphertext, EcdhB283kPublicKey, EcdhB283kSecretKey, EcdhB283kSharedSecret,
 };
-
-// Version tag for KDF context - updated for compressed point format
-pub(crate) const KEM_KDF_VERSION: &str = "v2.0.0";

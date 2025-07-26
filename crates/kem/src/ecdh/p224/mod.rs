@@ -6,7 +6,6 @@
 //! Uses HKDF-SHA256 for key derivation and compressed points for ciphertexts.
 //! Includes authentication via HMAC-SHA256 tags to ensure key confirmation.
 
-use super::KEM_KDF_VERSION;
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p224 as ec; // Use P-224 algorithms
 use dcrypt_algorithms::hash::sha2::Sha256;
@@ -158,8 +157,7 @@ impl Kem for EcdhP224 {
         kdf_ikm.extend_from_slice(&ephemeral_pk_compressed);
         kdf_ikm.extend_from_slice(&public_key_recipient.0);
 
-        let info_string = format!("ECDH-P224-KEM {}", KEM_KDF_VERSION);
-        let ss_bytes = ec::kdf_hkdf_sha256_for_ecdh_kem(&kdf_ikm, Some(info_string.as_bytes()))
+        let ss_bytes = ec::kdf_hkdf_sha256_for_ecdh_kem(&kdf_ikm, Some(&b"ECDH-P224-KEM"[..]))
             .map_err(|e| ApiError::from(KemError::from(e)))?;
 
         let shared_secret = EcdhP224SharedSecret(ApiKey::new(&ss_bytes));
@@ -219,8 +217,7 @@ impl Kem for EcdhP224 {
         kdf_ikm.extend_from_slice(pk_bytes); // Use only the PK part, not the full ciphertext
         kdf_ikm.extend_from_slice(&q_r_point.serialize_compressed());
 
-        let info_string = format!("ECDH-P224-KEM {}", KEM_KDF_VERSION);
-        let ss_bytes = ec::kdf_hkdf_sha256_for_ecdh_kem(&kdf_ikm, Some(info_string.as_bytes()))
+        let ss_bytes = ec::kdf_hkdf_sha256_for_ecdh_kem(&kdf_ikm, Some(&b"ECDH-P224-KEM"[..]))
             .map_err(|e| ApiError::from(KemError::from(e)))?;
 
         // Verify authentication tag
