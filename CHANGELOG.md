@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0-beta.1] - 2025-07-26
+
+### Added
+- Serialization support for all ECDH-KEM types
+  - `from_bytes()` and `to_bytes()` methods for PublicKey, SecretKey, SharedSecret, and Ciphertext
+  - Comprehensive validation including point-on-curve checks and identity point rejection
+  - Secure `Zeroizing` wrapper for secret key exports
+  - Support for all curves: B-283k, K-256, P-192, P-224, P-256, P-384, P-521
+
+### Fixed
+- **BREAKING**: Corrected P-384 KEM shared secret size from 32 to 48 bytes
+  - P-384 uses SHA-384 which produces 48-byte outputs, not 32
+  - **This makes P-384 ECDH-KEM incompatible with previous versions**
+  - Systems using P-384 ECDH-KEM must be updated together
+
+### Security
+- Secret key serialization now uses `Zeroizing` to ensure sensitive data is cleared from memory
+- All deserialization methods validate inputs to prevent invalid keys from being created
+
 ## [0.10.0-beta.1] - 2025-07-26
 
 ### Changed
@@ -74,7 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Not recommended for production use yet
 - Seeking community feedback on API design and implementation
 
-[Unreleased]: https://github.com/DePINNetwork/dcrypt/compare/v0.10.0-beta.1...HEAD
+[Unreleased]: https://github.com/DePINNetwork/dcrypt/compare/v0.11.0-beta.1...HEAD
+[0.11.0-beta.1]: https://github.com/DePINNetwork/dcrypt/compare/v0.10.0-beta.1...v0.11.0-beta.1
 [0.10.0-beta.1]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.3...v0.10.0-beta.1
 [0.9.0-beta.3]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.2...v0.9.0-beta.3
 [0.9.0-beta.2]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.1...v0.9.0-beta.2
