@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0-beta.1] - 2025-07-26
+
+### Changed
+- **BREAKING**: Removed version constant from ECDH-KEM KDF info parameter
+  - KDF info strings no longer include version information
+  - Changed from `"ECDH-{curve}-KEM {version}"` to `"ECDH-{curve}-KEM"`
+  - Affects all ECDH implementations: B-283k, K-256, P-192, P-224, P-256, P-384, P-521
+  - **This makes the KEM output incompatible with previous versions**
+  - All systems using ECDH-KEM must be updated together as old and new versions cannot interoperate
+
+### Removed
+- `KEM_KDF_VERSION` constant from ECDH module
+  - Version management now handled exclusively through Cargo dependencies
+
 ## [0.9.0-beta.3] - 2025-07-25
 
 ### Fixed
@@ -60,7 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Not recommended for production use yet
 - Seeking community feedback on API design and implementation
 
-[Unreleased]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.3...HEAD
+[Unreleased]: https://github.com/DePINNetwork/dcrypt/compare/v0.10.0-beta.1...HEAD
+[0.10.0-beta.1]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.3...v0.10.0-beta.1
 [0.9.0-beta.3]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.2...v0.9.0-beta.3
 [0.9.0-beta.2]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.1...v0.9.0-beta.2
 [0.9.0-beta.1]: https://github.com/DePINNetwork/dcrypt/releases/tag/v0.9.0-beta.1
