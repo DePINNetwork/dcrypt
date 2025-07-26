@@ -1,5 +1,5 @@
 # Cargo.toml Snapshot: dcrypt
-Created: Fri Jul 25 07:41:20 PM EDT 2025
+Created: Sat Jul 26 01:56:18 PM EDT 2025
 Target: /home/levijosman/depin-network/codebase/dcrypt
 
 ## Workspace Structure
@@ -55,18 +55,18 @@ keywords.workspace = true
 
 [dependencies]
 # Core dependencies (always included)
-dcrypt-api = { version = "=0.9.0-beta.3", path = "crates/api" }
-dcrypt-common = { version = "=0.9.0-beta.3", path = "crates/common" }
-dcrypt-internal = { version = "=0.9.0-beta.3", path = "crates/internal" }
-dcrypt-params = { version = "=0.9.0-beta.3", path = "crates/params" }
+dcrypt-api = { version = "=0.11.0-beta.1", path = "crates/api" }
+dcrypt-common = { version = "=0.11.0-beta.1", path = "crates/common" }
+dcrypt-internal = { version = "=0.11.0-beta.1", path = "crates/internal" }
+dcrypt-params = { version = "=0.11.0-beta.1", path = "crates/params" }
 
 # Optional algorithm crates
-dcrypt-algorithms = { version = "=0.9.0-beta.3", path = "crates/algorithms", optional = true }
-dcrypt-symmetric = { version = "=0.9.0-beta.3", path = "crates/symmetric", optional = true }
-dcrypt-kem = { version = "=0.9.0-beta.3", path = "crates/kem", optional = true }
-dcrypt-sign = { version = "=0.9.0-beta.3", path = "crates/sign", optional = true }
-dcrypt-pke = { version = "=0.9.0-beta.3", path = "crates/pke", optional = true }
-dcrypt-hybrid = { version = "=0.9.0-beta.3", path = "crates/hybrid", optional = true }
+dcrypt-algorithms = { version = "=0.11.0-beta.1", path = "crates/algorithms", optional = true }
+dcrypt-symmetric = { version = "=0.11.0-beta.1", path = "crates/symmetric", optional = true }
+dcrypt-kem = { version = "=0.11.0-beta.1", path = "crates/kem", optional = true }
+dcrypt-sign = { version = "=0.11.0-beta.1", path = "crates/sign", optional = true }
+dcrypt-pke = { version = "=0.11.0-beta.1", path = "crates/pke", optional = true }
+dcrypt-hybrid = { version = "=0.11.0-beta.1", path = "crates/hybrid", optional = true }
 
 # Re-export workspace dependencies that users might need
 rand = { workspace = true, optional = true }
@@ -129,7 +129,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version     = "0.9.0-beta.3"
+version     = "0.11.0-beta.1"
 edition     = "2021"
 authors     = ["Heath Ledger"]
 description = "dcrypt is a pure Rust software-only cryptographic library for DePIN Network's Web4 infrastructure framework providing both traditional and post-quantum cryptography. Designed with emphasis on security, modularity, performance, and usability, dcrypt eliminates foreign function interfaces (FFI) ensuring memory safety and cross-platform compatibility."
@@ -238,10 +238,10 @@ serde_json = ["dep:serde_json", "dep:serde"]
 
 [dependencies]
 # Internal dependencies
-dcrypt-api = { path = "../api", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-common = { path = "../common", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-params = { path = "../params", version = "=0.9.0-beta.3" }
+dcrypt-api = { path = "../api", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-common = { path = "../common", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-internal = { path = "../internal", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-params = { path = "../params", version = "=0.11.0-beta.1" }
 
 # Core cryptographic dependencies
 zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
@@ -354,7 +354,7 @@ thiserror = { version = "1.0.37", optional = true }
 subtle = { version = "2.4.1" }
 serde = { version = "1.0.147", features = ["derive"], optional = true }
 rand = { version = "0.8.5", optional = false }
-dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.3" }
+dcrypt-internal = { path = "../internal", version = "=0.11.0-beta.1" }
 
 [dev-dependencies]
 rand = { version = "0.8.5" }
@@ -389,8 +389,8 @@ thiserror = { version = "1.0.37", optional = true }
 subtle = { version = "2.4.1" }
 serde = { version = "1.0.147", features = ["derive"], optional = true }
 rand = { version = "0.8.5", optional = false }
-dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.3" }
-dcrypt-api = { path = "../api", version = "=0.9.0-beta.3" }
+dcrypt-internal = { path = "../internal", version = "=0.11.0-beta.1" }
+dcrypt-api = { path = "../api", version = "=0.11.0-beta.1" }
 
 [dev-dependencies]
 rand = { version = "0.8.5" }
@@ -432,13 +432,13 @@ serde = [
 
 
 [dependencies]
-dcrypt-api = { path = "../api", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-common = { path = "../common", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-params = { path = "../params", version = "=0.9.0-beta.3" }
-dcrypt-algorithms = { path = "../algorithms", version = "=0.9.0-beta.3" }
-dcrypt-kem = { path = "../kem", version = "=0.9.0-beta.3" }
-dcrypt-sign = { path = "../sign", version = "=0.9.0-beta.3" }
+dcrypt-api = { path = "../api", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-common = { path = "../common", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-internal = { path = "../internal", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-params = { path = "../params", version = "=0.11.0-beta.1" }
+dcrypt-algorithms = { path = "../algorithms", version = "=0.11.0-beta.1" }
+dcrypt-kem = { path = "../kem", version = "=0.11.0-beta.1" }
+dcrypt-sign = { path = "../sign", version = "=0.11.0-beta.1" }
 zeroize = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true, optional = true }
@@ -520,11 +520,11 @@ traditional = []  # Feature flag for traditional KEMs (ECDH, RSA, etc.)
 post-quantum = [] # Feature flag for post-quantum KEMs (Kyber, McEliece, etc.)
 
 [dependencies]
-dcrypt-api = { path = "../api", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-common = { path = "../common", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-params = { path = "../params", version = "=0.9.0-beta.3" }
-dcrypt-algorithms = { path = "../algorithms", version = "=0.9.0-beta.3" }
+dcrypt-api = { path = "../api", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-common = { path = "../common", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-internal = { path = "../internal", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-params = { path = "../params", version = "=0.11.0-beta.1" }
+dcrypt-algorithms = { path = "../algorithms", version = "=0.11.0-beta.1" }
 zeroize = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true, optional = true }
@@ -628,11 +628,11 @@ no_std = [
 ]
 
 [dependencies]
-dcrypt-api = { path = "../api", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-common = { path = "../common", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-algorithms = { path = "../algorithms", version = "=0.9.0-beta.3", default-features = false, features = ["ec", "kdf", "aead", "hash"] }
-dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-params = { path = "../params", version = "=0.9.0-beta.3" }
+dcrypt-api = { path = "../api", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-common = { path = "../common", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-algorithms = { path = "../algorithms", version = "=0.11.0-beta.1", default-features = false, features = ["ec", "kdf", "aead", "hash"] }
+dcrypt-internal = { path = "../internal", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-params = { path = "../params", version = "=0.11.0-beta.1" }
 rand = { workspace = true, default-features = false }
 zeroize = { workspace = true }
 subtle = { workspace = true, default-features = false }
@@ -686,11 +686,11 @@ traditional = []  # Feature flag for traditional signatures (ECDSA, EdDSA, RSA, 
 post-quantum = [] # Feature flag for post-quantum signatures (Dilithium, Falcon, etc.)
 
 [dependencies]
-dcrypt-api = { path = "../api", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-common = { path = "../common", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-params = { path = "../params", version = "=0.9.0-beta.3" }
-dcrypt-algorithms = { path = "../algorithms", version = "=0.9.0-beta.3" }
+dcrypt-api = { path = "../api", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-common = { path = "../common", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-internal = { path = "../internal", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-params = { path = "../params", version = "=0.11.0-beta.1" }
+dcrypt-algorithms = { path = "../algorithms", version = "=0.11.0-beta.1" }
 zeroize = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true, optional = true }
@@ -741,11 +741,11 @@ serde = [
 ]
 
 [dependencies]
-dcrypt-api = { path = "../api", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-common = { path = "../common", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.3", default-features = false }
-dcrypt-params = { path = "../params", version = "=0.9.0-beta.3" }
-dcrypt-algorithms = { path = "../algorithms", version = "=0.9.0-beta.3" }
+dcrypt-api = { path = "../api", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-common = { path = "../common", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-internal = { path = "../internal", version = "=0.11.0-beta.1", default-features = false }
+dcrypt-params = { path = "../params", version = "=0.11.0-beta.1" }
+dcrypt-algorithms = { path = "../algorithms", version = "=0.11.0-beta.1" }
 zeroize = { workspace = true }
 serde = { workspace = true, optional = true }
 base64 = "0.13"
@@ -791,9 +791,9 @@ no_std = ["alloc",  # no_std typically needs alloc for Vec, String, etc.
 alloc = []  # Feature for allocation support in no_std environments
 
 [dependencies]
-dcrypt-api = { path = "../api", version = "=0.9.0-beta.3" }
-dcrypt-common = { path = "../common", version = "=0.9.0-beta.3" }
-dcrypt-internal = { path = "../internal", version = "=0.9.0-beta.3" }
+dcrypt-api = { path = "../api", version = "=0.11.0-beta.1" }
+dcrypt-common = { path = "../common", version = "=0.11.0-beta.1" }
+dcrypt-internal = { path = "../internal", version = "=0.11.0-beta.1" }
 zeroize = { workspace = true }
 rand = { workspace = true }
 hex = "0.4.3"
@@ -816,15 +816,15 @@ repository.workspace = true
 license.workspace = true
 
 [dependencies]
-dcrypt-kem = { path = "../crates/kem", version = "=0.9.0-beta.3" }
-dcrypt-sign = { path = "../crates/sign", version = "=0.9.0-beta.3" }
-dcrypt-algorithms = { path = "../crates/algorithms", version = "=0.9.0-beta.3" }
-dcrypt-params = { path = "../crates/params", version = "=0.9.0-beta.3" }
-dcrypt-symmetric = { path = "../crates/symmetric", version = "=0.9.0-beta.3" }
-dcrypt-hybrid = { path = "../crates/hybrid", version = "=0.9.0-beta.3" }
-dcrypt-api = { version = "=0.9.0-beta.3", path = "../crates/api" }
-dcrypt-common = { path = "../crates/common" , version = "=0.9.0-beta.3" }
-dcrypt-internal = { path = "../crates/internal" , version = "=0.9.0-beta.3" }
+dcrypt-kem = { path = "../crates/kem", version = "=0.11.0-beta.1" }
+dcrypt-sign = { path = "../crates/sign", version = "=0.11.0-beta.1" }
+dcrypt-algorithms = { path = "../crates/algorithms", version = "=0.11.0-beta.1" }
+dcrypt-params = { path = "../crates/params", version = "=0.11.0-beta.1" }
+dcrypt-symmetric = { path = "../crates/symmetric", version = "=0.11.0-beta.1" }
+dcrypt-hybrid = { path = "../crates/hybrid", version = "=0.11.0-beta.1" }
+dcrypt-api = { version = "=0.11.0-beta.1", path = "../crates/api" }
+dcrypt-common = { path = "../crates/common" , version = "=0.11.0-beta.1" }
+dcrypt-internal = { path = "../crates/internal" , version = "=0.11.0-beta.1" }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 statrs = "0.16"
@@ -879,4 +879,4 @@ members = [
 ```
 
 ---
-Snapshot generated on Fri Jul 25 07:41:31 PM EDT 2025
+Snapshot generated on Sat Jul 26 01:56:36 PM EDT 2025

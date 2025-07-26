@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0-beta.2] - 2025-07-26
+
+### Fixed
+- Removed non-existent generic type re-exports from prelude that caused compilation errors
+  - Generic types like `KemPublicKey`, `SigningKey`, etc. don't exist in the codebase
+  - Users should import specific algorithm implementations directly from their modules
+
 ## [0.11.0-beta.1] - 2025-07-26
 
 ### Added
@@ -93,7 +100,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Not recommended for production use yet
 - Seeking community feedback on API design and implementation
 
-[Unreleased]: https://github.com/DePINNetwork/dcrypt/compare/v0.11.0-beta.1...HEAD
+[Unreleased]: https://github.com/DePINNetwork/dcrypt/compare/v0.11.0-beta.2...HEAD
+[0.11.0-beta.2]: https://github.com/DePINNetwork/dcrypt/compare/v0.11.0-beta.1...v0.11.0-beta.2
 [0.11.0-beta.1]: https://github.com/DePINNetwork/dcrypt/compare/v0.10.0-beta.1...v0.11.0-beta.1
 [0.10.0-beta.1]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.3...v0.10.0-beta.1
 [0.9.0-beta.3]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.2...v0.9.0-beta.3

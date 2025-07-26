@@ -8,7 +8,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! dcrypt = "0.9.0-beta.3"
+//! dcrypt = "0.11.0-beta.1"
 //! ```
 //!
 //! ## Features
@@ -107,15 +107,11 @@ pub mod prelude {
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub use crate::common::{CurveParams, ECPoint};
     
-    // Feature-specific trait re-exports
-    #[cfg(feature = "kem")]
-    pub use crate::kem::{KemCiphertext, KemPublicKey, KemSecretKey, SharedSecret};
-    
-    #[cfg(feature = "sign")]
-    pub use crate::sign::{SigningKey, VerifyingKey};
-    
-    #[cfg(feature = "pke")]
-    pub use crate::pke::{Ciphertext, Plaintext, PublicKey, SecretKey};
+    // Note: Specific algorithm implementations should be imported directly from their modules
+    // For example:
+    // - use dcrypt::kem::ecdh::p256::{EcdhP256PublicKey, EcdhP256SecretKey};
+    // - use dcrypt::sign::dilithium::{DilithiumSigningKey, DilithiumVerifyingKey};
+    // - use dcrypt::pke::ecies::p256::{EciesP256PublicKey, EciesP256Ciphertext};
 }
 
 // Test that imports work correctly
