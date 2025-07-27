@@ -1,4 +1,4 @@
-// File: crates/kem/src/ecdh/p256.rs
+// File: crates/kem/src/ecdh/p256/mod.rs
 //! ECDH-KEM with NIST P-256
 //!
 //! This module provides a Key Encapsulation Mechanism (KEM) based on the
@@ -7,6 +7,14 @@
 //! for key derivation according to RFC 9180 (HPKE).
 //!
 //! This implementation uses compressed point format for optimal bandwidth efficiency.
+//!
+//! # Security Features
+//! 
+//! - No direct byte access to keys (prevents tampering and accidental exposure)
+//! - Constant-time scalar operations
+//! - Point validation to prevent invalid curve attacks
+//! - Secure key derivation using HKDF-SHA256
+//! - Implicit rejection for IND-CCA2 security
 
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p256 as ec_p256;
@@ -44,6 +52,10 @@ impl EcdhP256PublicKey {
     /// # Returns
     /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
     /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
+    /// 
+    /// # Security Note
+    /// This method validates that the point is on the curve and not the identity,
+    /// preventing invalid key attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_p256::P256_POINT_COMPRESSED_SIZE {
@@ -77,6 +89,9 @@ impl EcdhP256PublicKey {
     /// 
     /// # Returns
     /// The compressed point representation (33 bytes for P-256)
+    /// 
+    /// # Security Note
+    /// Public keys are not secret, but should still be validated when imported.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
@@ -94,7 +109,8 @@ impl EcdhP256SecretKey {
     /// * `Err` if the bytes are invalid (wrong length or out of range)
     /// 
     /// # Security
-    /// The input bytes should be treated as sensitive material and zeroized after use
+    /// The input bytes should be treated as sensitive material and zeroized after use.
+    /// This method validates that the scalar is in the valid range [1, n-1].
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_p256::P256_SCALAR_SIZE {
@@ -125,7 +141,8 @@ impl EcdhP256SecretKey {
     /// The scalar value wrapped in `Zeroizing` (32 bytes for P-256)
     /// 
     /// # Security
-    /// The returned value will be automatically zeroized when dropped
+    /// The returned value will be automatically zeroized when dropped.
+    /// Handle with care and minimize the lifetime of the returned value.
     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
         Zeroizing::new(self.0.as_ref().to_vec())
     }
@@ -137,8 +154,25 @@ impl EcdhP256SharedSecret {
     /// 
     /// # Returns
     /// The derived shared secret bytes
+    /// 
+    /// # Security Note
+    /// The shared secret should be used immediately for key derivation
+    /// and not stored long-term. Consider using a KDF to derive
+    /// application-specific keys.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.as_ref().to_vec()
+    }
+
+    /// Export the shared secret to bytes with zeroization
+    /// 
+    /// # Returns
+    /// The derived shared secret bytes wrapped in `Zeroizing`
+    /// 
+    /// # Security Note
+    /// Use this method when you need the bytes to be automatically
+    /// zeroized after use.
+    pub fn to_zeroizing_bytes(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.to_bytes())
     }
 }
 
@@ -152,6 +186,10 @@ impl EcdhP256Ciphertext {
     /// # Returns
     /// * `Ok(Ciphertext)` if the bytes represent a valid ephemeral key
     /// * `Err` if the bytes are invalid
+    /// 
+    /// # Security Note
+    /// Invalid ciphertexts will be rejected during decapsulation
+    /// with implicit rejection (producing a random shared secret).
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_p256::P256_POINT_COMPRESSED_SIZE {
@@ -190,49 +228,9 @@ impl EcdhP256Ciphertext {
     }
 }
 
-// AsRef/AsMut implementations (unchanged)
-impl AsRef<[u8]> for EcdhP256PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP256PublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-impl AsRef<[u8]> for EcdhP256SecretKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP256SecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP256SharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP256SharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP256Ciphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP256Ciphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// Note: No AsRef or AsMut implementations for security!
+// All byte access must go through explicit to_bytes() methods.
 
-// The Kem trait implementation remains unchanged
 impl Kem for EcdhP256 {
     type PublicKey = EcdhP256PublicKey;
     type SecretKey = EcdhP256SecretKey;
@@ -401,6 +399,54 @@ impl Kem for EcdhP256 {
         // 9. Create and return the shared secret
         let shared_secret = EcdhP256SharedSecret(ApiKey::new(&ss_bytes));
         Ok(shared_secret)
+    }
+}
+
+// Optional: Implement extension traits for serialization if needed
+// These are kept separate from the core implementation for security
+
+/// Extension methods for P-256 KEM types
+impl EcdhP256 {
+    /// Validate a public key
+    pub fn validate_public_key(key: &EcdhP256PublicKey) -> ApiResult<()> {
+        // Re-validate by attempting to deserialize
+        let point = ec_p256::Point::deserialize_compressed(&key.0)
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        if point.is_identity() {
+            return Err(ApiError::InvalidKey {
+                context: "validate_public_key",
+                #[cfg(feature = "std")]
+                message: "Public key is the identity point".to_string(),
+            });
+        }
+        
+        Ok(())
+    }
+    
+    /// Validate a secret key
+    pub fn validate_secret_key(key: &EcdhP256SecretKey) -> ApiResult<()> {
+        // Validation happens during scalar creation
+        let _ = ec_p256::Scalar::from_secret_buffer(key.0.clone())
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        Ok(())
+    }
+    
+    /// Validate a ciphertext
+    pub fn validate_ciphertext(ct: &EcdhP256Ciphertext) -> ApiResult<()> {
+        // Re-validate by attempting to deserialize
+        let point = ec_p256::Point::deserialize_compressed(&ct.0)
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        if point.is_identity() {
+            return Err(ApiError::InvalidCiphertext {
+                context: "validate_ciphertext",
+                #[cfg(feature = "std")]
+                message: "Ciphertext contains identity point".to_string(),
+            });
+        }
+        
+        Ok(())
     }
 }
 

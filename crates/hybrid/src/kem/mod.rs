@@ -1,12 +1,13 @@
-//! Hybrid Key Encapsulation Mechanisms (KEMs)
+//! Hybrid Key Encapsulation Mechanisms (KEMs).
 //!
-//! This module provides hybrid KEMs that combine traditional and
-//! post-quantum algorithms.
+//! This module provides KEMs that combine a classical primitive (like ECDH)
+//! with a post-quantum primitive (like Kyber) to provide security against
+//! both classical and quantum adversaries.
 
-mod rsa_kyber;
-mod ecdh_kyber;
-mod ecdh_ntru;
+pub mod ecdh_kyber;
 
-pub use rsa_kyber::RsaKyberHybrid;
-pub use ecdh_kyber::EcdhKyberHybrid;
-pub use ecdh_ntru::EcdhNtruHybrid;
+#[cfg(test)]
+mod tests;
+
+// Re-export the primary hybrid KEM struct for easy access.
+pub use ecdh_kyber::EcdhKyber768;

@@ -1,4 +1,4 @@
-// File: crates/kem/src/ecdh/p521.rs
+// File: crates/kem/src/ecdh/p521/mod.rs
 //! ECDH-KEM with NIST P-521
 //!
 //! This module provides a Key Encapsulation Mechanism (KEM) based on the
@@ -7,6 +7,13 @@
 //! for key derivation according to RFC 9180 (HPKE).
 //!
 //! This implementation uses compressed point format for optimal bandwidth efficiency.
+//!
+//! # Security Features
+//! 
+//! - No direct byte access to keys (prevents tampering and exposure)
+//! - Constant-time operations
+//! - Proper validation of curve points
+//! - Secure key derivation using HKDF-SHA512
 
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p521 as ec_p521;
@@ -44,6 +51,10 @@ impl EcdhP521PublicKey {
     /// # Returns
     /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
     /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
+    /// 
+    /// # Security Note
+    /// This method validates that the point is on the curve and not the identity,
+    /// preventing invalid key attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_p521::P521_POINT_COMPRESSED_SIZE {
@@ -77,6 +88,9 @@ impl EcdhP521PublicKey {
     /// 
     /// # Returns
     /// The compressed point representation (67 bytes for P-521)
+    /// 
+    /// # Security Note
+    /// Public keys are not secret and can be shared freely.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
@@ -94,7 +108,8 @@ impl EcdhP521SecretKey {
     /// * `Err` if the bytes are invalid (wrong length or out of range)
     /// 
     /// # Security
-    /// The input bytes should be treated as sensitive material and zeroized after use
+    /// The input bytes should be treated as sensitive material and zeroized after use.
+    /// This method validates that the scalar is in the valid range [1, n-1].
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_p521::P521_SCALAR_SIZE {
@@ -125,7 +140,8 @@ impl EcdhP521SecretKey {
     /// The scalar value wrapped in `Zeroizing` (66 bytes for P-521)
     /// 
     /// # Security
-    /// The returned value will be automatically zeroized when dropped
+    /// The returned value will be automatically zeroized when dropped.
+    /// Handle with care and minimize the lifetime of the returned value.
     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
         Zeroizing::new(self.0.as_ref().to_vec())
     }
@@ -133,12 +149,16 @@ impl EcdhP521SecretKey {
 
 // Shared secret methods
 impl EcdhP521SharedSecret {
-    /// Export the shared secret to bytes
+    /// Export the shared secret to bytes (with zeroization on drop)
     /// 
     /// # Returns
     /// The derived shared secret bytes (64 bytes for P-521 with SHA-512)
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.0.as_ref().to_vec()
+    /// 
+    /// # Security Note
+    /// The shared secret should be used immediately for key derivation
+    /// and not stored long-term. The returned value is automatically zeroized.
+    pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.as_ref().to_vec())
     }
 }
 
@@ -190,47 +210,7 @@ impl EcdhP521Ciphertext {
     }
 }
 
-// AsRef/AsMut implementations
-impl AsRef<[u8]> for EcdhP521PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP521PublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-impl AsRef<[u8]> for EcdhP521SecretKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP521SecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP521SharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP521SharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP521Ciphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP521Ciphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// NO AsRef or AsMut implementations - prevents direct byte access
 
 impl Kem for EcdhP521 {
     type PublicKey = EcdhP521PublicKey;

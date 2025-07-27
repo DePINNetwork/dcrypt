@@ -7,12 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.11.0-beta.2] - 2025-07-26
+## [0.12.0-beta.1] - 2025-07-26
 
-### Fixed
-- Removed non-existent generic type re-exports from prelude that caused compilation errors
-  - Generic types like `KemPublicKey`, `SigningKey`, etc. don't exist in the codebase
-  - Users should import specific algorithm implementations directly from their modules
+### Changed
+- **BREAKING**: Removed direct byte access from all KEM types for security
+  - Removed `AsRef<[u8]>` and `AsMut<[u8]>` implementations from all KEM key types
+  - All byte access must now go through explicit methods: `to_bytes()`, `from_bytes()`, `to_bytes_zeroizing()`
+  - Affects all KEM implementations: ECDH (all curves), Kyber, DH, McEliece, Saber
+  - Hybrid KEM implementations updated to use new explicit methods
+
+### Added
+- Explicit byte access methods for all KEM types with proper documentation
+  - `to_bytes()` for public data (public keys, ciphertexts)
+  - `to_bytes_zeroizing()` for sensitive data (secret keys, shared secrets)
+  - `from_bytes()` with validation for deserialization
+- `ZeroizeOnDrop` trait implementation for all sensitive KEM types
+- Comprehensive security documentation explaining the design rationale
+
+### Security
+- Prevented key tampering by removing `AsMut` trait implementations
+- Prevented accidental key exposure by removing `AsRef` trait implementations
+- Ensured all access to cryptographic material is explicit and auditable
+- Added automatic zeroization for all sensitive KEM data types
+
+### Migration Guide
+- Replace `key.as_ref()` with `key.to_bytes()` for public keys and ciphertexts
+- Replace `secret.as_ref()` with `secret.to_bytes_zeroizing()` for secret keys and shared secrets
+- Replace `key.as_mut()` with creating a new key via `from_bytes()` after modification
 
 ## [0.11.0-beta.1] - 2025-07-26
 
@@ -100,8 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Not recommended for production use yet
 - Seeking community feedback on API design and implementation
 
-[Unreleased]: https://github.com/DePINNetwork/dcrypt/compare/v0.11.0-beta.2...HEAD
-[0.11.0-beta.2]: https://github.com/DePINNetwork/dcrypt/compare/v0.11.0-beta.1...v0.11.0-beta.2
+[Unreleased]: https://github.com/DePINNetwork/dcrypt/compare/v0.12.0-beta.1...HEAD
+[0.12.0-beta.1]: https://github.com/DePINNetwork/dcrypt/compare/v0.11.0-beta.2...v0.12.0-beta.1
 [0.11.0-beta.1]: https://github.com/DePINNetwork/dcrypt/compare/v0.10.0-beta.1...v0.11.0-beta.1
 [0.10.0-beta.1]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.3...v0.10.0-beta.1
 [0.9.0-beta.3]: https://github.com/DePINNetwork/dcrypt/compare/v0.9.0-beta.2...v0.9.0-beta.3

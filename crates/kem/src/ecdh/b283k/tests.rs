@@ -37,23 +37,23 @@ fn test_b283k_kem_basic_flow() {
 
     // Verify shared secrets match
     assert_eq!(
-        shared_secret_sender.as_ref(),
-        shared_secret_recipient.as_ref(),
+        shared_secret_sender.to_bytes(),
+        shared_secret_recipient.to_bytes(),
         "Shared secrets should match"
     );
 
     // Verify key and ciphertext sizes
     assert_eq!(
-        recipient_pk.as_ref().len(),
+        recipient_pk.to_bytes().len(),
         ec_b283k::B283K_POINT_COMPRESSED_SIZE
     );
-    assert_eq!(recipient_sk.as_ref().len(), ec_b283k::B283K_SCALAR_SIZE);
+    assert_eq!(recipient_sk.to_bytes().len(), ec_b283k::B283K_SCALAR_SIZE);
     assert_eq!(
-        ciphertext.as_ref().len(),
+        ciphertext.to_bytes().len(),
         ec_b283k::B283K_POINT_COMPRESSED_SIZE
     );
     assert_eq!(
-        shared_secret_sender.as_ref().len(),
+        shared_secret_sender.to_bytes().len(),
         ec_b283k::B283K_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE
     );
 }
@@ -75,8 +75,8 @@ fn test_b283k_kem_wrong_secret_key() {
 
     // Shared secrets should NOT match
     assert_ne!(
-        shared_secret_sender.as_ref(),
-        shared_secret_wrong.as_ref(),
+        shared_secret_sender.to_bytes(),
+        shared_secret_wrong.to_bytes(),
         "Shared secrets should not match with wrong key"
     );
 }
@@ -108,8 +108,8 @@ fn test_b283k_kem_tampered_ciphertext() {
     match decapsulate_result {
         Ok(ss_receiver) => {
             assert_ne!(
-                shared_secret_sender.as_ref(),
-                ss_receiver.as_ref(),
+                shared_secret_sender.to_bytes(),
+                ss_receiver.to_bytes(),
                 "Shared secret should differ for tampered ciphertext if decapsulation succeeds."
             );
         }
@@ -134,7 +134,7 @@ fn test_b283k_public_key_serialization() {
     let bytes = pk.to_bytes();
     assert_eq!(bytes.len(), 37);
     let restored = EcdhB283kPublicKey::from_bytes(&bytes).unwrap();
-    assert_eq!(pk.as_ref(), restored.as_ref());
+    assert_eq!(pk.to_bytes(), restored.to_bytes());
 }
 
 #[test]
@@ -151,10 +151,10 @@ fn test_b283k_secret_key_serialization() {
     
     // Generate same public key from both
     let pk1 = ec_b283k::scalar_mult_base_g(
-        &ec_b283k::Scalar::from_secret_buffer(secret_buffer_from_slice::<36>(sk.as_ref())).unwrap()
+        &ec_b283k::Scalar::from_secret_buffer(secret_buffer_from_slice::<36>(&sk.to_bytes())).unwrap()
     ).unwrap();
     let pk2 = ec_b283k::scalar_mult_base_g(
-        &ec_b283k::Scalar::from_secret_buffer(secret_buffer_from_slice::<36>(restored.as_ref())).unwrap()
+        &ec_b283k::Scalar::from_secret_buffer(secret_buffer_from_slice::<36>(&restored.to_bytes())).unwrap()
     ).unwrap();
     assert_eq!(pk1.serialize_compressed(), pk2.serialize_compressed());
 }
@@ -169,7 +169,7 @@ fn test_b283k_ciphertext_serialization() {
     let bytes = ct.to_bytes();
     assert_eq!(bytes.len(), 37);
     let restored = EcdhB283kCiphertext::from_bytes(&bytes).unwrap();
-    assert_eq!(ct.as_ref(), restored.as_ref());
+    assert_eq!(ct.to_bytes(), restored.to_bytes());
 }
 
 #[test]

@@ -37,8 +37,8 @@ fn test_p521_kem_basic_flow() {
 
     // Verify shared secrets match
     assert_eq!(
-        shared_secret_sender.as_ref(),
-        shared_secret_recipient.as_ref(),
+        shared_secret_sender.to_bytes(),
+        shared_secret_recipient.to_bytes(),
         "Shared secrets should match"
     );
 }
@@ -55,17 +55,17 @@ fn test_p521_kem_multiple_encapsulations() {
     let (ct2, ss2) = EcdhP521::encapsulate(&mut rng, &recipient_pk).unwrap();
 
     // Ciphertexts should be different (different ephemeral keys)
-    assert_ne!(ct1.as_ref(), ct2.as_ref());
+    assert_ne!(ct1.to_bytes(), ct2.to_bytes());
 
     // Shared secrets should be different
-    assert_ne!(ss1.as_ref(), ss2.as_ref());
+    assert_ne!(ss1.to_bytes(), ss2.to_bytes());
 
     // But both should decapsulate correctly
     let ss1_dec = EcdhP521::decapsulate(&recipient_sk, &ct1).unwrap();
     let ss2_dec = EcdhP521::decapsulate(&recipient_sk, &ct2).unwrap();
 
-    assert_eq!(ss1.as_ref(), ss1_dec.as_ref());
-    assert_eq!(ss2.as_ref(), ss2_dec.as_ref());
+    assert_eq!(ss1.to_bytes(), ss1_dec.to_bytes());
+    assert_eq!(ss2.to_bytes(), ss2_dec.to_bytes());
 }
 
 #[test]
@@ -119,8 +119,8 @@ fn test_p521_kem_wrong_secret_key() {
 
     // Shared secrets should NOT match
     assert_ne!(
-        shared_secret_sender.as_ref(),
-        shared_secret_wrong.as_ref(),
+        shared_secret_sender.to_bytes(),
+        shared_secret_wrong.to_bytes(),
         "Shared secrets should not match with wrong key"
     );
 }
@@ -143,7 +143,7 @@ mod test_vectors {
         for _ in 0..5 {
             let (ct, ss_enc) = EcdhP521::encapsulate(&mut rng, &pk).unwrap();
             let ss_dec = EcdhP521::decapsulate(&sk, &ct).unwrap();
-            assert_eq!(ss_enc.as_ref(), ss_dec.as_ref());
+            assert_eq!(ss_enc.to_bytes(), ss_dec.to_bytes());
         }
     }
 
@@ -160,7 +160,7 @@ mod test_vectors {
         for (pk, sk) in &recipients {
             let (ct, ss_enc) = EcdhP521::encapsulate(&mut rng, pk).unwrap();
             let ss_dec = EcdhP521::decapsulate(sk, &ct).unwrap();
-            assert_eq!(ss_enc.as_ref(), ss_dec.as_ref());
+            assert_eq!(ss_enc.to_bytes(), ss_dec.to_bytes());
         }
     }
 }
@@ -181,7 +181,7 @@ fn test_p521_kem_deterministic_shared_secret() {
     let ss2 = EcdhP521::decapsulate(&recipient_sk, &ciphertext).unwrap();
 
     // Should be identical
-    assert_eq!(ss1.as_ref(), ss2.as_ref());
+    assert_eq!(ss1.to_bytes(), ss2.to_bytes());
 }
 
 #[test]
@@ -192,14 +192,14 @@ fn test_p521_kem_serialization_roundtrip() {
     let (pk, sk) = EcdhP521::keypair(&mut rng).unwrap();
 
     // Serialize and deserialize public key
-    let pk_bytes = pk.as_ref();
-    let pk_restored = EcdhP521PublicKey(pk_bytes.try_into().unwrap());
+    let pk_bytes = pk.to_bytes();
+    let pk_restored = EcdhP521PublicKey::from_bytes(&pk_bytes).unwrap();
 
     // Test encapsulation with restored key
     let (ct, ss1) = EcdhP521::encapsulate(&mut rng, &pk_restored).unwrap();
     let ss2 = EcdhP521::decapsulate(&sk, &ct).unwrap();
 
-    assert_eq!(ss1.as_ref(), ss2.as_ref());
+    assert_eq!(ss1.to_bytes(), ss2.to_bytes());
 }
 
 /// Compliance tests for NIST SP 800-56A Rev. 3
@@ -235,7 +235,7 @@ mod nist_compliance {
         let (pk, _) = EcdhP521::keypair(&mut rng).unwrap();
 
         // Verify public key size
-        assert_eq!(pk.as_ref().len(), p521::P521_POINT_COMPRESSED_SIZE);
+        assert_eq!(pk.to_bytes().len(), p521::P521_POINT_COMPRESSED_SIZE);
     }
 }
 
@@ -251,14 +251,14 @@ fn test_p521_kem_consistency_across_implementations() {
         let ss_dec = EcdhP521::decapsulate(&sk, &ct).unwrap();
 
         assert_eq!(
-            ss_enc.as_ref(),
-            ss_dec.as_ref(),
+            ss_enc.to_bytes(),
+            ss_dec.to_bytes(),
             "Encapsulation and decapsulation must produce same shared secret"
         );
 
         // Verify shared secret length
         assert_eq!(
-            ss_enc.as_ref().len(),
+            ss_enc.to_bytes().len(),
             p521::P521_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE,
             "Shared secret must have correct length"
         );
@@ -274,12 +274,12 @@ fn test_p521_kem_compressed_format_sizes() {
 
     // Verify key sizes
     assert_eq!(
-        pk.as_ref().len(),
+        pk.to_bytes().len(),
         p521::P521_POINT_COMPRESSED_SIZE,
         "Public key should be compressed"
     );
     assert_eq!(
-        sk.as_ref().len(),
+        sk.to_bytes().len(),
         p521::P521_SCALAR_SIZE,
         "Secret key size unchanged"
     );
@@ -287,7 +287,7 @@ fn test_p521_kem_compressed_format_sizes() {
     // Verify ciphertext size
     let (ct, _) = EcdhP521::encapsulate(&mut rng, &pk).unwrap();
     assert_eq!(
-        ct.as_ref().len(),
+        ct.to_bytes().len(),
         p521::P521_POINT_COMPRESSED_SIZE,
         "Ciphertext should be compressed"
     );
@@ -340,7 +340,7 @@ mod p521_specific {
                 if i != j {
                     let (ct, ss_enc) = EcdhP521::encapsulate(&mut rng, pk_j).unwrap();
                     let ss_dec = EcdhP521::decapsulate(sk_j, &ct).unwrap();
-                    assert_eq!(ss_enc.as_ref(), ss_dec.as_ref());
+                    assert_eq!(ss_enc.to_bytes(), ss_dec.to_bytes());
                 }
             }
         }
@@ -365,11 +365,11 @@ mod nist_cavp_vectors {
         // Cross-encapsulation tests
         let (ct1, ss1) = EcdhP521::encapsulate(&mut rng, &pk2).unwrap();
         let ss1_dec = EcdhP521::decapsulate(&sk2, &ct1).unwrap();
-        assert_eq!(ss1.as_ref(), ss1_dec.as_ref());
+        assert_eq!(ss1.to_bytes(), ss1_dec.to_bytes());
 
         let (ct2, ss2) = EcdhP521::encapsulate(&mut rng, &pk1).unwrap();
         let ss2_dec = EcdhP521::decapsulate(&sk1, &ct2).unwrap();
-        assert_eq!(ss2.as_ref(), ss2_dec.as_ref());
+        assert_eq!(ss2.to_bytes(), ss2_dec.to_bytes());
     }
 }
 
@@ -382,22 +382,22 @@ fn test_p521_kem_cross_consistency() {
     let (pk521, sk521) = EcdhP521::keypair(&mut rng).unwrap();
 
     // Verify key sizes
-    assert_eq!(pk521.as_ref().len(), p521::P521_POINT_COMPRESSED_SIZE);
-    assert_eq!(sk521.as_ref().len(), p521::P521_SCALAR_SIZE);
+    assert_eq!(pk521.to_bytes().len(), p521::P521_POINT_COMPRESSED_SIZE);
+    assert_eq!(sk521.to_bytes().len(), p521::P521_SCALAR_SIZE);
 
     // Encapsulation
     let (ct, ss) = EcdhP521::encapsulate(&mut rng, &pk521).unwrap();
 
     // Verify ciphertext and shared secret sizes
-    assert_eq!(ct.as_ref().len(), p521::P521_POINT_COMPRESSED_SIZE);
+    assert_eq!(ct.to_bytes().len(), p521::P521_POINT_COMPRESSED_SIZE);
     assert_eq!(
-        ss.as_ref().len(),
+        ss.to_bytes().len(),
         p521::P521_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE
     );
 
     // Decapsulation
     let ss_dec = EcdhP521::decapsulate(&sk521, &ct).unwrap();
-    assert_eq!(ss.as_ref(), ss_dec.as_ref());
+    assert_eq!(ss.to_bytes(), ss_dec.to_bytes());
 }
 
 // Add these tests to crates/kem/src/ecdh/p521/tests.rs
@@ -411,7 +411,7 @@ fn test_p521_public_key_serialization() {
     let bytes = pk.to_bytes();
     assert_eq!(bytes.len(), 67);
     let restored = EcdhP521PublicKey::from_bytes(&bytes).unwrap();
-    assert_eq!(pk.as_ref(), restored.as_ref());
+    assert_eq!(pk.to_bytes(), restored.to_bytes());
 }
 
 #[test]
@@ -428,10 +428,10 @@ fn test_p521_secret_key_serialization() {
     
     // Generate same public key from both
     let pk1 = ec_p521::scalar_mult_base_g(
-        &ec_p521::Scalar::from_secret_buffer(secret_buffer_from_slice::<66>(sk.as_ref())).unwrap()
+        &ec_p521::Scalar::from_secret_buffer(secret_buffer_from_slice::<66>(&sk.to_bytes())).unwrap()
     ).unwrap();
     let pk2 = ec_p521::scalar_mult_base_g(
-        &ec_p521::Scalar::from_secret_buffer(secret_buffer_from_slice::<66>(restored.as_ref())).unwrap()
+        &ec_p521::Scalar::from_secret_buffer(secret_buffer_from_slice::<66>(&restored.to_bytes())).unwrap()
     ).unwrap();
     assert_eq!(pk1.serialize_compressed(), pk2.serialize_compressed());
 }
@@ -446,7 +446,7 @@ fn test_p521_ciphertext_serialization() {
     let bytes = ct.to_bytes();
     assert_eq!(bytes.len(), 67);
     let restored = EcdhP521Ciphertext::from_bytes(&bytes).unwrap();
-    assert_eq!(ct.as_ref(), restored.as_ref());
+    assert_eq!(ct.to_bytes(), restored.to_bytes());
 }
 
 #[test]

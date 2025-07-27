@@ -1,4 +1,4 @@
-// File: crates/kem/src/ecdh/p384.rs
+// File: crates/kem/src/ecdh/p384/mod.rs
 //! ECDH-KEM with NIST P-384
 //!
 //! This module provides a Key Encapsulation Mechanism (KEM) based on the
@@ -7,6 +7,14 @@
 //! for key derivation according to RFC 9180 (HPKE).
 //!
 //! This implementation uses compressed point format for optimal bandwidth efficiency.
+//!
+//! # Security Features
+//! 
+//! - No direct byte access to keys (prevents tampering and exposure)
+//! - Constant-time operations where applicable
+//! - Proper validation of curve points
+//! - Secure key derivation using HKDF-SHA384
+//! - Automatic zeroization of sensitive material
 
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p384 as ec_p384;
@@ -19,18 +27,30 @@ use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 pub struct EcdhP384;
 
 /// Public key for ECDH-P384 KEM (compressed EC point)
+/// 
+/// This type provides no direct byte access to prevent key manipulation.
+/// Use the `to_bytes()` method for serialization.
 #[derive(Clone, Zeroize)]
 pub struct EcdhP384PublicKey([u8; ec_p384::P384_POINT_COMPRESSED_SIZE]);
 
 /// Secret key for ECDH-P384 KEM (scalar value)
+/// 
+/// This type provides no direct byte access to prevent key exposure.
+/// Use the `to_bytes()` method which returns a `Zeroizing` wrapper.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct EcdhP384SecretKey(SecretBuffer<{ ec_p384::P384_SCALAR_SIZE }>);
 
 /// Shared secret from ECDH-P384 KEM
+/// 
+/// This type provides no direct byte access to prevent secret leakage.
+/// Use the `to_bytes()` method for controlled access.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct EcdhP384SharedSecret(ApiKey);
 
 /// Ciphertext for ECDH-P384 KEM (compressed ephemeral public key)
+/// 
+/// This type provides no direct byte access to prevent tampering.
+/// Use the `to_bytes()` method for serialization.
 #[derive(Clone)]
 pub struct EcdhP384Ciphertext([u8; ec_p384::P384_POINT_COMPRESSED_SIZE]);
 
@@ -44,6 +64,10 @@ impl EcdhP384PublicKey {
     /// # Returns
     /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
     /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
+    /// 
+    /// # Security Note
+    /// This method validates that the point is on the curve and not the identity,
+    /// preventing invalid key attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_p384::P384_POINT_COMPRESSED_SIZE {
@@ -77,6 +101,9 @@ impl EcdhP384PublicKey {
     /// 
     /// # Returns
     /// The compressed point representation (49 bytes for P-384)
+    /// 
+    /// # Security Note
+    /// Public keys are not secret, but should still be validated by recipients.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
@@ -93,8 +120,9 @@ impl EcdhP384SecretKey {
     /// * `Ok(SecretKey)` if the bytes represent a valid scalar
     /// * `Err` if the bytes are invalid (wrong length or out of range)
     /// 
-    /// # Security
-    /// The input bytes should be treated as sensitive material and zeroized after use
+    /// # Security Warning
+    /// The input bytes should be treated as sensitive material and zeroized after use.
+    /// This method validates that the scalar is in the valid range [1, n-1].
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_p384::P384_SCALAR_SIZE {
@@ -124,8 +152,10 @@ impl EcdhP384SecretKey {
     /// # Returns
     /// The scalar value wrapped in `Zeroizing` (48 bytes for P-384)
     /// 
-    /// # Security
-    /// The returned value will be automatically zeroized when dropped
+    /// # Security Warning
+    /// The returned value will be automatically zeroized when dropped.
+    /// Handle with extreme care and minimize the lifetime of the returned value.
+    /// Never log, print, or store these bytes in plain text.
     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
         Zeroizing::new(self.0.as_ref().to_vec())
     }
@@ -137,8 +167,25 @@ impl EcdhP384SharedSecret {
     /// 
     /// # Returns
     /// The derived shared secret bytes (48 bytes for P-384 with SHA-384)
+    /// 
+    /// # Security Note
+    /// The shared secret should be used immediately for key derivation
+    /// and not stored long-term. Consider using a `Zeroizing` wrapper
+    /// if the bytes need to be held temporarily.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.as_ref().to_vec()
+    }
+    
+    /// Export the shared secret to bytes with automatic zeroization
+    /// 
+    /// # Returns
+    /// The shared secret wrapped in `Zeroizing` for automatic cleanup
+    /// 
+    /// # Security Note
+    /// Prefer this method over `to_bytes()` when the secret needs to be
+    /// held in memory temporarily.
+    pub fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.to_bytes())
     }
 }
 
@@ -152,6 +199,9 @@ impl EcdhP384Ciphertext {
     /// # Returns
     /// * `Ok(Ciphertext)` if the bytes represent a valid ephemeral key
     /// * `Err` if the bytes are invalid
+    /// 
+    /// # Security Note
+    /// This validates the ephemeral key format to prevent malformed ciphertext attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_p384::P384_POINT_COMPRESSED_SIZE {
@@ -185,52 +235,19 @@ impl EcdhP384Ciphertext {
     /// 
     /// # Returns
     /// The compressed ephemeral public key (49 bytes for P-384)
+    /// 
+    /// # Security Note
+    /// Ciphertexts are public data but should not be modified.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
 }
 
-// AsRef/AsMut implementations
-impl AsRef<[u8]> for EcdhP384PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP384PublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-impl AsRef<[u8]> for EcdhP384SecretKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP384SecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP384SharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP384SharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP384Ciphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP384Ciphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// REMOVED: AsRef and AsMut implementations for security
+// Direct byte access has been removed to prevent:
+// - Key tampering through AsMut
+// - Accidental key exposure through AsRef
+// Use the explicit to_bytes() methods instead.
 
 impl Kem for EcdhP384 {
     type PublicKey = EcdhP384PublicKey;
@@ -309,7 +326,7 @@ impl Kem for EcdhP384 {
         // 7. Prepare KDF input: x-coordinate || ephemeral_pk || recipient_pk
         // This binding prevents the standard KDF inputs from being domain-separated
         let mut kdf_ikm = Vec::with_capacity(
-            ec_p384::P384_FIELD_ELEMENT_SIZE + 2 * ec_p384::P384_POINT_COMPRESSED_SIZE, // Using compressed size
+            ec_p384::P384_FIELD_ELEMENT_SIZE + 2 * ec_p384::P384_POINT_COMPRESSED_SIZE,
         );
         kdf_ikm.extend_from_slice(&x_coord_bytes);
         kdf_ikm.extend_from_slice(&ephemeral_point.serialize_compressed());
@@ -376,7 +393,7 @@ impl Kem for EcdhP384 {
 
         // 7. Prepare KDF input with the same order as encapsulation
         let mut kdf_ikm = Vec::with_capacity(
-            ec_p384::P384_FIELD_ELEMENT_SIZE + 2 * ec_p384::P384_POINT_COMPRESSED_SIZE, // Using compressed size
+            ec_p384::P384_FIELD_ELEMENT_SIZE + 2 * ec_p384::P384_POINT_COMPRESSED_SIZE,
         );
         kdf_ikm.extend_from_slice(&x_coord_bytes);
         kdf_ikm.extend_from_slice(&ciphertext_ephemeral_pk.0);
@@ -392,6 +409,7 @@ impl Kem for EcdhP384 {
         Ok(shared_secret)
     }
 }
+
 
 #[cfg(test)]
 mod tests;

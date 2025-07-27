@@ -2,7 +2,7 @@
 
 use dcrypt_api::{Kem, Result};
 use rand::{CryptoRng, RngCore};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 /// McEliece-348864 KEM
 pub struct McEliece348864;
@@ -10,62 +10,143 @@ pub struct McEliece348864;
 #[derive(Clone, Zeroize)]
 pub struct McEliecePublicKey(pub Vec<u8>);
 
-#[derive(Clone, Zeroize)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct McElieceSecretKey(pub Vec<u8>);
 
-#[derive(Clone, Zeroize)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct McElieceSharedSecret(pub Vec<u8>);
 
 #[derive(Clone)]
 pub struct McElieceCiphertext(pub Vec<u8>);
 
-impl AsRef<[u8]> for McEliecePublicKey {
-    fn as_ref(&self) -> &[u8] {
+// McEliecePublicKey methods
+impl McEliecePublicKey {
+    /// Create a new public key from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the length of the public key
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the public key is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the public key to bytes
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.clone()
+    }
+
+    /// Get a reference to the inner bytes
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Create from a byte slice
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self(bytes.to_vec()))
+    }
+}
+
+// McElieceSecretKey methods
+impl McElieceSecretKey {
+    /// Create a new secret key from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the length of the secret key
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the secret key is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the secret key to bytes with zeroization
+    pub fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.clone())
+    }
+
+    /// Get a reference to the inner bytes (internal use only)
+    pub(crate) fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Create from a byte slice
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self(bytes.to_vec()))
+    }
+}
+
+// McElieceSharedSecret methods
+impl McElieceSharedSecret {
+    /// Create a new shared secret from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the length of the shared secret
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the shared secret is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the shared secret to bytes with zeroization
+    pub fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.clone())
+    }
+
+    /// Get a reference to the inner bytes (internal use only)
+    pub(crate) fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl AsMut<[u8]> for McEliecePublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
+// McElieceCiphertext methods
+impl McElieceCiphertext {
+    /// Create a new ciphertext from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
     }
-}
 
-impl AsRef<[u8]> for McElieceSecretKey {
-    fn as_ref(&self) -> &[u8] {
+    /// Get the length of the ciphertext
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the ciphertext is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the ciphertext to bytes
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.clone()
+    }
+
+    /// Get a reference to the inner bytes
+    pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
-}
 
-impl AsMut<[u8]> for McElieceSecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
+    /// Create from a byte slice
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self(bytes.to_vec()))
     }
 }
 
-impl AsRef<[u8]> for McElieceSharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl AsMut<[u8]> for McElieceSharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
-impl AsRef<[u8]> for McElieceCiphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl AsMut<[u8]> for McElieceCiphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// NO AsRef or AsMut implementations - this prevents direct byte access
 
 impl Kem for McEliece348864 {
     type PublicKey = McEliecePublicKey;

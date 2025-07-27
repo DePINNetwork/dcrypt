@@ -18,8 +18,8 @@ fn test_kyber512_keygen() {
     assert!(result.is_ok());
 
     let (pk, sk) = result.unwrap();
-    assert_eq!(pk.as_ref().len(), 800); // Kyber512 public key size
-    assert_eq!(sk.as_ref().len(), 1632); // Kyber512 secret key size
+    assert_eq!(pk.as_bytes().len(), 800); // Kyber512 public key size
+    assert_eq!(sk.len(), 1632); // Kyber512 secret key size
 }
 
 #[test]
@@ -29,8 +29,8 @@ fn test_kyber768_keygen() {
     assert!(result.is_ok());
 
     let (pk, sk) = result.unwrap();
-    assert_eq!(pk.as_ref().len(), 1184); // Kyber768 public key size
-    assert_eq!(sk.as_ref().len(), 2400); // Kyber768 secret key size
+    assert_eq!(pk.as_bytes().len(), 1184); // Kyber768 public key size
+    assert_eq!(sk.len(), 2400); // Kyber768 secret key size
 }
 
 #[test]
@@ -40,8 +40,8 @@ fn test_kyber1024_keygen() {
     assert!(result.is_ok());
 
     let (pk, sk) = result.unwrap();
-    assert_eq!(pk.as_ref().len(), 1568); // Kyber1024 public key size
-    assert_eq!(sk.as_ref().len(), 3168); // Kyber1024 secret key size
+    assert_eq!(pk.as_bytes().len(), 1568); // Kyber1024 public key size
+    assert_eq!(sk.len(), 3168); // Kyber1024 secret key size
 }
 
 #[test]
@@ -53,15 +53,15 @@ fn test_kyber512_encaps_decaps() {
 
     // Encapsulate
     let (ct, ss1) = Kyber512::encapsulate(&mut rng, &pk).unwrap();
-    assert_eq!(ct.as_ref().len(), 768); // Kyber512 ciphertext size
-    assert_eq!(ss1.as_ref().len(), KYBER_SS_BYTES); // Shared secret size
+    assert_eq!(ct.len(), 768); // Kyber512 ciphertext size
+    assert_eq!(ss1.len(), KYBER_SS_BYTES); // Shared secret size
 
     // Decapsulate
     let ss2 = Kyber512::decapsulate(&sk, &ct).unwrap();
-    assert_eq!(ss2.as_ref().len(), KYBER_SS_BYTES);
+    assert_eq!(ss2.len(), KYBER_SS_BYTES);
 
     // Shared secrets should match
-    assert_eq!(ss1.as_ref(), ss2.as_ref());
+    assert_eq!(&*ss1.to_bytes_zeroizing(), &*ss2.to_bytes_zeroizing());
 }
 
 #[test]
@@ -73,15 +73,15 @@ fn test_kyber768_encaps_decaps() {
 
     // Encapsulate
     let (ct, ss1) = Kyber768::encapsulate(&mut rng, &pk).unwrap();
-    assert_eq!(ct.as_ref().len(), 1088); // Kyber768 ciphertext size
-    assert_eq!(ss1.as_ref().len(), KYBER_SS_BYTES); // Shared secret size
+    assert_eq!(ct.len(), 1088); // Kyber768 ciphertext size
+    assert_eq!(ss1.len(), KYBER_SS_BYTES); // Shared secret size
 
     // Decapsulate
     let ss2 = Kyber768::decapsulate(&sk, &ct).unwrap();
-    assert_eq!(ss2.as_ref().len(), KYBER_SS_BYTES);
+    assert_eq!(ss2.len(), KYBER_SS_BYTES);
 
     // Shared secrets should match
-    assert_eq!(ss1.as_ref(), ss2.as_ref());
+    assert_eq!(&*ss1.to_bytes_zeroizing(), &*ss2.to_bytes_zeroizing());
 }
 
 #[test]
@@ -93,15 +93,15 @@ fn test_kyber1024_encaps_decaps() {
 
     // Encapsulate
     let (ct, ss1) = Kyber1024::encapsulate(&mut rng, &pk).unwrap();
-    assert_eq!(ct.as_ref().len(), 1568); // Kyber1024 ciphertext size
-    assert_eq!(ss1.as_ref().len(), KYBER_SS_BYTES); // Shared secret size
+    assert_eq!(ct.len(), 1568); // Kyber1024 ciphertext size
+    assert_eq!(ss1.len(), KYBER_SS_BYTES); // Shared secret size
 
     // Decapsulate
     let ss2 = Kyber1024::decapsulate(&sk, &ct).unwrap();
-    assert_eq!(ss2.as_ref().len(), KYBER_SS_BYTES);
+    assert_eq!(ss2.len(), KYBER_SS_BYTES);
 
     // Shared secrets should match
-    assert_eq!(ss1.as_ref(), ss2.as_ref());
+    assert_eq!(&*ss1.to_bytes_zeroizing(), &*ss2.to_bytes_zeroizing());
 }
 
 #[test]
@@ -112,13 +112,15 @@ fn test_invalid_ciphertext() {
     let (pk, sk) = Kyber512::keypair(&mut rng).unwrap();
 
     // Create valid ciphertext
-    let (mut ct, _) = Kyber512::encapsulate(&mut rng, &pk).unwrap();
+    let (ct, _) = Kyber512::encapsulate(&mut rng, &pk).unwrap();
 
-    // Corrupt the ciphertext
-    ct.as_mut()[0] ^= 0xFF;
+    // Corrupt the ciphertext by converting to bytes, modifying, and recreating
+    let mut ct_bytes = ct.to_bytes();
+    ct_bytes[0] ^= 0xFF;
+    let corrupted_ct = crate::kyber::KyberCiphertext::new(ct_bytes);
 
     // Decapsulation should still succeed (IND-CCA2)
-    let result = Kyber512::decapsulate(&sk, &ct);
+    let result = Kyber512::decapsulate(&sk, &corrupted_ct);
     assert!(result.is_ok());
 
     // But the shared secret will be different (implicitly)

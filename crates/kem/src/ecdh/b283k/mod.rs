@@ -1,4 +1,4 @@
-// File: crates/kem/src/ecdh/b283k.rs
+// File: crates/kem/src/ecdh/b283k/mod.rs
 //! ECDH-KEM with sect283k1 (B-283k)
 //!
 //! This module provides a Key Encapsulation Mechanism (KEM) based on the
@@ -7,6 +7,13 @@
 //! for key derivation according to RFC 9180 (HPKE).
 //!
 //! This implementation uses compressed point format for optimal bandwidth efficiency.
+//! 
+//! # Security Features
+//! 
+//! - No direct byte access to keys (prevents tampering and accidental exposure)
+//! - Constant-time operations where applicable
+//! - Proper validation of curve points
+//! - Secure key derivation using HKDF-SHA384
 
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::b283k as ec_b283k;
@@ -44,6 +51,10 @@ impl EcdhB283kPublicKey {
     /// # Returns
     /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
     /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
+    /// 
+    /// # Security Note
+    /// This method validates that the point is on the curve and not the identity,
+    /// preventing invalid key attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_b283k::B283K_POINT_COMPRESSED_SIZE {
@@ -94,7 +105,8 @@ impl EcdhB283kSecretKey {
     /// * `Err` if the bytes are invalid (wrong length or out of range)
     /// 
     /// # Security
-    /// The input bytes should be treated as sensitive material and zeroized after use
+    /// The input bytes should be treated as sensitive material and zeroized after use.
+    /// This method validates that the scalar is in the valid range [1, n-1].
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_b283k::B283K_SCALAR_SIZE {
@@ -125,7 +137,8 @@ impl EcdhB283kSecretKey {
     /// The scalar value wrapped in `Zeroizing` (36 bytes for B-283k)
     /// 
     /// # Security
-    /// The returned value will be automatically zeroized when dropped
+    /// The returned value will be automatically zeroized when dropped.
+    /// Handle with care and minimize the lifetime of the returned value.
     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
         Zeroizing::new(self.0.as_ref().to_vec())
     }
@@ -137,6 +150,10 @@ impl EcdhB283kSharedSecret {
     /// 
     /// # Returns
     /// The derived shared secret bytes (48 bytes for B-283k with SHA-384)
+    /// 
+    /// # Security Note
+    /// The shared secret should be used immediately for key derivation
+    /// and not stored long-term.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.as_ref().to_vec()
     }
@@ -190,47 +207,11 @@ impl EcdhB283kCiphertext {
     }
 }
 
-// AsRef/AsMut implementations
-impl AsRef<[u8]> for EcdhB283kPublicKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhB283kPublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-impl AsRef<[u8]> for EcdhB283kSecretKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhB283kSecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhB283kSharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhB283kSharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhB283kCiphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhB283kCiphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// NO AsRef<[u8]> or AsMut<[u8]> implementations for security
+// Direct byte access is prevented to avoid:
+// - Key tampering (no AsMut)
+// - Accidental key exposure (no AsRef)
+// All byte access must go through explicit to_bytes()/from_bytes() methods
 
 impl Kem for EcdhB283k {
     type PublicKey = EcdhB283kPublicKey;

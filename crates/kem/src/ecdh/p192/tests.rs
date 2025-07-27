@@ -31,8 +31,8 @@ fn test_ecdh_p192_keypair_generation() {
         keypair_result.err()
     );
     if let Ok((pk, sk)) = keypair_result {
-        assert_eq!(pk.as_ref().len(), ec::P192_POINT_COMPRESSED_SIZE);
-        assert_eq!(sk.as_ref().len(), ec::P192_SCALAR_SIZE);
+        assert_eq!(pk.to_bytes().len(), ec::P192_POINT_COMPRESSED_SIZE);
+        assert_eq!(sk.to_bytes().len(), ec::P192_SCALAR_SIZE);
     }
 }
 
@@ -52,9 +52,9 @@ fn test_ecdh_p192_kem_roundtrip() {
     );
     let (ciphertext, shared_secret_sender) = encapsulate_result.unwrap();
 
-    assert_eq!(ciphertext.as_ref().len(), ec::P192_POINT_COMPRESSED_SIZE);
+    assert_eq!(ciphertext.to_bytes().len(), ec::P192_POINT_COMPRESSED_SIZE);
     assert_eq!(
-        shared_secret_sender.as_ref().len(),
+        shared_secret_sender.to_bytes().len(),
         ec::P192_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE
     );
 
@@ -69,8 +69,8 @@ fn test_ecdh_p192_kem_roundtrip() {
 
     // 4. Verify shared secrets match
     assert_eq!(
-        shared_secret_sender.as_ref(),
-        shared_secret_receiver.as_ref(),
+        shared_secret_sender.to_bytes(),
+        shared_secret_receiver.to_bytes(),
         "Shared secrets do not match"
     );
 }
@@ -118,8 +118,8 @@ fn test_ecdh_p192_kem_decapsulate_tampered_ciphertext() {
     match decapsulate_result {
         Ok(ss_receiver) => {
             assert_ne!(
-                shared_secret_sender.as_ref(),
-                ss_receiver.as_ref(),
+                shared_secret_sender.to_bytes(),
+                ss_receiver.to_bytes(),
                 "Shared secret should differ for tampered ciphertext if decapsulation succeeds."
             );
         }
@@ -144,7 +144,7 @@ fn test_p192_public_key_serialization() {
     let bytes = pk.to_bytes();
     assert_eq!(bytes.len(), 25);
     let restored = EcdhP192PublicKey::from_bytes(&bytes).unwrap();
-    assert_eq!(pk.as_ref(), restored.as_ref());
+    assert_eq!(pk.to_bytes(), restored.to_bytes());
 }
 
 #[test]
@@ -161,10 +161,10 @@ fn test_p192_secret_key_serialization() {
     
     // Generate same public key from both
     let pk1 = ec::scalar_mult_base_g(
-        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<24>(sk.as_ref())).unwrap()
+        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<24>(&sk.to_bytes())).unwrap()
     ).unwrap();
     let pk2 = ec::scalar_mult_base_g(
-        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<24>(restored.as_ref())).unwrap()
+        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<24>(&restored.to_bytes())).unwrap()
     ).unwrap();
     assert_eq!(pk1.serialize_compressed(), pk2.serialize_compressed());
 }
@@ -179,7 +179,7 @@ fn test_p192_ciphertext_serialization() {
     let bytes = ct.to_bytes();
     assert_eq!(bytes.len(), 25);
     let restored = EcdhP192Ciphertext::from_bytes(&bytes).unwrap();
-    assert_eq!(ct.as_ref(), restored.as_ref());
+    assert_eq!(ct.to_bytes(), restored.to_bytes());
 }
 
 #[test]

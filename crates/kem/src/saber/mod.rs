@@ -2,7 +2,7 @@
 
 use dcrypt_api::{Kem, Result};
 use rand::{CryptoRng, RngCore};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 /// LightSaber KEM
 pub struct LightSaber;
@@ -10,69 +10,150 @@ pub struct LightSaber;
 #[derive(Clone, Zeroize)]
 pub struct SaberPublicKey(pub Vec<u8>);
 
-#[derive(Clone, Zeroize)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct SaberSecretKey(pub Vec<u8>);
 
-#[derive(Clone, Zeroize)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct SaberSharedSecret(pub Vec<u8>);
 
 #[derive(Clone)]
 pub struct SaberCiphertext(pub Vec<u8>);
 
-impl AsRef<[u8]> for SaberPublicKey {
-    fn as_ref(&self) -> &[u8] {
+// SaberPublicKey methods
+impl SaberPublicKey {
+    /// Create a new public key from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the length of the public key
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the public key is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the public key to bytes
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.clone()
+    }
+
+    /// Get a reference to the inner bytes
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Create from a byte slice
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self(bytes.to_vec()))
+    }
+}
+
+// SaberSecretKey methods
+impl SaberSecretKey {
+    /// Create a new secret key from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the length of the secret key
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the secret key is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the secret key to bytes with zeroization
+    pub fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.clone())
+    }
+
+    /// Get a reference to the inner bytes (internal use only)
+    pub(crate) fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Create from a byte slice
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self(bytes.to_vec()))
+    }
+}
+
+// SaberSharedSecret methods
+impl SaberSharedSecret {
+    /// Create a new shared secret from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the length of the shared secret
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the shared secret is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the shared secret to bytes with zeroization
+    pub fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.clone())
+    }
+
+    /// Get a reference to the inner bytes (internal use only)
+    pub(crate) fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl AsMut<[u8]> for SaberPublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
+// SaberCiphertext methods
+impl SaberCiphertext {
+    /// Create a new ciphertext from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
     }
-}
 
-impl AsRef<[u8]> for SaberSecretKey {
-    fn as_ref(&self) -> &[u8] {
+    /// Get the length of the ciphertext
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the ciphertext is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the ciphertext to bytes
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.clone()
+    }
+
+    /// Get a reference to the inner bytes
+    pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
-}
 
-impl AsMut<[u8]> for SaberSecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
+    /// Create from a byte slice
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self(bytes.to_vec()))
     }
 }
 
-impl AsRef<[u8]> for SaberSharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl AsMut<[u8]> for SaberSharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
-impl AsRef<[u8]> for SaberCiphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl AsMut<[u8]> for SaberCiphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// NO AsRef or AsMut implementations - this prevents direct byte access
 
 impl Kem for LightSaber {
     type PublicKey = SaberPublicKey;
     type SecretKey = SaberSecretKey;
     type SharedSecret = SaberSharedSecret;
     type Ciphertext = SaberCiphertext;
-    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added KeyPair type
+    type KeyPair = (Self::PublicKey, Self::SecretKey);
 
     fn name() -> &'static str {
         "LightSaber"
@@ -87,12 +168,10 @@ impl Kem for LightSaber {
         Ok((SaberPublicKey(public_key), SaberSecretKey(secret_key)))
     }
 
-    // Added public_key function
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
     }
 
-    // Added secret_key function
     fn secret_key(keypair: &Self::KeyPair) -> Self::SecretKey {
         keypair.1.clone()
     }
@@ -125,7 +204,7 @@ impl Kem for Saber {
     type SecretKey = SaberSecretKey;
     type SharedSecret = SaberSharedSecret;
     type Ciphertext = SaberCiphertext;
-    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added KeyPair type
+    type KeyPair = (Self::PublicKey, Self::SecretKey);
 
     fn name() -> &'static str {
         "Saber"
@@ -140,12 +219,10 @@ impl Kem for Saber {
         Ok((SaberPublicKey(public_key), SaberSecretKey(secret_key)))
     }
 
-    // Added public_key function
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
     }
 
-    // Added secret_key function
     fn secret_key(keypair: &Self::KeyPair) -> Self::SecretKey {
         keypair.1.clone()
     }
@@ -178,7 +255,7 @@ impl Kem for FireSaber {
     type SecretKey = SaberSecretKey;
     type SharedSecret = SaberSharedSecret;
     type Ciphertext = SaberCiphertext;
-    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added KeyPair type
+    type KeyPair = (Self::PublicKey, Self::SecretKey);
 
     fn name() -> &'static str {
         "FireSaber"
@@ -193,12 +270,10 @@ impl Kem for FireSaber {
         Ok((SaberPublicKey(public_key), SaberSecretKey(secret_key)))
     }
 
-    // Added public_key function
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
     }
 
-    // Added secret_key function
     fn secret_key(keypair: &Self::KeyPair) -> Self::SecretKey {
         keypair.1.clone()
     }

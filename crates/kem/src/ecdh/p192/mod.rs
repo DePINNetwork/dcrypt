@@ -1,4 +1,4 @@
-// File: crates/kem/src/ecdh/p192.rs
+// File: crates/kem/src/ecdh/p192/mod.rs
 //! ECDH-KEM with NIST P-192
 //!
 //! This module provides a Key Encapsulation Mechanism (KEM) based on the
@@ -6,6 +6,13 @@
 //! The implementation is secure against timing attacks and follows best practices
 //! for key derivation according to RFC 9180 (HPKE).
 //! This implementation uses compressed point format.
+//!
+//! # Security Features
+//! 
+//! - No direct byte access to keys (prevents tampering and leakage)
+//! - Constant-time operations where applicable
+//! - Proper validation of curve points
+//! - Secure key derivation using HKDF-SHA256
 
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p192 as ec;
@@ -18,18 +25,33 @@ use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 pub struct EcdhP192;
 
 /// Public key for ECDH-P192 KEM (compressed EC point)
+/// 
+/// # Security Note
+/// This type provides no direct byte access. Use the `to_bytes()` method
+/// for serialization and `from_bytes()` for deserialization.
 #[derive(Clone, Zeroize)]
 pub struct EcdhP192PublicKey([u8; ec::P192_POINT_COMPRESSED_SIZE]);
 
 /// Secret key for ECDH-P192 KEM (scalar value)
+/// 
+/// # Security Note
+/// This type provides no direct byte access to prevent key exposure.
+/// Use the `to_bytes()` method which returns a `Zeroizing` wrapper.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct EcdhP192SecretKey(SecretBuffer<{ ec::P192_SCALAR_SIZE }>);
 
 /// Shared secret from ECDH-P192 KEM
+/// 
+/// # Security Note
+/// This type provides no direct byte access to prevent secret leakage.
+/// Convert to application keys immediately after generation.
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct EcdhP192SharedSecret(ApiKey);
 
 /// Ciphertext for ECDH-P192 KEM (compressed ephemeral public key)
+/// 
+/// # Security Note
+/// This type provides no direct byte access to prevent tampering.
 #[derive(Clone)]
 pub struct EcdhP192Ciphertext([u8; ec::P192_POINT_COMPRESSED_SIZE]);
 
@@ -43,6 +65,10 @@ impl EcdhP192PublicKey {
     /// # Returns
     /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
     /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
+    /// 
+    /// # Security Note
+    /// This method validates that the point is on the curve and not the identity,
+    /// preventing invalid key attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec::P192_POINT_COMPRESSED_SIZE {
@@ -76,6 +102,9 @@ impl EcdhP192PublicKey {
     /// 
     /// # Returns
     /// The compressed point representation (25 bytes for P-192)
+    /// 
+    /// # Security Note
+    /// Public keys are not secret and can be shared freely.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
@@ -93,7 +122,8 @@ impl EcdhP192SecretKey {
     /// * `Err` if the bytes are invalid (wrong length or out of range)
     /// 
     /// # Security
-    /// The input bytes should be treated as sensitive material and zeroized after use
+    /// The input bytes should be treated as sensitive material and zeroized after use.
+    /// This method validates that the scalar is in the valid range [1, n-1].
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec::P192_SCALAR_SIZE {
@@ -124,7 +154,8 @@ impl EcdhP192SecretKey {
     /// The scalar value wrapped in `Zeroizing` (24 bytes for P-192)
     /// 
     /// # Security
-    /// The returned value will be automatically zeroized when dropped
+    /// The returned value will be automatically zeroized when dropped.
+    /// Handle with care and minimize the lifetime of the returned value.
     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
         Zeroizing::new(self.0.as_ref().to_vec())
     }
@@ -136,8 +167,23 @@ impl EcdhP192SharedSecret {
     /// 
     /// # Returns
     /// The derived shared secret bytes
+    /// 
+    /// # Security Note
+    /// The shared secret should be used immediately for key derivation
+    /// and not stored long-term. Consider wrapping in `Zeroizing` if needed.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.as_ref().to_vec()
+    }
+    
+    /// Export the shared secret to bytes with zeroization
+    /// 
+    /// # Returns
+    /// The derived shared secret bytes wrapped in `Zeroizing`
+    /// 
+    /// # Security Note
+    /// Use this method when you need automatic cleanup of the secret bytes.
+    pub fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.as_ref().to_vec())
     }
 }
 
@@ -151,6 +197,9 @@ impl EcdhP192Ciphertext {
     /// # Returns
     /// * `Ok(Ciphertext)` if the bytes represent a valid ephemeral key
     /// * `Err` if the bytes are invalid
+    /// 
+    /// # Security Note
+    /// Validates that the ephemeral key is a valid curve point.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec::P192_POINT_COMPRESSED_SIZE {
@@ -184,52 +233,15 @@ impl EcdhP192Ciphertext {
     /// 
     /// # Returns
     /// The compressed ephemeral public key (25 bytes for P-192)
+    /// 
+    /// # Security Note
+    /// Ciphertexts are public data and can be transmitted over insecure channels.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
 }
 
-// AsRef/AsMut implementations
-impl AsRef<[u8]> for EcdhP192PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP192PublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-impl AsRef<[u8]> for EcdhP192SecretKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP192SecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP192SharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP192SharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP192Ciphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP192Ciphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// No AsRef or AsMut implementations - this prevents direct byte access
 
 impl Kem for EcdhP192 {
     type PublicKey = EcdhP192PublicKey;
@@ -253,6 +265,7 @@ impl Kem for EcdhP192 {
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
     }
+    
     fn secret_key(keypair: &Self::KeyPair) -> Self::SecretKey {
         keypair.1.clone()
     }

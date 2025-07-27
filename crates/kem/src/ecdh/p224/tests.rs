@@ -28,8 +28,8 @@ fn test_ecdh_p224_kem_keypair_generation() {
         keypair_result.err()
     );
     let (pk, sk) = keypair_result.unwrap();
-    assert_eq!(pk.as_ref().len(), ec::P224_POINT_COMPRESSED_SIZE);
-    assert_eq!(sk.as_ref().len(), ec::P224_SCALAR_SIZE);
+    assert_eq!(pk.to_bytes().len(), ec::P224_POINT_COMPRESSED_SIZE);
+    assert_eq!(sk.to_bytes().len(), ec::P224_SCALAR_SIZE);
 }
 
 #[test]
@@ -45,9 +45,9 @@ fn test_ecdh_p224_kem_encapsulate_decapsulate_roundtrip() {
     let (ciphertext, shared_secret_sender) = encapsulate_result.unwrap();
 
     // Fix: Check for full ciphertext size (compressed point + auth tag)
-    assert_eq!(ciphertext.as_ref().len(), ec::P224_CIPHERTEXT_SIZE);
+    assert_eq!(ciphertext.to_bytes().len(), ec::P224_CIPHERTEXT_SIZE);
     assert_eq!(
-        shared_secret_sender.as_ref().len(),
+        shared_secret_sender.to_bytes().len(),
         ec::P224_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE
     );
 
@@ -60,8 +60,8 @@ fn test_ecdh_p224_kem_encapsulate_decapsulate_roundtrip() {
     let shared_secret_receiver = decapsulate_result.unwrap();
 
     assert_eq!(
-        shared_secret_sender.as_ref(),
-        shared_secret_receiver.as_ref(),
+        shared_secret_sender.to_bytes(),
+        shared_secret_receiver.to_bytes(),
         "Shared secrets do not match"
     );
 }
@@ -107,14 +107,15 @@ fn test_ecdh_p224_kem_ciphertext_structure() {
         EcdhP224::encapsulate(&mut OsRng, &pk_r).expect("Encapsulation failed");
 
     // Verify ciphertext structure: compressed point + auth tag
-    assert_eq!(ciphertext.as_ref().len(), ec::P224_CIPHERTEXT_SIZE);
+    assert_eq!(ciphertext.to_bytes().len(), ec::P224_CIPHERTEXT_SIZE);
     assert_eq!(
-        ciphertext.as_ref().len(),
+        ciphertext.to_bytes().len(),
         ec::P224_POINT_COMPRESSED_SIZE + ec::P224_TAG_SIZE
     );
 
     // Verify the tag portion has the expected length
-    let tag_portion = &ciphertext.as_ref()[ec::P224_POINT_COMPRESSED_SIZE..];
+    let ct_bytes = ciphertext.to_bytes();
+    let tag_portion = &ct_bytes[ec::P224_POINT_COMPRESSED_SIZE..];
     assert_eq!(tag_portion.len(), ec::P224_TAG_SIZE);
 }
 
@@ -129,7 +130,7 @@ fn test_p224_public_key_serialization() {
     let bytes = pk.to_bytes();
     assert_eq!(bytes.len(), 29);
     let restored = EcdhP224PublicKey::from_bytes(&bytes).unwrap();
-    assert_eq!(pk.as_ref(), restored.as_ref());
+    assert_eq!(pk.to_bytes(), restored.to_bytes());
 }
 
 #[test]
@@ -146,10 +147,10 @@ fn test_p224_secret_key_serialization() {
     
     // Generate same public key from both
     let pk1 = ec::scalar_mult_base_g(
-        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<28>(sk.as_ref())).unwrap()
+        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<28>(&sk.to_bytes())).unwrap()
     ).unwrap();
     let pk2 = ec::scalar_mult_base_g(
-        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<28>(restored.as_ref())).unwrap()
+        &ec::Scalar::from_secret_buffer(secret_buffer_from_slice::<28>(&restored.to_bytes())).unwrap()
     ).unwrap();
     assert_eq!(pk1.serialize_compressed(), pk2.serialize_compressed());
 }
@@ -164,7 +165,7 @@ fn test_p224_authenticated_ciphertext_serialization() {
     let bytes = ct.to_bytes();
     assert_eq!(bytes.len(), 45); // 29 + 16 byte tag
     let restored = EcdhP224Ciphertext::from_bytes(&bytes).unwrap();
-    assert_eq!(ct.as_ref(), restored.as_ref());
+    assert_eq!(ct.to_bytes(), restored.to_bytes());
     
     // Verify structure
     let pk_part = &bytes[..29];

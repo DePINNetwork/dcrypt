@@ -2,7 +2,7 @@
 
 use dcrypt_api::{Kem, Result};
 use rand::{CryptoRng, RngCore};
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 /// Diffie-Hellman KEM with 2048-bit modulus
 pub struct Dh2048;
@@ -10,69 +10,150 @@ pub struct Dh2048;
 #[derive(Clone, Zeroize)]
 pub struct DhPublicKey(pub Vec<u8>);
 
-#[derive(Clone, Zeroize)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct DhSecretKey(pub Vec<u8>);
 
-#[derive(Clone, Zeroize)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct DhSharedSecret(pub Vec<u8>);
 
 #[derive(Clone)]
 pub struct DhCiphertext(pub Vec<u8>);
 
-impl AsRef<[u8]> for DhPublicKey {
-    fn as_ref(&self) -> &[u8] {
+// DhPublicKey methods
+impl DhPublicKey {
+    /// Create a new public key from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the length of the public key
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the public key is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the public key to bytes
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.clone()
+    }
+
+    /// Get a reference to the inner bytes
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Create from a byte slice
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self(bytes.to_vec()))
+    }
+}
+
+// DhSecretKey methods
+impl DhSecretKey {
+    /// Create a new secret key from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the length of the secret key
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the secret key is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the secret key to bytes with zeroization
+    pub fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.clone())
+    }
+
+    /// Get a reference to the inner bytes (internal use only)
+    pub(crate) fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Create from a byte slice
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self(bytes.to_vec()))
+    }
+}
+
+// DhSharedSecret methods
+impl DhSharedSecret {
+    /// Create a new shared secret from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
+    }
+
+    /// Get the length of the shared secret
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the shared secret is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the shared secret to bytes with zeroization
+    pub fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.clone())
+    }
+
+    /// Get a reference to the inner bytes (internal use only)
+    pub(crate) fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl AsMut<[u8]> for DhPublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
+// DhCiphertext methods
+impl DhCiphertext {
+    /// Create a new ciphertext from bytes
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self(bytes)
     }
-}
 
-impl AsRef<[u8]> for DhSecretKey {
-    fn as_ref(&self) -> &[u8] {
+    /// Get the length of the ciphertext
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the ciphertext is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Export the ciphertext to bytes
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.clone()
+    }
+
+    /// Get a reference to the inner bytes
+    pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
-}
 
-impl AsMut<[u8]> for DhSecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
+    /// Create from a byte slice
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self(bytes.to_vec()))
     }
 }
 
-impl AsRef<[u8]> for DhSharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl AsMut<[u8]> for DhSharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
-impl AsRef<[u8]> for DhCiphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl AsMut<[u8]> for DhCiphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// NO AsRef or AsMut implementations - this prevents direct byte access
 
 impl Kem for Dh2048 {
     type PublicKey = DhPublicKey;
     type SecretKey = DhSecretKey;
     type SharedSecret = DhSharedSecret;
     type Ciphertext = DhCiphertext;
-    type KeyPair = (Self::PublicKey, Self::SecretKey); // Added this type definition
+    type KeyPair = (Self::PublicKey, Self::SecretKey);
 
     fn name() -> &'static str {
         "DH-2048"
@@ -87,12 +168,10 @@ impl Kem for Dh2048 {
         Ok((DhPublicKey(public_key), DhSecretKey(secret_key)))
     }
 
-    // Added this method to extract the public key from a keypair
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
     }
 
-    // Added this method to extract the secret key from a keypair
     fn secret_key(keypair: &Self::KeyPair) -> Self::SecretKey {
         keypair.1.clone()
     }

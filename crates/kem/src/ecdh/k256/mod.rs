@@ -1,4 +1,4 @@
-// File: crates/kem/src/ecdh/k256.rs
+// File: crates/kem/src/ecdh/k256/mod.rs
 //! ECDH-KEM with secp256k1 (K-256)
 //!
 //! This module provides a Key Encapsulation Mechanism (KEM) based on the
@@ -7,6 +7,13 @@
 //! for key derivation according to RFC 9180 (HPKE).
 //!
 //! This implementation uses compressed point format for optimal bandwidth efficiency.
+//! 
+//! # Security Features
+//! 
+//! - No direct byte access to keys or secrets (prevents tampering)
+//! - Constant-time operations where applicable
+//! - Proper validation of curve points
+//! - Secure key derivation using HKDF-SHA256
 
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::k256 as ec_k256;
@@ -44,6 +51,10 @@ impl EcdhK256PublicKey {
     /// # Returns
     /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
     /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
+    /// 
+    /// # Security Note
+    /// This method validates that the point is on the curve and not the identity,
+    /// preventing invalid key attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_k256::K256_POINT_COMPRESSED_SIZE {
@@ -77,6 +88,10 @@ impl EcdhK256PublicKey {
     /// 
     /// # Returns
     /// The compressed point representation (33 bytes for K-256)
+    /// 
+    /// # Security Note
+    /// Public keys are not secret, but care should be taken to verify
+    /// authenticity when receiving public keys from untrusted sources.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
@@ -94,7 +109,8 @@ impl EcdhK256SecretKey {
     /// * `Err` if the bytes are invalid (wrong length or out of range)
     /// 
     /// # Security
-    /// The input bytes should be treated as sensitive material and zeroized after use
+    /// The input bytes should be treated as sensitive material and zeroized after use.
+    /// This method validates that the scalar is in the valid range [1, n-1].
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_k256::K256_SCALAR_SIZE {
@@ -125,7 +141,19 @@ impl EcdhK256SecretKey {
     /// The scalar value wrapped in `Zeroizing` (32 bytes for K-256)
     /// 
     /// # Security
-    /// The returned value will be automatically zeroized when dropped
+    /// The returned value will be automatically zeroized when dropped.
+    /// Handle with extreme care and minimize the lifetime of the returned value.
+    /// 
+    /// # Example
+    /// ```no_run
+    /// # use dcrypt_kem::ecdh::EcdhK256SecretKey;
+    /// # use zeroize::Zeroizing;
+    /// # fn example(key: &EcdhK256SecretKey) {
+    /// let secret_bytes = key.to_bytes();
+    /// // Use secret_bytes immediately...
+    /// // Automatically zeroized when secret_bytes goes out of scope
+    /// # }
+    /// ```
     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
         Zeroizing::new(self.0.as_ref().to_vec())
     }
@@ -137,8 +165,35 @@ impl EcdhK256SharedSecret {
     /// 
     /// # Returns
     /// The derived shared secret bytes (32 bytes for K-256 with SHA-256)
+    /// 
+    /// # Security Note
+    /// The shared secret should be used immediately for key derivation
+    /// and not stored long-term. Consider using a KDF to derive
+    /// application-specific keys.
+    /// 
+    /// # Example
+    /// ```no_run
+    /// # use dcrypt_kem::ecdh::EcdhK256SharedSecret;
+    /// # fn example(shared_secret: &EcdhK256SharedSecret) {
+    /// let ss_bytes = shared_secret.to_bytes();
+    /// // Immediately derive application keys:
+    /// // let app_key = kdf(&ss_bytes, b"MyApp v1.0", 32);
+    /// # }
+    /// ```
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.as_ref().to_vec()
+    }
+    
+    /// Export the shared secret to bytes with zeroization
+    /// 
+    /// # Returns
+    /// The shared secret wrapped in `Zeroizing` for automatic cleanup
+    /// 
+    /// # Security Note
+    /// Use this method when you need to ensure the shared secret
+    /// is zeroized after use.
+    pub fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.as_ref().to_vec())
     }
 }
 
@@ -152,6 +207,10 @@ impl EcdhK256Ciphertext {
     /// # Returns
     /// * `Ok(Ciphertext)` if the bytes represent a valid ephemeral key
     /// * `Err` if the bytes are invalid
+    /// 
+    /// # Security Note
+    /// This validates the ephemeral public key to ensure it's a valid
+    /// point on the curve, preventing invalid ciphertext attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec_k256::K256_POINT_COMPRESSED_SIZE {
@@ -185,52 +244,17 @@ impl EcdhK256Ciphertext {
     /// 
     /// # Returns
     /// The compressed ephemeral public key (33 bytes for K-256)
+    /// 
+    /// # Security Note
+    /// Ciphertexts are public data and can be safely transmitted
+    /// over insecure channels.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
 }
 
-// AsRef/AsMut implementations
-impl AsRef<[u8]> for EcdhK256PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhK256PublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-impl AsRef<[u8]> for EcdhK256SecretKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhK256SecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhK256SharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhK256SharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhK256Ciphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhK256Ciphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
+// NO AsRef or AsMut implementations - this prevents direct byte access
+// and forces use of explicit to_bytes() methods with proper documentation
 
 impl Kem for EcdhK256 {
     type PublicKey = EcdhK256PublicKey;

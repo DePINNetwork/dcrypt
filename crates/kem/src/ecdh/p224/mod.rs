@@ -1,10 +1,18 @@
-// File: crates/kem/src/ecdh/p224.rs
+// File: crates/kem/src/ecdh/p224/mod.rs
 //! ECDH-KEM with NIST P-224
 //!
 //! This module provides a Key Encapsulation Mechanism (KEM) based on the
 //! Elliptic Curve Diffie-Hellman (ECDH) protocol using the NIST P-224 curve.
 //! Uses HKDF-SHA256 for key derivation and compressed points for ciphertexts.
 //! Includes authentication via HMAC-SHA256 tags to ensure key confirmation.
+//!
+//! # Security Features
+//! 
+//! - No mutable access to keys or secrets (prevents tampering)
+//! - No direct byte access (prevents accidental exposure)
+//! - Authentication tags prevent ciphertext substitution attacks
+//! - Constant-time operations where applicable
+//! - Proper validation of curve points
 
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p224 as ec; // Use P-224 algorithms
@@ -13,7 +21,7 @@ use dcrypt_algorithms::mac::hmac::Hmac;
 use dcrypt_api::{error::Error as ApiError, Kem, Key as ApiKey, Result as ApiResult};
 use dcrypt_common::security::SecretBuffer;
 use rand::{CryptoRng, RngCore};
-use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing}; // KDF version from parent ecdh module
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 /// ECDH KEM with P-224 curve
 pub struct EcdhP224;
@@ -44,6 +52,10 @@ impl EcdhP224PublicKey {
     /// # Returns
     /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
     /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
+    /// 
+    /// # Security Note
+    /// This method validates that the point is on the curve and not the identity,
+    /// preventing invalid key attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec::P224_POINT_COMPRESSED_SIZE {
@@ -77,8 +89,32 @@ impl EcdhP224PublicKey {
     /// 
     /// # Returns
     /// The compressed point representation (29 bytes for P-224)
+    /// 
+    /// # Security Note
+    /// Public keys are not secret and can be shared freely.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
+    }
+    
+    /// Validate this public key
+    /// 
+    /// # Returns
+    /// * `Ok(())` if the key is valid
+    /// * `Err` if the key is invalid (identity point or not on curve)
+    pub fn validate(&self) -> ApiResult<()> {
+        // Re-validate by attempting to deserialize
+        let point = ec::Point::deserialize_compressed(&self.0)
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        if point.is_identity() {
+            return Err(ApiError::InvalidKey {
+                context: "validate_public_key",
+                #[cfg(feature = "std")]
+                message: "Public key is the identity point".to_string(),
+            });
+        }
+        
+        Ok(())
     }
 }
 
@@ -94,7 +130,8 @@ impl EcdhP224SecretKey {
     /// * `Err` if the bytes are invalid (wrong length or out of range)
     /// 
     /// # Security
-    /// The input bytes should be treated as sensitive material and zeroized after use
+    /// The input bytes should be treated as sensitive material and zeroized after use.
+    /// This method validates that the scalar is in the valid range [1, n-1].
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec::P224_SCALAR_SIZE {
@@ -125,9 +162,22 @@ impl EcdhP224SecretKey {
     /// The scalar value wrapped in `Zeroizing` (28 bytes for P-224)
     /// 
     /// # Security
-    /// The returned value will be automatically zeroized when dropped
+    /// The returned value will be automatically zeroized when dropped.
+    /// Handle with care and minimize the lifetime of the returned value.
     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
         Zeroizing::new(self.0.as_ref().to_vec())
+    }
+    
+    /// Validate this secret key
+    /// 
+    /// # Returns
+    /// * `Ok(())` if the key is valid
+    /// * `Err` if the key is invalid (zero or out of range)
+    pub fn validate(&self) -> ApiResult<()> {
+        // Validation happens during scalar creation
+        let _ = ec::Scalar::from_secret_buffer(self.0.clone())
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        Ok(())
     }
 }
 
@@ -137,8 +187,13 @@ impl EcdhP224SharedSecret {
     /// 
     /// # Returns
     /// The derived shared secret bytes
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.0.as_ref().to_vec()
+    /// 
+    /// # Security Note
+    /// The shared secret should be used immediately for key derivation
+    /// and not stored long-term. Consider using a KDF to derive
+    /// application-specific keys.
+    pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
+        Zeroizing::new(self.0.as_ref().to_vec())
     }
 }
 
@@ -152,6 +207,9 @@ impl EcdhP224Ciphertext {
     /// # Returns
     /// * `Ok(Ciphertext)` if the bytes represent a valid authenticated ciphertext
     /// * `Err` if the bytes are invalid
+    /// 
+    /// # Security Note
+    /// The authentication tag is verified during decapsulation, not here.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
         // Validate length
         if bytes.len() != ec::P224_CIPHERTEXT_SIZE {
@@ -189,47 +247,31 @@ impl EcdhP224Ciphertext {
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
-}
-
-// AsRef/AsMut implementations
-impl AsRef<[u8]> for EcdhP224PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP224PublicKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-impl AsRef<[u8]> for EcdhP224SecretKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP224SecretKey {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP224SharedSecret {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-impl AsMut<[u8]> for EcdhP224SharedSecret {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-impl AsRef<[u8]> for EcdhP224Ciphertext {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl AsMut<[u8]> for EcdhP224Ciphertext {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
+    
+    /// Validate this ciphertext
+    /// 
+    /// # Returns
+    /// * `Ok(())` if the ciphertext format is valid
+    /// * `Err` if the ciphertext is invalid
+    /// 
+    /// # Note
+    /// This only validates the format. Authentication tag verification happens during decapsulation.
+    pub fn validate(&self) -> ApiResult<()> {
+        // Validate the ephemeral public key part
+        let pk_bytes = &self.0[..ec::P224_POINT_COMPRESSED_SIZE];
+        let point = ec::Point::deserialize_compressed(pk_bytes)
+            .map_err(|e| ApiError::from(KemError::from(e)))?;
+        
+        if point.is_identity() {
+            return Err(ApiError::InvalidCiphertext {
+                context: "validate_ciphertext",
+                #[cfg(feature = "std")]
+                message: "Ciphertext contains identity point".to_string(),
+            });
+        }
+        
+        // Note: We don't validate the tag here - that happens during decapsulation
+        Ok(())
     }
 }
 
@@ -275,6 +317,7 @@ impl Kem for EcdhP224 {
     fn public_key(keypair: &Self::KeyPair) -> Self::PublicKey {
         keypair.0.clone()
     }
+    
     fn secret_key(keypair: &Self::KeyPair) -> Self::SecretKey {
         keypair.1.clone()
     }
