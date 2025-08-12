@@ -1,70 +1,102 @@
-# Kyber KEM (`kem/kyber`)
+# CRYSTALS-Kyber KEM
 
-This module is intended to implement the Kyber Key Encapsulation Mechanism. Kyber is a lattice-based cryptographic scheme chosen by the U.S. National Institute of Standards and Technology (NIST) for standardization as part of the Post-Quantum Cryptography (PQC) project. It is designed to be secure against attacks by both classical and quantum computers.
+## CRYSTALS-Kyber: A NIST Standard for Post-Quantum KEM
 
-**Note on Current Status:** The implementation in the provided codebase snapshot (`kyber/*.rs`) is a placeholder. It defines the necessary structs and parameter sets for different Kyber variants (Kyber512, Kyber768, Kyber1024) and implements the `api::Kem` trait with dummy logic. This documentation describes the intended functionality based on this structure and Kyber's specifications. The actual cryptographic operations are not yet implemented in the snapshot.
+This module provides a pure Rust implementation of the **CRYSTALS-Kyber** Key Encapsulation Mechanism (KEM), which was selected by the U.S. National Institute of Standards and Technology (NIST) as the primary standard for post-quantum public-key encryption and key establishment, now formally published as **FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism (ML-KEM)**.
 
-## Kyber Variants
+Kyber is designed to be secure against attacks from both classical and future quantum computers. Its security is based on the hardness of solving learning with errors problems over module lattices (Module-LWE).
 
-Kyber comes in several parameter sets, offering different security levels:
+This implementation provides IND-CCA2 security by converting the core CPA-secure Public Key Encryption (PKE) scheme into a secure KEM using a variant of the **Fujisaki-Okamoto (FO) transform**. This process involves cryptographic hashing (SHA3-256 and SHA3-512) and re-encryption checks to protect against chosen-ciphertext attacks.
 
-1.  **`Kyber512` (`kyber512.rs`)**:
-    *   **NIST Security Level**: 1 (comparable to AES-128).
-    *   **Parameter `k`**: 2.
-    *   Key sizes, ciphertext size, and other parameters are defined in `dcrypt-params/src/pqc/kyber.rs` (`KYBER512_SIZES` and `KYBER512`).
+### Features
 
-2.  **`Kyber768` (`kyber768.rs`)**:
-    *   **NIST Security Level**: 3 (comparable to AES-192).
-    *   **Parameter `k`**: 3.
-    *   Key sizes and other parameters are defined in `dcrypt-params` (`KYBER768_SIZES` and `KYBER768`).
+-   **NIST Standard:** Implements the algorithm selected for FIPS 203, ensuring forward-compatibility and adherence to federal standards.
+-   **Quantum-Resistant:** Provides security against attacks from large-scale quantum computers, addressing the "harvest now, decrypt later" threat.
+-   **IND-CCA2 Security:** Achieves the standard security notion for KEMs, protecting against active attackers.
+-   **Three Security Levels:** Offers clear trade-offs between security, performance, and key/ciphertext sizes:
+    -   `Kyber512`: NIST Security Level 1 (comparable to AES-128).
+    -   `Kyber768`: NIST Security Level 3 (comparable to AES-192).
+    -   `Kyber1024`: NIST Security Level 5 (comparable to AES-256).
+-   **Type Safety:** Uses distinct, strongly-typed wrappers for public keys (`KyberPublicKey`), secret keys (`KyberSecretKey`), and ciphertexts (`KyberCiphertext`) to prevent accidental misuse.
+-   **Secure Memory Handling:** All secret key and shared secret materials are held in `Zeroizing` wrappers that automatically wipe the data from memory when they go out of scope.
 
-3.  **`Kyber1024` (`kyber1024.rs`)**:
-    *   **NIST Security Level**: 5 (comparable to AES-256).
-    *   **Parameter `k`**: 4.
-    *   Key sizes and other parameters are defined in `dcrypt-params` (`KYBER1024_SIZES` and `KYBER1024`).
+## Security Levels
 
-## Core Components and Types (`common.rs`)
+The three variants of Kyber correspond to different NIST PQC security levels, offering a balance between security and performance/size.
 
--   **`KyberBase<const K: usize>`**: A generic base struct intended to be parameterized by `K` (which corresponds to Kyber's `k` parameter: 2, 3, or 4). Type aliases like `Kyber512 = KyberBase<2>` are used.
--   **`KyberPublicKey(Vec<u8>)`**: Wrapper for Kyber public keys.
--   **`KyberSecretKey(Vec<u8>)`**: Wrapper for Kyber secret keys (implements `Zeroize`).
--   **`KyberSharedSecret(api::Key)`**: Wrapper for the derived shared secret (implements `Zeroize`).
--   **`KyberCiphertext(Vec<u8>)`**: Wrapper for Kyber ciphertexts.
--   **`KyberSizes` Struct**: Holds size parameters (public key, secret key, ciphertext, shared secret) for different Kyber variants. These are sourced from `dcrypt-params`.
--   **Validation Utilities**:
-    *   `validate_kyber_parameters<K>()`: Checks if `K` is a valid Kyber parameter (2, 3, or 4).
-    *   `get_sizes_for_k<K>()`: Returns the `KyberSizes` struct for a given `K`.
+| Struct Name | NIST Level | Comparable Symmetric Security | Public Key Size | Secret Key Size | Ciphertext Size |
+|:---|:---|:---|:---|:---|:---|
+| `Kyber512` | 1 | AES-128 | 800 bytes | 1632 bytes | 768 bytes |
+| `Kyber768` | 3 | AES-192 | 1184 bytes | 2400 bytes | 1088 bytes |
+| `Kyber1024`| 5 | AES-256 | 1568 bytes | 3168 bytes | 1568 bytes |
 
-## `api::Kem` Trait Implementation
+All variants produce a **32-byte shared secret**.
 
-Each Kyber variant (`Kyber512`, `Kyber768`, `Kyber1024`) implements the `api::Kem` trait:
+## How It Works
 
--   `name()`: Returns the specific variant name (e.g., "Kyber-768").
--   `keypair()`:
-    *   Validates the Kyber parameter `K`.
-    *   Retrieves size parameters using `get_sizes_for_k`.
-    *   **Placeholder Logic**: Fills byte vectors with random data from the provided RNG for public and secret keys, according to the retrieved sizes.
-    *   Includes a placeholder validation to check if generated keys are non-zero.
--   `public_key()`: Extracts the `KyberPublicKey` from the keypair.
--   `secret_key()`: Extracts the `KyberSecretKey` from the keypair.
--   `encapsulate()`:
-    *   Retrieves size parameters.
-    *   Validates the provided public key's length and performs placeholder content validation.
-    *   **Placeholder Logic**: Fills byte vectors with random data for the ciphertext and shared secret.
--   `decapsulate()`:
-    *   Retrieves size parameters.
-    *   Validates the lengths of the provided secret key and ciphertext.
-    *   Performs placeholder content validation on the secret key and ciphertext.
-    *   **Placeholder Logic**: Returns a zero-filled shared secret of the correct size.
+The Kyber KEM is built in two main layers:
 
-## Security Basis
+1.  **CPA-Secure PKE (`cpa_pke.rs`)**: The core of Kyber is a Public Key Encryption scheme that is secure against Chosen-Plaintext Attacks (CPA).
+    -   **Key Generation**: A secret key `s` (a vector of small polynomials) and an error vector `e` are generated. The public key `t` is computed as `t = A*s + e`, where `A` is a public matrix derived from a seed `rho`.
+    -   **Encryption**: A message `m` is encrypted by generating an ephemeral secret `r` and computing `u = A^T*r + e1` and `v = t^T*r + e2 + m`, where `e1` and `e2` are fresh error polynomials. The ciphertext is `(u, v)`.
+    -   **Decryption**: The recipient uses their secret key `s` to compute `m' = v - s^T*u`, which removes the masking terms and recovers the message `m`.
 
-Kyber's security is based on the hardness of solving the Learning With Errors (LWE) problem over module lattices. It is designed to be resistant to attacks from quantum computers.
+2.  **IND-CCA2 Secure KEM (`ind_cca.rs`)**: To achieve security against Chosen-Ciphertext Attacks (CCA2), the CPA scheme is transformed into a KEM using the Fujisaki-Okamoto transform.
+    -   **Encapsulation**:
+        1.  A random message `m` is generated.
+        2.  `m` and the recipient's public key are hashed to derive a symmetric key `K_bar` and randomness `r`.
+        3.  The CPA scheme encrypts `m` using this derived randomness `r`, producing a ciphertext `ct`.
+        4.  The final shared secret `K` is derived by hashing `K_bar` and a hash of the ciphertext `ct`.
+        5.  The function returns `(ct, K)`.
+    -   **Decapsulation**:
+        1.  The recipient uses their private key to decrypt the ciphertext `ct` and recover the original message `m'`.
+        2.  The recipient re-runs the encapsulation steps: hashing `m'` to derive `K_bar'` and `r'`, and then re-encrypting `m'` with `r'` to get `ct'`.
+        3.  The re-encrypted `ct'` is compared to the received `ct` in constant time. If they do not match, the decapsulation is invalid.
+        4.  To prevent leaking information via errors, the KEM uses **implicit rejection**: if the check fails, it computes the shared secret using a pre-generated "fallback" value `s_fo` stored in the secret key. Otherwise, it uses the correctly derived `K_bar'`. This ensures that a valid shared secret is always returned, but only the correct one if the ciphertext was valid.
 
-## Intended Functionality (Once Fully Implemented)
+## Usage Example
 
--   **Key Generation**: Would involve generating polynomial vectors and matrices with small coefficients, and performing lattice-based computations to derive the public and secret key components.
--   **Encapsulation**: Would involve generating ephemeral secrets, performing polynomial arithmetic (multiplication, addition), adding error terms sampled from a specific distribution, and compressing the resulting ciphertext components.
--   **Decapsulation**: Would involve polynomial arithmetic using the secret key to remove the error terms from the ciphertext and recover the shared secret, followed by a re-encryption step for chosen-ciphertext (CCA2) security to verify the ciphertext's validity.
+All Kyber variants implement the `dcrypt::api::Kem` trait.
 
-The current structure provides a clear skeleton for these future implementations, leveraging the DCRYPT API traits and parameter constants from `dcrypt-params`.
+```rust
+use dcrypt::api::Kem;
+use dcrypt::kem::kyber::Kyber768; // Using Level 3 security
+use rand::rngs::OsRng;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut rng = OsRng;
+
+    // 1. Recipient generates a Kyber key pair.
+    let (public_key, secret_key) = Kyber768::keypair(&mut rng)?;
+
+    println!("Public Key Size: {} bytes", public_key.as_bytes().len());
+    println!("Secret Key Size: {} bytes", secret_key.len());
+
+    // 2. Sender receives the public key and encapsulates a shared secret.
+    let (ciphertext, shared_secret_sender) = Kyber768::encapsulate(&mut rng, &public_key)?;
+
+    println!("Ciphertext Size: {} bytes", ciphertext.len());
+    println!("Shared Secret Size: {} bytes", shared_secret_sender.len());
+
+    // 3. Sender transmits the ciphertext to the recipient.
+
+    // 4. Recipient uses their secret key to decapsulate the ciphertext.
+    let shared_secret_recipient = Kyber768::decapsulate(&secret_key, &ciphertext)?;
+
+    // 5. Both parties now have the same 32-byte shared secret.
+    assert_eq!(
+        &*shared_secret_sender.to_bytes_zeroizing(),
+        &*shared_secret_recipient.to_bytes_zeroizing()
+    );
+
+    println!("\nSuccessfully established a shared secret with Kyber-768!");
+
+    Ok(())
+}
+```
+
+## Security Notes
+
+-   **Secret Key Management**: The `KyberSecretKey` struct contains highly sensitive material. It is designed to be zeroized on drop. Avoid cloning it unnecessarily and minimize its lifetime.
+-   **Side-Channel Resistance**: This implementation relies on the underlying `dcrypt-algorithms` crate for constant-time polynomial operations where applicable, which is critical for preventing timing attacks.
+-   **Randomness**: The security of Kyber, like all KEMs, depends on a cryptographically secure random number generator (CSPRNG). Always use a trusted source of randomness, such as `rand::rngs::OsRng`.

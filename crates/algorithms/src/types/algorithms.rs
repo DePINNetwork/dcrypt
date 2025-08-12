@@ -133,6 +133,19 @@ impl AsymmetricAlgorithm for P521 {
     }
 }
 
+/// BLS12-381 pairing-friendly curve
+pub enum Bls12_381 {}
+
+impl AsymmetricAlgorithm for Bls12_381 {
+    const PUBLIC_KEY_SIZE: usize = 48; // G1 compressed
+    const SECRET_KEY_SIZE: usize = 32; // Scalar field element
+    const ALGORITHM_ID: &'static str = "BLS12-381";
+
+    fn name() -> String {
+        Self::ALGORITHM_ID.to_string()
+    }
+}
+
 // =============================================================================
 // Type Aliases
 // =============================================================================
@@ -192,6 +205,12 @@ pub type P521PublicKeyUncompressed = AsymmetricPublicKey<P521, 133>;
 
 /// P-521 public key (compressed 528-bit/67-byte key size).
 pub type P521PublicKeyCompressed = AsymmetricPublicKey<P521, 67>;
+
+/// BLS12-381 secret key (a scalar field element).
+pub type Bls12_381SecretKey = AsymmetricSecretKey<Bls12_381, 32>;
+
+/// BLS12-381 public key (a compressed G1 point).
+pub type Bls12_381PublicKey = AsymmetricPublicKey<Bls12_381, 48>;
 
 /* Note on compressed vs uncompressed public keys:
  *

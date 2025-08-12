@@ -1,118 +1,150 @@
-# Block Ciphers and Modes (`algorithms/block`)
+# Block Ciphers and Modes of Operation
 
-This module provides implementations of block cipher algorithms and their modes of operation. Block ciphers are fundamental symmetric key cryptographic primitives that encrypt data in fixed-size blocks.
+## Overview
 
-## Implemented Block Ciphers
+This module provides implementations of block ciphers and common modes of operation. The primary focus is on security, correctness, and a type-safe API that leverages Rust's trait system to create a flexible and secure foundation for symmetric encryption.
 
-1.  **AES (Advanced Encryption Standard) (`aes`)**
-    *   **Standard**: FIPS 197
-    *   **Variants**:
-        *   `Aes128`: 128-bit key, 128-bit block.
-        *   `Aes192`: 192-bit key, 128-bit block.
-        *   `Aes256`: 256-bit key, 128-bit block.
-    *   **Security Notes**:
-        *   Implementations aim for constant-time behavior to mitigate timing side-channel attacks.
-        *   Uses bitsliced S-box implementations instead of table lookups for software implementations.
-        *   Key expansion is performed internally.
-    *   **Core Structs**: `Aes128`, `Aes192`, `Aes256`.
+The components in this module are designed to be constant-time where appropriate to mitigate timing-based side-channel attacks.
 
-## Modes of Operation (`modes`)
+## Core Concepts & Design
 
-Block ciphers themselves can only encrypt a single block of data matching their block size. Modes of operation define how to securely encrypt variable-length messages using a block cipher.
+The module is built around a few key abstractions:
 
-1.  **CBC (Cipher Block Chaining) (`cbc`)**
-    *   **Description**: Each block of plaintext is XORed with the previous ciphertext block before being encrypted. An Initialization Vector (IV) is used for the first block.
-    *   **Security Notes**:
-        *   Requires an unpredictable IV for each encryption.
-        *   Encryption is sequential; decryption can be parallelized.
-        *   Susceptible to padding oracle attacks if padding is not handled correctly (this implementation requires plaintext to be pre-padded to a multiple of the block size).
-    *   **Core Struct**: `Cbc<B: BlockCipher>`
+*   **`BlockCipher` Trait:** This is the fundamental trait for any block cipher implementation. It defines the core operations of encrypting and decrypting a single block of data. All ciphers, like `Aes128`, implement this trait.
+*   **`BlockCipherMode` Traits:** These traits define how a block cipher should be used to securely encrypt messages longer than a single block. Implementations like `Cbc` and `Ctr` are generic over any type that satisfies the `BlockCipher` trait.
+*   **Security First:** The underlying AES implementation is designed to be side-channel resistant. It avoids data-dependent table lookups by using a bitsliced S-box and ensures that operations on secret data are performed in constant time.
+*   **Secure Memory Handling:** Keys and other sensitive data are handled using secure memory wrappers that are automatically zeroed when they are no longer needed, preventing accidental data leakage.
 
-2.  **CTR (Counter Mode) (`ctr`)**
-    *   **Description**: Turns a block cipher into a stream cipher. It encrypts successive values of a "counter" (derived from a nonce and a block counter) to produce a keystream, which is then XORed with the plaintext.
-    *   **Security Notes**:
-        *   Requires a unique nonce for each message encrypted with the same key. The counter part ensures each block within a message uses a unique keystream block.
-        *   Encryption and decryption can be parallelized.
-        *   Does not require padding.
-        *   Provides no message integrity on its own; typically used with a MAC (e.g., in AES-GCM).
-    *   **Core Struct**: `Ctr<B: BlockCipher>`
+## Available Primitives
 
-## Key Traits and Types
+### Block Ciphers
 
--   **`BlockCipher` Trait (`algorithms::block::BlockCipher`)**:
-    *   Defines the interface for block cipher implementations.
-    *   Associated types: `Algorithm` (marker for key/block sizes), `Key`.
-    *   Methods: `new`, `encrypt_block`, `decrypt_block`, `generate_key`.
--   **`CipherAlgorithm` Trait (`algorithms::block::CipherAlgorithm`)**:
-    *   A marker trait providing compile-time constants for `KEY_SIZE`, `BLOCK_SIZE`, and algorithm `name`.
--   **`algorithms::types::SymmetricKey<A, N>`**: Used for type-safe symmetric keys.
--   **`algorithms::types::Nonce<N>`**: Used for type-safe nonces/IVs, with compatibility traits like `CbcCompatible` and `AesCtrCompatible`.
--   `common::security::SecretBuffer`: Used internally for secure storage of round keys in AES.
+*   **AES (Advanced Encryption Standard)**
+    *   `Aes128`: AES with a 128-bit key.
+    *   `Aes192`: AES with a 192-bit key.
+    *   `Aes256`: AES with a 256-bit key.
 
-## Usage Example (AES-128-CTR)
+### Modes of Operation
+
+*   **CBC (Cipher Block Chaining):** A standard mode of operation that chains blocks together. Requires padding for messages that are not a multiple of the block size.
+*   **CTR (Counter Mode):** A mode that turns a block cipher into a stream cipher. It does not require padding and is suitable for parallel processing.
+
+> **Note on Authenticated Modes:** Authenticated Encryption with Associated Data (AEAD) modes like AES-GCM are available in the `dcrypt::algorithms::aead` module, as they provide both encryption and authentication.
+
+## Usage Examples
+
+### Example 1: Basic AES Block Encryption
+
+This example demonstrates the direct use of the `BlockCipher` trait to encrypt and decrypt a single 16-byte block.
 
 ```rust
-use dcrypt_algorithms::block::aes::Aes128;
-use dcrypt_algorithms::block::modes::ctr::{Ctr, CounterPosition};
-use dcrypt_algorithms::block::BlockCipher; // algorithms internal trait
-use dcrypt_algorithms::types::{SymmetricKey, Nonce};
-use dcrypt_algorithms::types::algorithms::Aes128 as Aes128Algorithm; // Marker
-use dcrypt_algorithms::error::Result;
-use rand::rngs::OsRng; // For key/nonce generation
+use dcrypt::algorithms::block::{Aes128, BlockCipher};
+use dcrypt::algorithms::types::SecretBytes;
 
-fn aes128_ctr_example() -> Result<()> {
-    // Generate key and nonce
-    let mut key_bytes = [0u8; 16];
-    OsRng.fill_bytes(&mut key_bytes);
-    let key = SymmetricKey::<Aes128Algorithm, 16>::new(key_bytes);
+// AES-128 uses a 16-byte key.
+let key_bytes = [0x42; 16];
+let key = SecretBytes::new(key_bytes);
+let aes = Aes128::new(&key);
 
-    let mut nonce_bytes = [0u8; 16]; // AES-CTR nonce can be full block size
-    OsRng.fill_bytes(&mut nonce_bytes);
-    let nonce = Nonce::<16>::new(nonce_bytes); // AES block size is 16
+let mut block = [0u8; 16]; // A single 16-byte block of data.
+let original_block = block;
 
-    // Create AES-128 cipher instance
-    let aes_cipher = Aes128::new(&key);
+// Encrypt the block in place.
+aes.encrypt_block(&mut block).unwrap();
+println!("Encrypted Block: {:?}", block);
 
-    // Create CTR mode instance
-    // For AES-CTR, the counter is typically in the last 4 bytes of the nonce-counter block.
-    // The nonce fills the first 12 bytes.
-    let mut ctr_cipher = Ctr::with_counter_params(
-        aes_cipher,
-        &nonce, // Pass the full 16-byte Nonce here
-        CounterPosition::Postfix, // Counter in the last few bytes
-        4                         // Counter is 4 bytes long
-    )?;
+// Decrypt the block in place.
+aes.decrypt_block(&mut block).unwrap();
+println!("Decrypted Block: {:?}", block);
 
-
-    let mut message = *b"This is a test message for CTR mode."; // 32 bytes, 2 blocks
-    println!("Original:  {:?}", message);
-
-    // Encrypt
-    ctr_cipher.encrypt(&mut message)?;
-    println!("Encrypted: {:?}", message);
-
-    // Reset CTR mode for decryption (or create a new instance)
-    // Must use the same nonce and initial counter value.
-    // Here, seeking to block 0 effectively resets the counter for decryption.
-    ctr_cipher.seek(0); // Seek to the beginning of the stream
-    ctr_cipher.decrypt(&mut message)?;
-    println!("Decrypted: {:?}", message);
-
-    assert_eq!(message, *b"This is a test message for CTR mode.");
-
-    Ok(())
-}
-
-// fn main() {
-//     aes128_ctr_example().expect("AES-128-CTR example failed");
-// }
+assert_eq!(block, original_block);
 ```
 
-## Security Considerations
+### Example 2: Using CBC Mode
 
--   **Key Secrecy**: Symmetric keys must be kept secret.
--   **IV/Nonce Management**:
--   For CBC mode, IVs must be unpredictable and unique for each encryption with the same key.
--   For CTR mode, nonces must be unique for each message encrypted with the same key. Reusing a nonce/key pair in CTR mode is catastrophic, leading to keystream reuse and loss of confidentiality.
--   **Padding (CBC)**: Plaintext for CBC mode must be padded to a multiple of the block size. This implementation requires the caller to handle padding. Improper padding removal can lead to padding oracle attacks.
--   **Integrity**: CBC and CTR modes, by themselves, do not provide message integrity. If integrity is required, these modes should be combined with a Message Authentication Code (MAC), or an AEAD mode like AES-GCM should be used.
+This example shows how to use AES-128 within the CBC mode of operation to encrypt a longer message.
+
+```rust
+use dcrypt::algorithms::block::{Aes128, BlockCipher, Cbc};
+use dcrypt::algorithms::types::{Nonce, SecretBytes};
+
+// Setup key and initialization vector (IV).
+let key_bytes = [0x42; 16];
+let key = SecretBytes::new(key_bytes);
+let iv_bytes = [0x24; 16];
+let iv = Nonce::<16>::new(iv_bytes); // CBC's IV must match the block size.
+
+// Plaintext must be a multiple of the block size (16 bytes for AES).
+// In a real application, you would apply padding (e.g., PKCS#7).
+let plaintext = b"This is a sample text for CBC!!"; // 32 bytes
+assert_eq!(plaintext.len() % 16, 0);
+
+// Create the cipher and wrap it in CBC mode.
+let cipher = Aes128::new(&key);
+let cbc_encrypt = Cbc::new(cipher, &iv).unwrap();
+
+// Encrypt the data.
+let ciphertext = cbc_encrypt.encrypt(plaintext).unwrap();
+println!("CBC Ciphertext: {:?}", ciphertext);
+
+// For decryption, create a new CBC instance.
+let cipher_decrypt = Aes128::new(&key);
+let cbc_decrypt = Cbc::new(cipher_decrypt, &iv).unwrap();
+
+// Decrypt the data.
+let decrypted_text = cbc_decrypt.decrypt(&ciphertext).unwrap();
+
+assert_eq!(decrypted_text, plaintext);
+```
+
+### Example 3: Using CTR Mode
+
+This example demonstrates using AES-128 in CTR mode, which acts like a stream cipher.
+
+```rust
+use dcrypt::algorithms::block::{Aes128, BlockCipher, Ctr};
+use dcrypt::algorithms::types::{Nonce, SecretBytes};
+
+// Setup key and nonce.
+let key_bytes = [0x42; 16];
+let key = SecretBytes::new(key_bytes);
+let nonce_bytes = [0x24; 12];
+let nonce = Nonce::<12>::new(nonce_bytes); // CTR nonces are typically shorter than the block size.
+
+// Plaintext does not need to be a multiple of the block size.
+let plaintext = b"This is a sample text for CTR mode.";
+
+// Create the cipher and wrap it in CTR mode.
+let cipher = Aes128::new(&key);
+let mut ctr_encrypt = Ctr::new(cipher, &nonce).unwrap();
+
+// Encrypt the data.
+let mut buffer = plaintext.to_vec();
+ctr_encrypt.encrypt(&mut buffer).unwrap();
+println!("CTR Ciphertext: {:?}", buffer);
+
+// Decryption is the same operation.
+let cipher_decrypt = Aes128::new(&key);
+let mut ctr_decrypt = Ctr::new(cipher_decrypt, &nonce).unwrap();
+ctr_decrypt.decrypt(&mut buffer).unwrap();
+
+assert_eq!(buffer, plaintext);
+```
+
+## Security Features
+
+*   **Constant-Time AES:** The AES implementation avoids common sources of timing side-channels:
+    *   **Bitsliced S-Box:** Instead of using lookup tables which can be vulnerable to cache-timing attacks, a "bitsliced" implementation is used, performing the S-Box transformation through constant-time arithmetic operations.
+    *   **Branchless Arithmetic:** Galois Field multiplication (`gf_mul`) and other sensitive operations are implemented to avoid secret-dependent branches.
+*   **Secure Memory Handling:** Keys (`SecretBytes`) and internal round keys (`SecretBuffer`) are stored in memory wrappers that automatically and securely zero their contents when they are dropped, minimizing the risk of secret data leakage.
+*   **Type Safety:** The generic structure of the modes of operation ensures that they can only be used with a valid `BlockCipher` implementation. The use of the `Nonce` type adds clarity and helps prevent misuse of initialization vectors.
+
+## Module Structure
+
+The `block` module is organized as follows:
+
+*   `src/block/mod.rs`: Defines the core traits (`BlockCipher`, `BlockCipherMode`, etc.) and re-exports the main components.
+*   `src/block/aes/`: Contains the implementation of the AES algorithm (AES-128, AES-192, AES-256).
+*   `src/block/modes/`: Contains implementations for the different modes of operation.
+    *   `cbc/`: Cipher Block Chaining mode.
+    *   `ctr/`: Counter mode.

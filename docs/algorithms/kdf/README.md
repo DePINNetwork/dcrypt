@@ -1,126 +1,183 @@
-# Key Derivation Functions (`algorithms/kdf`)
+# Key Derivation Functions (KDFs)
 
-This module implements various Key Derivation Functions (KDFs). KDFs are used to derive one or more secret keys from a master secret or password. They are essential for generating cryptographic keys with specific properties from various input materials.
+## Overview
 
-The implementations focus on adhering to standards and providing secure, configurable options.
+This module provides implementations of various Key Derivation Functions (KDFs) and Password Hashing Functions. These primitives are essential for securely deriving cryptographic keys from secrets or hashing user passwords for storage.
 
-## Implemented KDFs
+The design of this module emphasizes:
+*   **Security:** Implementations are designed to be constant-time where applicable (e.g., during hash verification) and use secure memory types to prevent accidental leakage of sensitive information.
+*   **Type Safety:** Leveraging Rust's trait system, KDFs are generic over the underlying hash functions, allowing for compile-time guarantees of correctness.
+*   **Ergonomics:** A fluent builder pattern is provided for a clear and less error-prone API.
+*   **Compliance:** Algorithms are implemented according to their respective RFCs and standards.
 
-1.  **Argon2 (`argon2`)**
-    *   **Description**: A modern, highly configurable password hashing function and KDF, winner of the Password Hashing Competition (PHC). It is designed to be resistant to GPU cracking attacks and time-memory trade-offs.
-    *   **Variants**:
-        *   `Argon2d`: Maximizes resistance to GPU cracking attacks (data-dependent memory access).
-        *   `Argon2i`: Optimized to resist side-channel attacks (data-independent memory access).
-        *   `Argon2id`: A hybrid version combining features of Argon2d and Argon2i, generally recommended for password hashing.
-    *   **Parameters**: Memory cost (m), time cost (t, iterations), parallelism (p), salt, associated data (optional), output length.
-    *   **Security Notes**: The recommended KDF for password hashing. Parameters must be chosen carefully to balance security and performance.
-    *   **Core Struct**: `algorithms::kdf::argon2::Argon2<const S: usize>` (where `S` is salt size)
-    *   **Parameter Struct**: `algorithms::kdf::argon2::Params<const S: usize>`
+### Core Concepts
 
-2.  **HKDF (HMAC-based Key Derivation Function) (`hkdf`)**
-    *   **Standard**: RFC 5869
-    *   **Description**: A two-step KDF:
-        1.  **Extract**: Combines input keying material (IKM) and an optional salt into a fixed-length pseudorandom key (PRK) using HMAC.
-        2.  **Expand**: Uses the PRK and optional context-specific information (info) to generate output keying material (OKM) of the desired length, again using HMAC.
-    *   **Underlying Hash**: Can be used with any secure hash function (e.g., SHA-256, SHA-512). The implementation is generic over `H: HashFunction`.
-    *   **Security Notes**: A strong and flexible KDF suitable for many applications. Requires a good source of IKM. Salt improves security, especially with weak IKM.
-    *   **Core Struct**: `algorithms::kdf::hkdf::Hkdf<H: HashFunction, const S: usize>`
-    *   **Parameter Struct**: `algorithms::kdf::hkdf::HkdfParams<const S: usize>`
+The module is built around two primary traits:
 
-3.  **PBKDF2 (Password-Based Key Derivation Function 2) (`pbkdf2`)**
-    *   **Standard**: RFC 8018 (supersedes RFC 2898)
-    *   **Description**: Applies a pseudorandom function (PRF), typically HMAC with a hash function, to an input password or passphrase along with a salt value, repeating the process many times (iterations).
-    *   **Underlying PRF**: Typically HMAC-SHA1 (deprecated), HMAC-SHA256, or HMAC-SHA512. The implementation is generic over `H: HashFunction` for the HMAC.
-    *   **Parameters**: Salt, iteration count, output key length.
-    *   **Security Notes**: A widely used KDF for password hashing. The iteration count is crucial for security; it should be as high as tolerable for the application.
-    *   **Core Struct**: `algorithms::kdf::pbkdf2::Pbkdf2<H: HashFunction, const S: usize>`
-    *   **Parameter Struct**: `algorithms::kdf::pbkdf2::Pbkdf2Params<const S: usize>`
+1.  **`KeyDerivationFunction`**: A generic trait for algorithms that derive keys from some input material. This is suitable for cryptographic protocols where you need to turn a shared secret or other non-uniform data into a cryptographically strong symmetric key.
+2.  **`PasswordHashFunction`**: A specialized trait for algorithms designed to hash passwords. These functions are intentionally slow and resource-intensive to frustrate brute-force attacks. They produce a `PasswordHash` object, which contains all the necessary information (algorithm, parameters, salt, and hash) to verify a password later.
 
-## Key Traits and Types
+## Available Algorithms
 
--   **`KeyDerivationFunction` Trait (`algorithms::kdf::KeyDerivationFunction`)**:
-    *   Defines the common interface for KDFs.
-    *   Associated types: `Algorithm` (marker), `Salt`.
-    *   Methods: `new`, `derive_key`, `builder`, `generate_salt`.
-    *   Static method: `security_level`.
--   **`PasswordHashFunction` Trait (`algorithms::kdf::PasswordHashFunction`)**:
-    *   Extends `KeyDerivationFunction` specifically for password hashing.
-    *   Methods: `hash_password`, `verify`, `benchmark`, `recommended_params`.
--   **`KdfAlgorithm` Trait (`algorithms::kdf::KdfAlgorithm`)**:
-    *   Marker trait for KDF algorithms, defining constants like `MIN_SALT_SIZE`, `DEFAULT_OUTPUT_SIZE`, `ALGORITHM_ID`.
--   **`KdfOperation` Trait (`algorithms::kdf::KdfOperation`)**:
-    *   Defines a builder pattern for KDF operations.
--   **`ParamProvider` Trait (`algorithms::kdf::ParamProvider`)**:
-    *   For KDFs that have configurable parameters.
--   **`Salt<const S: usize>` (`algorithms::types::Salt`)**:
-    *   Type-safe salt, with compatibility traits like `Pbkdf2Compatible`, `Argon2Compatible`, `HkdfCompatible`.
--   **`PasswordHash` Struct (`algorithms::kdf::PasswordHash`)**:
-    *   A structure for storing password hashes in a common format (e.g., PHC string format).
--   **`SecurityLevel` Enum (`algorithms::kdf::SecurityLevel`)**:
-    *   Represents the security strength of a KDF in bits.
--   `common::security::SecretVec`, `common::security::SecretBuffer`: Used for secure handling of passwords, IKM, and derived keys.
+This module includes the following industry-standard KDFs:
 
-## Usage Example (PBKDF2-HMAC-SHA256)
+*   **HKDF (HMAC-based Key Derivation Function)**: Defined in [RFC 5869](https://tools.ietf.org/html/rfc5869). Ideal for deriving one or more cryptographic keys from a shared secret. It is generic over any `HashFunction`.
+*   **PBKDF2 (Password-Based Key Derivation Function 2)**: Defined in [RFC 8018](https://tools.ietf.org/html/rfc8018). A widely-used password hashing standard. It is generic over any HMAC-compatible `HashFunction`.
+*   **Argon2**: The winner of the Password Hashing Competition. It is highly resistant to both GPU and side-channel attacks. This implementation supports all three variants:
+    *   `Argon2id` (Recommended Default): A hybrid version that provides a good balance of resistance against both side-channel and GPU-based attacks.
+    *   `Argon2d`: Maximizes resistance to GPU cracking attacks.
+    *   `Argon2i`: Optimized to resist side-channel attacks.
+
+## Usage
+
+### General-Purpose Key Derivation with HKDF
+
+HKDF is excellent for turning a shared secret (e.g., from an ECDH exchange) into a key suitable for symmetric encryption.
 
 ```rust
-use dcrypt_algorithms::kdf::pbkdf2::Pbkdf2;
-use dcrypt_algorithms::hash::Sha256; // The hash function for HMAC
-use dcrypt_algorithms::kdf::{KeyDerivationFunction, KdfOperation};
-use dcrypt_algorithms::types::Salt;
-use dcrypt_algorithms::error::Result;
-use rand::rngs::OsRng; // For salt generation
+use dcrypt::algorithms::kdf::Hkdf;
+use dcrypt::algorithms::hash::Sha256;
+use dcrypt::algorithms::kdf::KeyDerivationFunction; // Import the trait
 
-fn pbkdf2_example() -> Result<()> {
-    let password = b"mysecretpassword";
-    let salt_bytes = Salt::<16>::random(&mut OsRng); // Generate a 16-byte salt
-    let iterations = 100_000; // Recommended minimum can vary
-    let output_key_length = 32; // e.g., for an AES-256 key
+fn derive_encryption_key() {
+    let ikm = b"input-keying-material"; // e.g., the result of a key exchange
+    let salt = b"some-random-salt";
+    let info = b"encryption-key-for-session-123";
+    let output_length = 32; // 256-bit key
 
-    // Create PBKDF2 instance with default parameters, then configure
-    let mut kdf = Pbkdf2::<Sha256, 16>::new(); // Uses default salt size 16
+    // Create a new HKDF instance generic over SHA-256
+    let hkdf = Hkdf::<Sha256>::new();
 
-    // Update parameters (optional, can also be set via builder)
-    let mut params = kdf.params().clone(); // Assuming ParamProvider is implemented
-    params.salt = salt_bytes.clone();
-    params.iterations = iterations;
-    params.key_length = output_key_length;
-    kdf.set_params(params);
+    // Derive the key
+    let derived_key = hkdf.derive_key(ikm, Some(salt), Some(info), output_length).unwrap();
 
-    // Derive key using the direct method
-    let derived_key1 = kdf.derive_key(
-        password,
-        Some(salt_bytes.as_ref()), // Pass salt as &[u8]
-        None,                      // PBKDF2 doesn't use 'info'
-        output_key_length
-    )?;
-    println!("PBKDF2 Derived Key 1 (hex): {}", hex::encode(&derived_key1));
-
-    // Derive key using the builder pattern
-    let derived_key2 = kdf.builder()
-        .with_ikm(password)
-        .with_salt(salt_bytes.as_ref()) // Pass salt as &[u8]
-        .with_output_length(output_key_length)
-        // .with_iterations(iterations) // Assuming the builder would have this
-        .derive()?;
-    println!("PBKDF2 Derived Key 2 (hex): {}", hex::encode(&derived_key2));
-    
-    // Note: The builder example above assumes the builder can also set iterations.
-    // The current KdfOperation trait doesn't have with_iterations.
-    // For Pbkdf2, iterations are part of its internal params.
-
-    assert_eq!(derived_key1, derived_key2);
-    Ok(())
+    assert_eq!(derived_key.len(), 32);
+    println!("HKDF-SHA256 Derived Key: {}", hex::encode(&derived_key));
 }
-
-// fn main() {
-//     pbkdf2_example().expect("PBKDF2 example failed");
-// }
 ```
 
-## Security Considerations
+### Password Hashing with Argon2
 
--   **Salt**: Always use a unique, cryptographically random salt for each password or IKM. Salts should be at least `MIN_SALT_SIZE` (typically 16 bytes).
--   **Iteration Count (for PBKDF2, Argon2)**: The number of iterations (or time/memory cost for Argon2) is critical for security against brute-force attacks. This should be set as high as performance allows for the target system. OWASP recommendations should be followed.
--   **Input Keying Material (IKM)**: For KDFs like HKDF, the quality of the IKM affects the strength of the derived keys. If the IKM has low entropy, the derived keys will also be weak.
--   **Output Length**: Derive keys of sufficient length for the target cryptographic algorithm (e.g., 32 bytes for AES-256).
--   **Associated Data/Info**: For KDFs that support it (like HKDF and Argon2), use distinct "info" or "associated data" parameters to bind derived keys to specific contexts or purposes, preventing cross-protocol attacks.
+Argon2 is the state-of-the-art for password hashing. The `PasswordHashFunction` trait provides a high-level API for hashing and verification.
+
+#### Hashing a Password
+
+```rust
+use dcrypt::algorithms::kdf::{Argon2, Argon2Params, Argon2Type, PasswordHashFunction};
+use dcrypt::algorithms::types::{Salt, SecretBytes};
+use rand::rngs::OsRng;
+
+fn hash_a_password() {
+    // 1. Define Argon2 parameters. These should be tuned for your specific application.
+    let salt = Argon2::<16>::generate_salt(&mut OsRng); // Generate a random 16-byte salt
+    let params = Argon2Params {
+        argon_type: Argon2Type::Argon2id,
+        memory_cost: 65536, // 64 MB
+        time_cost: 3,       // 3 iterations
+        parallelism: 4,     // 4 threads
+        salt: salt,
+        ..Default::default()
+    };
+
+    // 2. Create an Argon2 instance with the parameters.
+    let argon2 = Argon2::new_with_params(params);
+
+    // 3. Create a secure password type.
+    let password = SecretBytes::<32>::new(*b"a-very-secure-password!         ");
+
+    // 4. Hash the password.
+    let password_hash = argon2.hash_password(&password).unwrap();
+
+    // 5. The result can be serialized to the PHC string format for storage.
+    let hash_string = password_hash.to_string();
+    println!("Stored Password Hash: {}", hash_string);
+}
+```
+
+#### Verifying a Password
+
+To verify, you parse the stored PHC string back into a `PasswordHash` object and use the `verify` method.
+
+```rust
+use dcrypt::algorithms::kdf::{Argon2, PasswordHash, PasswordHashFunction};
+use dcrypt::algorithms::types::SecretBytes;
+use std::str::FromStr;
+
+fn verify_a_password() {
+    // A previously stored hash string from the example above.
+    let stored_hash_string = "$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQAAAAAAAAAAAAAAA$E1kt2qTSHhA4p_J2_6jE6Q";
+
+    // 1. Parse the string into a PasswordHash object.
+    let parsed_hash = PasswordHash::from_str(stored_hash_string).unwrap();
+
+    // 2. Create a new Argon2 instance (default parameters are fine for verification,
+    // as the actual parameters are read from the parsed hash).
+    let argon2 = Argon2::<16>::new();
+
+    // 3. Check the correct password.
+    let correct_password = SecretBytes::<32>::new(*b"a-very-secure-password!         ");
+    assert!(argon2.verify(&correct_password, &parsed_hash).unwrap());
+
+    // 4. Check an incorrect password.
+    let incorrect_password = SecretBytes::<32>::new(*b"incorrect-password...           ");
+    assert!(!argon2.verify(&incorrect_password, &parsed_hash).unwrap());
+}
+```
+
+### Using the Builder Pattern
+
+The `builder()` method provides a fluent API for more complex derivation scenarios, such as overriding parameters on-the-fly.
+
+```rust
+use dcrypt::algorithms::kdf::{Hkdf, KeyDerivationFunction, KdfOperation};
+use dcrypt::algorithms::hash::Sha256;
+
+fn use_builder_pattern() {
+    let kdf = Hkdf::<Sha256>::new();
+
+    let derived_key: [u8; 64] = kdf.builder()
+        .with_ikm(b"input-keying-material")
+        .with_salt(b"override-salt")
+        .with_info(b"override-info")
+        .with_output_length(64)
+        .derive_array() // Derives directly into a fixed-size array
+        .unwrap();
+
+    assert_eq!(derived_key.len(), 64);
+}
+```
+
+## Algorithm Details
+
+### HKDF (`Hkdf<H: HashFunction>`)
+*   **Purpose:** General-purpose key derivation.
+*   **Parameters:**
+    *   `salt`: A non-secret random value. Optional, but highly recommended.
+    *   `info`: A context string to bind the derived key to a specific purpose.
+*   **Strengths:** Fast, secure, and flexible. It's the standard choice for deriving keys from non-uniform sources.
+
+### PBKDF2 (`Pbkdf2<H: HashFunction>`)
+*   **Purpose:** Password hashing.
+*   **Parameters:**
+    *   `iterations`: The number of hashing rounds. This is the primary work factor. Should be as high as your application can tolerate. OWASP recommends at least 600,000 for HMAC-SHA256.
+*   **Strengths:** Venerable and widely supported.
+*   **Weaknesses:** Vulnerable to GPU-based cracking attacks compared to more modern algorithms.
+
+### Argon2 (`Argon2`)
+*   **Purpose:** State-of-the-art password hashing.
+*   **Parameters:**
+    *   `memory_cost` (`m`): The amount of memory to use in KiB. Increases resistance to TMTO attacks.
+    *   `time_cost` (`t`): The number of passes over memory. Increases the overall runtime.
+    *   `parallelism` (`p`): The number of threads (lanes) to use. Can be used to leverage multi-core CPUs.
+*   **Strengths:** Highly resistant to GPU, FPGA, and ASIC attacks due to its memory-hard nature. Offers the best security for password hashing currently available.
+
+## `no_std` Support
+
+The KDF module is compatible with `no_std` environments, provided the `alloc` feature is enabled, as all implementations require dynamic memory allocation.
+
+```toml
+[dependencies.dcrypt-algorithms]
+version = "..."
+default-features = false
+features = ["alloc", "kdf"]
+```

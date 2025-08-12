@@ -1,67 +1,71 @@
-# ECIES with P-521 and AES-256-GCM (`pke::ecies::p521`)
+# ECIES with P-521 and ChaCha20Poly1305 
 
-This module provides an implementation of the Elliptic Curve Integrated Encryption Scheme (ECIES) specifically configured to use:
+This module provides an implementation of the Elliptic Curve Integrated Encryption Scheme (ECIES) tailored for the **NIST P-521** elliptic curve.
 
--   **Elliptic Curve**: NIST P-521 (also known as secp521r1).
--   **Key Derivation Function (KDF)**: HKDF with SHA-512. SHA-512 is chosen to match the security level of P-521.
--   **Authenticated Encryption with Associated Data (AEAD)**: AES-256-GCM.
+It combines the high security level of the P-521 curve with a strong key derivation function and a modern, high-performance authenticated cipher to provide robust public-key encryption.
 
-This combination provides a very high level of security for asymmetric encryption, leveraging well-standardized primitives.
+## Scheme Details
 
-## Algorithm Details (`EciesP521`)
+The `EciesP521` struct implements the `dcrypt_api::traits::Pke` trait using the following set of cryptographic primitives:
 
-The `EciesP521` struct implements the `api::traits::Pke` trait.
+| Component | Algorithm | Details |
+| :--- | :--- | :--- |
+| **Elliptic Curve** | NIST P-521 | Provides a very high level of security, suitable for protecting highly sensitive data long-term. |
+| **Key Derivation** | HKDF-SHA512 | The HMAC-based Key Derivation Function (HKDF) is used with SHA-512. The hash function is chosen to match the security strength of the P-521 curve. |
+| **Authenticated Encryption** | AES-256-GCM | Advanced Encryption Standard with a 256-bit key in Galois/Counter Mode provides both confidentiality and data integrity. It is widely trusted and highly performant on modern hardware. |
+| **Public Key Size** | 133 bytes | `1 (prefix) + 66 (x-coord) + 66 (y-coord)` for an uncompressed point. |
+| **Secret Key Size** | 66 bytes | The size of a P-521 scalar. |
 
-### Key Types
+## Core Components
 
--   **`EciesP521PublicKey`**:
-    *   Wraps a `[u8; algorithms::ec::p521::P521_POINT_UNCOMPRESSED_SIZE]`.
-    *   Stores the P-521 public key point in uncompressed format (133 bytes: `0x04 || X-coordinate || Y-coordinate`).
--   **`EciesP521SecretKey`**:
-    *   Wraps a `[u8; algorithms::ec::p521::P521_SCALAR_SIZE]`.
-    *   Stores the P-521 private key scalar (66 bytes).
-    *   Implements `Zeroize` and `ZeroizeOnDrop` for secure memory handling.
+*   `EciesP521`: The main struct that provides the ECIES functionality. It is the entry point for key generation, encryption, and decryption operations.
+*   `EciesP521PublicKey`: A dedicated type representing a P-521 public key. It is a wrapper around the byte representation of an uncompressed elliptic curve point.
+*   `EciesP521SecretKey`: A dedicated type for the P-521 secret key. It wraps the raw scalar bytes and implements the `Zeroize` and `ZeroizeOnDrop` traits to securely wipe the key from memory as soon as it goes out of scope.
 
-### Ciphertext
+## Usage Example
 
--   The `Ciphertext` type is `Vec<u8>`.
--   It represents the serialized form of `EciesCiphertextComponents` (defined in the parent `pke::ecies` module), which includes:
-    1.  **Ephemeral Public Key (`R`)**: The sender's temporary P-521 public key, serialized in uncompressed format (133 bytes).
-    2.  **AEAD Nonce (`N`)**: A 12-byte nonce for AES-256-GCM (the recommended size).
-    3.  **AEAD Ciphertext+Tag (`C||T`)**: The output of AES-256-GCM encryption, including the encrypted message and the 16-byte GCM authentication tag.
+The following example demonstrates a complete key generation, encryption, and decryption roundtrip using `EciesP521`.
 
-### Operations
+```rust
+use dcrypt::pke::ecies::p521::EciesP521;
+use dcrypt::api::traits::Pke;
+use rand::rngs::OsRng; // A cryptographically secure random number generator
 
-1.  **`keypair(rng)`**:
-    *   Generates a P-521 key pair using `algorithms::ec::p521::generate_keypair`.
-    *   The public key is serialized in uncompressed format.
-    *   The private key is the raw scalar.
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // A secure RNG is needed for key generation and encryption.
+    let mut rng = OsRng;
 
-2.  **`encrypt(pk_recipient, plaintext, aad, rng)`**:
-    *   Deserializes the recipient's uncompressed public key point. Validates it's not the point at infinity.
-    *   Generates an ephemeral P-521 key pair `(ephemeral_sk_scalar, ephemeral_pk_point)`.
-    *   Performs ECDH: `shared_point = ephemeral_sk_scalar * pk_recipient_point`. Validates that `shared_point` is not identity.
-    *   Extracts the x-coordinate (`z_bytes`) of `shared_point`.
-    *   Derives the symmetric AEAD key using `derive_symmetric_key_hkdf_sha512`:
-        *   **IKM**: `z_bytes`.
-        *   **Salt**: Bytes of the uncompressed `ephemeral_pk_point`.
-        *   **Info**: A context string like `"ECIES-P521-HKDF-SHA512-AES256GCM-KeyMaterial"`.
-        *   **Output Length**: `AES256GCM_KEY_LEN` (32 bytes).
-    *   Generates a random 12-byte nonce for AES-256-GCM.
-    *   Encrypts the `plaintext` with the derived key, nonce, and `aad` using `algorithms::aead::gcm::Gcm<Aes256>`.
-    *   Serializes the `ephemeral_pk_point` (uncompressed), AEAD nonce, and AEAD ciphertext+tag into the final ECIES ciphertext using `EciesCiphertextComponents::serialize()`.
-    *   Ensures `ephemeral_sk_scalar`, `z_bytes`, and `derived_key_material` are zeroized.
+    // 1. Generate a keypair for the recipient.
+    println!("Generating P-521 keypair...");
+    let (public_key, secret_key) = EciesP521::keypair(&mut rng)?;
 
-3.  **`decrypt(sk_recipient, ciphertext_bytes, aad)`**:
-    *   Deserializes `ciphertext_bytes` into `EciesCiphertextComponents`.
-    *   Deserializes the ephemeral public key point from the components. Validates it's not identity.
-    *   Deserializes the recipient's secret key scalar.
-    *   Performs ECDH: `shared_point = sk_recipient_scalar * ephemeral_pk_point`. Validates that `shared_point` is not identity.
-    *   Extracts the x-coordinate (`z_bytes`).
-    *   Re-derives the symmetric AEAD key using `derive_symmetric_key_hkdf_sha512` with the same parameters as in encryption (using the received ephemeral public key bytes as salt).
-    *   Deserializes the AEAD nonce from the components.
-    *   Decrypts the AEAD ciphertext+tag using `algorithms::aead::gcm::Gcm<Aes256>`.
-    *   If AEAD decryption and authentication succeed, returns the plaintext. Otherwise, returns an error (specifically `PkeError::DecryptionFailed("AEAD authentication failed")` which maps to `ApiError::DecryptionFailed`).
-    *   Ensures `z_bytes` and `derived_key_material` are zeroized.
+    // 2. Define the message and optional associated data (AAD).
+    let plaintext = b"This is a top-secret message for P-521 ECIES.";
+    let aad = Some(b"Message context: Project Chimera, Q4".as_slice());
 
-This ECIES variant using P-521 and AES-256-GCM provides a very high level of classical security.
+    // 3. Encrypt the message using the recipient's public key.
+    println!("Encrypting message...");
+    let ciphertext = EciesP521::encrypt(&public_key, plaintext, aad, &mut rng)?;
+
+    println!("Ciphertext size: {} bytes", ciphertext.len());
+
+    // 4. Decrypt the message using the recipient's secret key.
+    // The same AAD must be provided.
+    println!("Decrypting message...");
+    let decrypted_plaintext = EciesP521::decrypt(&secret_key, &ciphertext, aad)?;
+
+    // 5. Verify the decrypted message matches the original.
+    assert_eq!(plaintext, decrypted_plaintext.as_slice());
+
+    println!("\nSuccess! Decryption was successful and the message is authentic.");
+    println!("Decrypted content: {}", std::str::from_utf8(&decrypted_plaintext)?);
+
+    Ok(())
+}
+```
+
+## Security Considerations
+
+*   **Forward Secrecy**: The scheme achieves forward secrecy because a new ephemeral keypair is generated for every encryption. A compromise of the recipient's long-term secret key will not compromise past messages.
+*   **Key Security**: The `EciesP521SecretKey` struct automatically clears its memory on drop, reducing the risk of secret key material being exposed in memory dumps or through other side channels.
+*   **Integrity and Authenticity**: The use of AES-256-GCM ensures that any tampering with the ciphertext or the associated data (AAD) will be detected during decryption, causing the operation to fail. This prevents a wide range of attacks where an adversary might try to modify an encrypted message.

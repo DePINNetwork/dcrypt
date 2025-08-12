@@ -1,74 +1,95 @@
 # Dilithium Digital Signature Scheme (`sign/dilithium`)
 
-This module is intended to implement the Dilithium digital signature algorithm. Dilithium is a lattice-based signature scheme built on the Fiat-Shamir with Aborts paradigm. It was selected by NIST for standardization as part of the Post-Quantum Cryptography (PQC) project due to its strong security properties and good performance characteristics.
+This document provides an overview of the `dilithium` module, a FIPS 204 compliant implementation of the Module-Lattice-based Digital Signature Algorithm (ML-DSA).
 
-**Note on Current Status:** The implementation in the provided codebase snapshot (`dilithium/mod.rs`) is a placeholder. It defines the necessary structs (`DilithiumPublicKey`, `DilithiumSecretKey`, `DilithiumSignature`) and implements the `api::Signature` trait with dummy logic for three common Dilithium variants. This documentation describes the intended functionality based on this structure and Dilithium's specifications.
+## Overview
 
-## Dilithium Variants
+The `dilithium` module offers a high-security, post-quantum signature scheme standardized by the National Institute of Standards and Technology (NIST). It is based on the hardness of the Module Learning With Errors (MLWE) and Module Short Integer Solution (MSIS) problems over polynomial rings, providing strong security guarantees against attacks from both classical and quantum computers.
 
-The module outlines support for standard Dilithium parameter sets, corresponding to different NIST security levels:
+This implementation provides the three security levels specified in the FIPS 204 standard:
 
-1.  **`Dilithium2`**:
-    *   Targets NIST Security Level 2 (comparable to AES-128 or SHA-256 collision resistance).
-    *   Key parameters (e.g., matrix dimensions `k=4, l=4`, norm bound `eta=2`) are defined in `dcrypt-params/src/pqc/dilithium.rs` (`DILITHIUM2`).
-    *   Key/Signature Sizes (from `dcrypt-params`): PK=1312B, SK=2528B, Sig=2420B.
+*   **`Dilithium2`**: NIST Security Level 1 (≈ AES-128)
+*   **`Dilithium3`**: NIST Security Level 3 (≈ AES-192)
+*   **`Dilithium5`**: NIST Security Level 5 (≈ AES-256)
 
-2.  **`Dilithium3`**:
-    *   Targets NIST Security Level 3 (comparable to AES-192 or SHA-384 collision resistance).
-    *   Key parameters (e.g., `k=6, l=5`, `eta=4`) are defined in `dcrypt-params` (`DILITHIUM3`).
-    *   Key/Signature Sizes: PK=1952B, SK=4000B, Sig=3293B.
+The signing process employs the Fiat-Shamir with Aborts paradigm, which uses rejection sampling to ensure that the generated signatures do not leak information about the secret key.
 
-3.  **`Dilithium5`**:
-    *   Targets NIST Security Level 5 (comparable to AES-256 or SHA-512 collision resistance).
-    *   Key parameters (e.g., `k=8, l=7`, `eta=2`) are defined in `dcrypt-params` (`DILITHIUM5`).
-    *   Key/Signature Sizes: PK=2592B, SK=4864B, Sig=4595B.
+## Features
 
-All Dilithium variants use a polynomial degree `N=256` and modulus `Q=8380417`.
+*   **FIPS 204 Compliant**: Strictly adheres to the final NIST FIPS 204 standard for ML-DSA. The implementation correctly follows the specified algorithms for arithmetic, sampling, and encoding, including the final `UseHint` rules.
+*   **Deterministic Signing**: Signature generation is deterministic, meaning that for a given message and secret key, the output signature is always the same. This approach avoids reliance on a random number generator during signing, mitigating risks associated with weak or faulty RNGs.
+*   **Comprehensive Test Suite**: The module is backed by an extensive test suite that covers:
+    *   Basic sign and verify round-trips.
+    *   Serialization and deserialization of keys and signatures.
+    *   Correctness of core arithmetic functions against known values.
+    *   Deep algebraic verification of the underlying mathematical relationships.
+    *   Failure cases for tampered messages, signatures, or incorrect keys.
+*   **Performance Benchmarks**: Includes a full benchmark suite to measure the performance of key generation, signing, and verification across all security levels and for various message sizes.
 
-## Core Components and Types
+## Implementation Details
 
--   **`DilithiumPublicKey(Vec<u8>)`**: Wrapper for Dilithium public keys (typically contains a seed `rho` for matrix `A` and a vector `t_1`). Implements `Zeroize`.
--   **`DilithiumSecretKey(Vec<u8>)`**: Wrapper for Dilithium secret keys (contains `rho`, `K`, `tr`, `s_1`, `s_2`, `t_0`). Implements `Zeroize`.
--   **`DilithiumSignature(Vec<u8>)`**: Wrapper for Dilithium signatures (contains a challenge `c_tilde`, a vector `z`, and hint vector `h`).
+The implementation is modular, separating the core cryptographic logic into distinct components:
 
-## `api::Signature` Trait Implementation
+*   **`mod.rs`**: Defines the public API, including the `DilithiumPublicKey`, `DilithiumSecretKey`, and `DilithiumSignatureData` structs, and implements the `dcrypt-api::Signature` trait.
+*   **`sign.rs`**: Contains the high-level logic for key generation, signing, and verification as specified in FIPS 204 Algorithms 9, 10, and 11.
+*   **`arithmetic.rs`**: Implements the crucial mathematical functions required by Dilithium, such as `Power2Round`, `Decompose`, and the `MakeHint`/`UseHint` system for the hint mechanism.
+*   **`encoding.rs`**: Handles the precise serialization and deserialization formats for keys and signatures, ensuring byte-for-byte compatibility with the standard.
+*   **`sampling.rs`**: Implements the specified procedures for sampling polynomials from the Centered Binomial Distribution (`sample_poly_cbd_eta`) and the uniform distribution (`sample_polyvecl_uniform_gamma1`).
+*   **`polyvec.rs`**: Defines polynomial vector structures (`PolyVecL`, `PolyVecK`) and their associated arithmetic operations, including matrix expansion from a seed.
 
-Each Dilithium variant (`Dilithium2`, `Dilithium3`, `Dilithium5`) implements the `api::Signature` trait:
+### Security Invariants
 
--   `name()`: Returns the specific variant name (e.g., "Dilithium2").
--   `keypair()`:
-    *   **Placeholder Logic**: Fills byte vectors with random data for public and secret keys according to the sizes specified in `dcrypt-params` for that variant.
--   `public_key()`: Extracts the `DilithiumPublicKey` from the keypair.
--   `secret_key()`: Extracts the `DilithiumSecretKey` from the keypair.
--   `sign()`:
-    *   **Placeholder Logic**: Returns a dummy signature `DilithiumSignature` filled with zeros, with the size appropriate for the variant.
--   `verify()`:
-    *   **Placeholder Logic**: Always returns `Ok(())`, indicating successful verification.
+The signing process rigorously enforces several critical invariants to ensure cryptographic security, as outlined in FIPS 204. This implementation validates these conditions during signature generation:
 
-## Security Basis
+*   `||z||∞ ≤ γ1 - β`: The norm of the signature component `z` must be within this bound to prevent key recovery attacks.
+*   `||LowBits(w - cs2)||∞ ≤ γ2 - β`: Ensures the uniformity of certain intermediate values.
+*   `||ct0||∞ < γ2 - β`: A check on the norm of `c·t0` to ensure the hint mechanism is sound.
+*   `hint_count ≤ ω`: The number of hints must not exceed the parameter `ω` to ensure the signature can be correctly verified.
 
-Dilithium's security is based on the hardness of lattice problems over module lattices, specifically the Module Learning With Errors (MLWE) and Module Short Integer Solution (MSIS) problems. It is designed to be secure against attacks by quantum computers.
+If any of these checks fail, the signature attempt is aborted, and the process is restarted with a new nonce (`kappa`). This rejection sampling is essential to the security of the scheme.
 
-## Intended Functionality (Once Fully Implemented)
+## Usage
 
-Dilithium operations involve arithmetic with polynomials over rings `Z_q[x]/(x^N+1)`.
+All Dilithium variants conform to the `dcrypt_api::Signature` trait, providing a consistent API.
 
--   **Key Generation**:
-    1.  Expand seed `rho` to generate matrix `A`.
-    2.  Sample secret polynomial vectors `s_1`, `s_2` with small coefficients (norm bound `eta`).
-    3.  Compute `t = A * s_1 + s_2 mod q`.
-    4.  The public key is `(rho, t_1)` where `t_1` is the high-order bits of `t`. The secret key contains `(rho, K, tr, s_1, s_2, t_0)` where `K` and `tr` are hash preimages and `t_0` is low-order bits of `t`.
--   **Signing (Fiat-Shamir with Aborts)**:
-    1.  Generate a random masking vector `y` with small coefficients.
-    2.  Compute `w = A * y mod q`. Let `w_1` be the high-order bits of `w`.
-    3.  Generate a challenge polynomial `c` by hashing `(tr, message, w_1)`.
-    4.  Compute `z = y + c * s_1 mod q`.
-    5.  Compute `w - c * s_2 mod q`. If this or `z` have coefficients outside certain bounds (checked using `MakeHint` and `CheckNorm`), abort and restart signing (this happens with low probability).
-    6.  The signature is `(c_tilde, z, h)` where `c_tilde` is a hash of `c` and `h` is a hint vector derived from `w - c*s_2`.
--   **Verification**:
-    1.  Expand `rho` from the public key to get `A`.
-    2.  Recompute `w'_1 = A*z - c*t_1 mod q` (using `c` recovered from `c_tilde`).
-    3.  Verify that `z` has coefficients within bounds and that `h` is a valid hint for `w'_1 - c*t_0` (low-order part of `A*z - c*t`).
-    4.  Verify that `c_tilde` matches the hash of the recomputed `c`.
+```rust
+use dcrypt::sign::dilithium::Dilithium3;
+use dcrypt::api::Signature;
+use rand::rngs::OsRng;
 
-The placeholder structure establishes the type definitions and API adherence for a future complete Dilithium implementation.
+// 1. Generate a keypair for Dilithium Level 3
+let (public_key, secret_key) = Dilithium3::keypair(&mut OsRng)
+    .expect("Keypair generation failed");
+
+// 2. Define a message to be signed
+let message = b"This message is secured by post-quantum cryptography.";
+
+// 3. Sign the message
+let signature = Dilithium3::sign(message, &secret_key)
+    .expect("Signing failed");
+
+// 4. Verify the signature with the public key
+let verification_result = Dilithium3::verify(message, &signature, &public_key);
+assert!(verification_result.is_ok());
+println!("Signature verified successfully!");
+
+// 5. Attempting to verify with a different message will fail
+let tampered_message = b"This is a different message.";
+assert!(Dilithium3::verify(tampered_message, &signature, &public_key).is_err());
+println!("Verification of tampered message failed as expected.");```
+
+## Testing and Benchmarking
+
+The module's correctness is validated by thousands of tests covering every aspect of the implementation.
+
+To run the dedicated benchmark suite:
+
+```bash
+cargo bench --bench dilithium
+```
+
+This will produce a detailed performance report in the `target/criterion/` directory.
+
+## References
+
+*   [FIPS 204: Module-Lattice-Based Digital Signature Standard (ML-DSA)](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf)

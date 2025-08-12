@@ -1,102 +1,145 @@
-# Key Encapsulation Mechanisms (`kem`)
+# Key Encapsulation Mechanisms
 
-The `kem` crate is responsible for implementing various Key Encapsulation Mechanisms (KEMs). KEMs are cryptographic schemes used to securely establish shared secrets between parties, typically involving a public-key component. One party (sender) uses the recipient's public key to generate a shared secret and an "encapsulation" (ciphertext) of that secret. The recipient then uses their private key to "decapsulate" the ciphertext and recover the same shared secret.
+[![Crates.io](https://img.shields.io/crates/v/dcrypt-kem.svg)](https://crates.io/crates/dcrypt-kem)
+[![Docs.rs](https://docs.rs/dcrypt-kem/badge.svg)](https://docs.rs/dcrypt-kem)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/your-repo/your-workflow.yml?branch=main)](https://github.com/your-repo/action)
 
-This crate provides implementations for both traditional (classical) KEMs and post-quantum KEMs.
+The `dcrypt-kem` crate provides a unified interface for various Key Encapsulation Mechanisms (KEMs), including both traditional and post-quantum cryptographic algorithms. It is designed with a strong focus on security, type safety, and ease of use, leveraging the `dcrypt::api` trait system.
 
-**Note on Current Status:** While the ECDH-based KEMs (`EcdhP256`, `EcdhP384`, `EcdhP521`) are described with significant implementation detail (using compressed points and specific KDFs), many other KEMs listed (RSA, DH, and PQC KEMs like Kyber, NTRU, Saber, McEliece) are currently placeholders in the codebase snapshot. They define the necessary structs and implement the `api::Kem` trait with dummy logic, indicating the intended structure rather than full cryptographic functionality.
+This crate is part of the `dcrypt` cryptographic library.
 
-## Core Trait
+## Features
 
-All KEMs in this crate are expected to implement the `api::Kem` trait, which defines the standard interface:
+-   **Broad Algorithm Support:** Includes classic ECDH-based KEMs over multiple standard curves and the NIST-standardized post-quantum KEM, CRYSTALS-Kyber.
+-   **Security-First Design:**
+    -   **Strongly-Typed Keys:** Utilizes distinct types for public keys, secret keys, and ciphertexts (e.g., `EcdhP256PublicKey`, `KyberSecretKey`) to prevent misuse.
+    -   **Zeroization:** Secret key and shared secret materials are automatically zeroized on drop to minimize their lifetime in memory.
+    -   **Controlled Byte Access:** Deliberately avoids generic `AsRef<[u8]>` implementations on sensitive types, requiring explicit serialization calls.
+    -   **Validation:** Incoming keys and ciphertexts are validated to prevent common attacks, such as those involving invalid curve points.
+-   **`no_std` Compatibility:** Fully operational in `no_std` environments with the `alloc` feature for heap-allocated types.
+-   **Extensive Testing:** Comes with a comprehensive test suite and performance benchmarks for all implemented algorithms.
+-   **Optional Serde Support:** Provides `serde` integration for key serialization and deserialization when the `serde` feature is enabled.
 
--   `type PublicKey`, `type SecretKey`, `type SharedSecret`, `type Ciphertext`, `type KeyPair`
--   `name() -> &'static str`
--   `keypair<R: CryptoRng + RngCore>(...) -> Result<Self::KeyPair>`
--   `public_key(keypair: &Self::KeyPair) -> Self::PublicKey`
--   `secret_key(keypair: &Self::KeyPair) -> Self::SecretKey`
--   `encapsulate<R: CryptoRng + RngCore>(...) -> Result<(Self::Ciphertext, Self::SharedSecret)>`
--   `decapsulate(...) -> Result<Self::SharedSecret>`
+## Implemented Algorithms
 
-## Implemented/Planned KEMs
+The crate provides implementations for the following KEMs, accessible via the `dcrypt::api::Kem` trait.
 
-### Traditional KEMs
+| Category | Algorithm | Struct Name | Security Level | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Elliptic Curve** | ECDH over NIST P-192 | `EcdhP192` | ~80-bit | **Implemented** |
+| **Elliptic Curve** | ECDH over NIST P-224 | `EcdhP224` | ~112-bit | **Implemented** |
+| **Elliptic Curve** | ECDH over NIST P-256 | `EcdhP256` | ~128-bit | **Implemented** |
+| **Elliptic Curve** | ECDH over NIST P-384 | `EcdhP384` | ~192-bit | **Implemented** |
+| **Elliptic Curve** | ECDH over NIST P-521 | `EcdhP521` | ~256-bit | **Implemented** |
+| **Elliptic Curve** | ECDH over secp256k1 | `EcdhK256` | ~128-bit | **Implemented** |
+| **Elliptic Curve**| ECDH over sect283k1 | `EcdhB283k` | ~142-bit | **Implemented** |
+| **Post-Quantum** | CRYSTALS-Kyber-512 | `Kyber512` | NIST Level 1 | **Implemented** |
+| **Post-Quantum** | CRYSTALS-Kyber-768 | `Kyber768` | NIST Level 3 | **Implemented** |
+| **Post-Quantum** | CRYSTALS-Kyber-1024 | `Kyber1024` | NIST Level 5 | **Implemented** |
+| **Post-Quantum** | LightSaber | `LightSaber` | - | *Placeholder* |
+| **Post-Quantum** | Saber | `Saber` | - | *Placeholder* |
+| **Post-Quantum** | FireSaber | `FireSaber` | - | *Placeholder* |
+| **Post-Quantum** | Classic McEliece 348864| `McEliece348864`| NIST Level 1 | *Placeholder* |
+| **Post-Quantum** | Classic McEliece 6960119| `McEliece6960119`| NIST Level 5 | *Placeholder* |
+| **Traditional** | Diffie-Hellman (2048-bit) | `Dh2048` | - | *Placeholder* |
 
-1.  **RSA-KEM (`rsa`)**
-    *   **Description**: KEM based on the RSA public-key cryptosystem.
-    *   **Variants**: `RsaKem2048`, `RsaKem4096`.
-    *   **Files**: `dcrypt_docs/kem/rsa/README.md`
-    *   **Status**: Placeholder implementations.
+> **Note:** Algorithms marked as *Placeholder* are exposed in the API but do not yet contain a full cryptographic implementation.
 
-2.  **Diffie-Hellman KEM (`dh`)**
-    *   **Description**: KEM based on the Diffie-Hellman key exchange protocol over finite fields (MODP groups).
-    *   **Variants**: `Dh2048`.
-    *   **Files**: `dcrypt_docs/kem/dh/README.md`
-    *   **Status**: Placeholder implementation.
+## Installation
 
-3.  **ECDH-KEM (Elliptic Curve Diffie-Hellman KEM) (`ecdh`)**
-    *   **Description**: KEM based on Diffie-Hellman key exchange over elliptic curves. Uses compressed points for ciphertexts and HKDF for key derivation.
-    *   **Variants**:
-        *   `EcdhP256` (using NIST P-256 curve, HKDF-SHA256)
-        *   `EcdhP384` (using NIST P-384 curve, HKDF-SHA384)
-        *   `EcdhP521` (using NIST P-521 curve, HKDF-SHA512)
-    *   **Files**: `dcrypt_docs/kem/ecdh/README.md` (with links to P256, P384, P521 specifics)
-    *   **Status**: Functionally implemented with details for KDF and point compression.
+Add the main `dcrypt` crate to your `Cargo.toml`:
 
-### Post-Quantum KEMs
+```toml
+[dependencies]
+dcrypt = "0.12.0-beta.1"
+rand = "0.8"
+```
 
-1.  **Kyber (`kyber`)**
-    *   **Description**: A lattice-based KEM chosen by NIST for standardization in the PQC project.
-    *   **Variants**: `Kyber512`, `Kyber768`, `Kyber1024`.
-    *   **Files**: `dcrypt_docs/kem/kyber/README.md`
-    *   **Status**: Placeholder implementations. Parameters are defined in `dcrypt-params`.
+## Usage Example
 
-2.  **NTRU (`ntru`)**
-    *   **Description**: A lattice-based KEM. The snapshot includes `NtruHps` and `NtruEes`.
-    *   **Files**: `dcrypt_docs/kem/ntru/README.md`
-    *   **Status**: Placeholder implementations. Parameters are defined in `dcrypt-params`.
+All KEMs in this crate implement the `dcrypt::api::Kem` trait, providing a consistent workflow.
 
-3.  **SABER (`saber`)**
-    *   **Description**: A lattice-based KEM, another finalist in the NIST PQC standardization process.
-    *   **Variants**: `LightSaber`, `Saber`, `FireSaber`.
-    *   **Files**: `dcrypt_docs/kem/saber/README.md`
-    *   **Status**: Placeholder implementations. Parameters are defined in `dcrypt-params`.
-
-4.  **McEliece (`mceliece`)**
-    *   **Description**: A code-based KEM, one of the oldest PQC schemes, also selected by NIST for standardization.
-    *   **Variants**: `McEliece348864`, `McEliece6960119`.
-    *   **Files**: `dcrypt_docs/kem/mceliece/README.md`
-    *   **Status**: Placeholder implementations. Parameters are defined in `dcrypt-params`.
-
-## Error Handling
-
-The `kem` crate defines its own `Error` enum (`dcrypt_docs/kem/error/README.md`) for KEM-specific errors (e.g., `KeyGeneration`, `Encapsulation`, `Decapsulation`, `InvalidKey`, `InvalidCiphertext`). These errors can be converted from `algorithms::Error` and into `api::Error`. Validation utilities specific to KEMs are also provided.
-
-## Usage
-
-Once fully implemented, KEMs would be used as follows (conceptual example using `EcdhP256`):
+Here is an example using `EcdhP256`:
 
 ```rust
-use dcrypt_kem::ecdh::EcdhP256; // Example
-use dcrypt_api::Kem;
+use dcrypt::api::Kem;
+use dcrypt::kem::ecdh::EcdhP256;
 use rand::rngs::OsRng;
-use dcrypt_api::error::Result as ApiResult; // Use API's Result type
 
-fn kem_usage_example() -> ApiResult<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rng = OsRng;
 
-    // 1. Generate recipient's key pair
+    // 1. A recipient generates a key pair.
     let (public_key, secret_key) = EcdhP256::keypair(&mut rng)?;
 
-    // 2. Sender encapsulates a shared secret using recipient's public key
+    // The recipient can now share `public_key` with senders.
+    // For example, by serializing it:
+    let pk_bytes = public_key.to_bytes();
+
+
+    // 2. A sender uses the recipient's public key to generate a
+    //    shared secret and a ciphertext for transport.
     let (ciphertext, shared_secret_sender) = EcdhP256::encapsulate(&mut rng, &public_key)?;
 
-    // 3. Recipient decapsulates the ciphertext using their secret key
-    let shared_secret_receiver = EcdhP256::decapsulate(&secret_key, &ciphertext)?;
+    // The sender sends `ciphertext` to the recipient.
+    let ct_bytes = ciphertext.to_bytes();
 
-    // Both parties now have the same shared secret
-    assert_eq!(shared_secret_sender.as_ref(), shared_secret_receiver.as_ref());
 
-    println!("ECDH-P256 KEM operation successful. Shared secret established.");
+    // 3. The recipient uses their secret key to decapsulate the
+    //    ciphertext and derive the same shared secret.
+    let shared_secret_recipient = EcdhP256::decapsulate(&secret_key, &ciphertext)?;
+
+    // 4. Both parties now possess the same shared secret.
+    assert_eq!(shared_secret_sender.to_bytes(), shared_secret_recipient.to_bytes());
+
+    println!("Successfully derived a shared secret!");
+    println!("Shared Secret Length: {} bytes", shared_secret_sender.to_bytes().len());
+    println!("Ciphertext Length: {} bytes", ct_bytes.len());
+
     Ok(())
 }
+```
+
+The same pattern applies to post-quantum algorithms like `Kyber768`:
+
+```rust
+use dcrypt::api::Kem;
+use dcrypt::kem::kyber::Kyber768;
+use rand::rngs::OsRng;
+
+// --- snip ---
+let mut rng = OsRng;
+let (pk, sk) = Kyber768::keypair(&mut rng)?;
+let (ct, ss1) = Kyber768::encapsulate(&mut rng, &pk)?;
+let ss2 = Kyber768::decapsulate(&sk, &ct)?;
+assert_eq!(ss1.to_bytes(), ss2.to_bytes());
+println!("Kyber-768 shared secret derived successfully!");
+// --- snip ---
+```
+
+## Cargo Features
+
+The `dcrypt-kem` crate provides the following features:
+
+-   `std` (default): Enables functionality that depends on the Rust standard library.
+-   `alloc`: Enables usage of heap-allocated types. This is required for `no_std` environments that have a heap allocator.
+-   `no_std`: Disables `std` support for use in bare-metal and embedded environments.
+-   `serde`: Enables serialization and deserialization of public key types via the Serde framework.
+
+## Benchmarks
+
+The crate includes a comprehensive benchmark suite using `criterion`. To run the benchmarks and view the results:
+
+```bash
+cargo bench
+```
+
+The results will be available in the `target/criterion/` directory. The benchmarks cover key generation, encapsulation, and decapsulation for all implemented algorithms, providing a clear view of their relative performance.
+
+An `ecdh_comparison` suite is also included to directly compare the performance of the different elliptic curves.
+
+## License
+
+This crate is licensed under the
+[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).

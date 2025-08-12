@@ -1,71 +1,104 @@
+# ECDH-KEM with NIST P-256 (`secp256r1`)
 
----
+This module provides a secure and efficient implementation of the Key Encapsulation Mechanism (KEM) based on the Elliptic Curve Diffie-Hellman (ECDH) protocol over the NIST P-256 curve (also known as `secp256r1` or `prime256v1`).
 
-### `kem` Crate Documentation Updates
+P-256 is one of the most widely used elliptic curves, offering approximately 128 bits of security. It is standardized by NIST in FIPS 186-4 and is commonly found in protocols like TLS. This implementation conforms to the `dcrypt::api::Kem` trait, ensuring a consistent and predictable API.
 
-#### **COMPLETE FILE:** `docs/kem/ecdh/p256/README.md`
-```markdown
-# ECDH-KEM with NIST P-256 (`kem::ecdh::p256`)
+## Security Features
 
-This module provides a Key Encapsulation Mechanism (KEM) based on the Elliptic Curve Diffie-Hellman (ECDH) protocol using the NIST P-256 curve (also known as secp256r1 or prime256v1). The implementation is designed for security against timing attacks and adheres to best practices for key derivation, inspired by RFC 9180 (HPKE) for KDF usage.
+The `EcdhP256` implementation is built with a strong focus on cryptographic best practices and resilience against common vulnerabilities.
 
-This KEM variant utilizes compressed point format for ephemeral public keys, optimizing bandwidth efficiency during key exchange.
+-   **Robust Key Derivation:** The final shared secret is derived using **HKDF-SHA256**. The KDF input includes the ECDH shared point's x-coordinate, the ephemeral public key, and the recipient's static public key. This construction binds the secret to the entire context of the exchange, protecting against unknown key-share attacks.
 
-## Algorithm Details (`EcdhP256`)
+-   **Strongly-Typed Keys:** The module exposes distinct types for keys and ciphertexts (`EcdhP256PublicKey`, `EcdhP256SecretKey`, `EcdhP256Ciphertext`). This prevents the accidental mixing of keys from different algorithms or misuse of a key in the wrong context (e.g., using a secret key where a public key is expected).
 
-The `EcdhP256` struct implements the `api::Kem` trait.
+-   **Automatic Zeroization:** Secret data is handled with care. `EcdhP256SecretKey` and `EcdhP256SharedSecret` implement the `ZeroizeOnDrop` trait, ensuring their contents are securely erased from memory as soon as they are no longer in use.
 
-### Key Types
+-   **Explicit Serialization:** To prevent accidental key leakage, direct byte access via traits like `AsRef<[u8]>` is intentionally omitted for sensitive types. Serialization and deserialization must be performed through explicit, security-auditable methods (`to_bytes()`, `from_bytes()`, `to_bytes_zeroizing()`).
 
--   **`EcdhP256PublicKey`**:
-    *   Wraps a `[u8; algorithms::ec::p256::P256_POINT_COMPRESSED_SIZE]`.
-    *   Stores the P-256 public key point in compressed format (33 bytes).
--   **`EcdhP256SecretKey`**:
-    *   Wraps a `SecretBuffer<{ algorithms::ec::p256::P256_SCALAR_SIZE }>`.
-    *   Stores the P-256 private key scalar (32 bytes) securely.
-    *   Implements `Zeroize` and `ZeroizeOnDrop`.
--   **`EcdhP256SharedSecret`**:
-    *   Wraps an `api::Key` (from `dcrypt-api`).
-    *   Stores the derived shared secret (default 32 bytes from HKDF-SHA256).
-    *   Implements `Zeroize` and `ZeroizeOnDrop`.
--   **`EcdhP256Ciphertext`**:
-    *   Wraps a `[u8; algorithms::ec::p256::P256_POINT_COMPRESSED_SIZE]`.
-    *   Stores the compressed ephemeral public key used during encapsulation (33 bytes).
+-   **Point Validation:** All external inputs representing curve points (public keys and ciphertexts) are rigorously validated. The implementation ensures that points are validly compressed, lie on the P-256 curve, and are not the point at infinity. This is a critical defense against invalid-curve attacks.
 
-### KDF Details
+-   **Constant-Time Operations:** The underlying `dcrypt-algorithms` crate performs scalar multiplication in constant time, protecting the secret key against timing-based side-channel attacks.
 
--   **Shared Secret Derivation**: Uses HKDF with SHA-256 (`algorithms::ec::p256::kdf_hkdf_sha256_for_ecdh_kem`).
--   **IKM (Input Keying Material)**: The x-coordinate of the ECDH shared point.
--   **Salt**: The byte representation of the ephemeral public key (compressed format).
--   **Info**: A context string like `"ECDH-P256-KEM v2.0.0"` for domain separation. The version `v2.0.0` (defined as `KEM_KDF_VERSION` in `kem::ecdh::mod.rs`) signifies the use of compressed points in the KDF context.
--   **Output Length**: `algorithms::ec::p256::P256_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE` (32 bytes).
+-   **Bandwidth Efficiency:** Public keys and ciphertexts are serialized using the compressed point format (33 bytes), minimizing data transmission size.
 
-### Operations
+## API and Data Structures
 
-1.  **`keypair(rng)`**:
-    *   Generates a P-256 key pair using `algorithms::ec::p256::generate_keypair`.
-    *   The public key is serialized in compressed format.
-    *   The private key scalar is stored securely.
+| Type | Description | Size |
+| :--- | :--- | :--- |
+| **`EcdhP256`** | The main struct that implements the `dcrypt::api::Kem` trait for P-256. | - |
+| **`EcdhP256PublicKey`** | The public key, representing a compressed point on the curve. | 33 bytes |
+| **`EcdhP256SecretKey`** | The secret key, representing a 32-byte scalar. Automatically zeroized. | 32 bytes |
+| **`EcdhP256Ciphertext`**| The ciphertext, an ephemeral public key in compressed format. | 33 bytes |
+| **`EcdhP256SharedSecret`**| The final shared secret derived from HKDF-SHA256. Automatically zeroized. | 32 bytes |
 
-2.  **`encapsulate(rng, public_key_recipient)`**:
-    *   Deserializes and validates the recipient's compressed public key.
-    *   Generates an ephemeral P-256 key pair `(ephemeral_scalar, ephemeral_point)`.
-    *   The `ephemeral_point` is serialized in compressed format to become the `EcdhP256Ciphertext`.
-    *   Computes the ECDH shared point: `shared_point = ephemeral_scalar * public_key_recipient_point`.
-    *   Validates that `shared_point` is not the point at infinity.
-    *   Extracts the x-coordinate of `shared_point` as IKM for the KDF.
-    *   Constructs the KDF input by concatenating the x-coordinate, the serialized ephemeral public key, and the recipient's public key (all in compressed format).
-    *   Derives the `EcdhP256SharedSecret` using HKDF-SHA256.
-    *   Ensures the ephemeral scalar is zeroized.
+## Usage Example
 
-3.  **`decapsulate(secret_key_recipient, ciphertext_ephemeral_pk)`**:
-    *   Deserializes the ephemeral public key point from the `ciphertext_ephemeral_pk`. Validates it's not identity.
-    *   Deserializes the recipient's secret key scalar.
-    *   Computes the ECDH shared point: `shared_point = secret_key_recipient_scalar * ephemeral_pk_point`.
-    *   Validates that `shared_point` is not the point at infinity.
-    *   Extracts the x-coordinate.
-    *   Recomputes the recipient's public key (for KDF input consistency).
-    *   Constructs the KDF input identically to encapsulation.
-    *   Re-derives the `EcdhP256SharedSecret` using HKDF-SHA256.
+The following example demonstrates the complete key generation, encapsulation, and decapsulation flow using `EcdhP256`.
 
-This KEM offers strong classical security and forward secrecy due to the use of ephemeral keys.
+```rust
+use dcrypt::api::Kem;
+use dcrypt::kem::ecdh::{EcdhP256, EcdhP256PublicKey, EcdhP256SecretKey, EcdhP256Ciphertext};
+use rand::rngs::OsRng;
+use zeroize::Zeroizing;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut rng = OsRng;
+
+    // == Recipient Side ==
+    // 1. Generate a long-term P-256 key pair.
+    let (recipient_pk, recipient_sk) = EcdhP256::keypair(&mut rng)?;
+
+    // The public key can now be serialized and distributed.
+    let pk_bytes = recipient_pk.to_bytes();
+    assert_eq!(pk_bytes.len(), 33);
+
+
+    // == Sender Side ==
+    // 2. The sender obtains the recipient's public key and encapsulates a secret.
+    // This creates a one-time ciphertext and a shared secret.
+    let (ciphertext, shared_secret_sender) = EcdhP256::encapsulate(&mut rng, &recipient_pk)?;
+
+    // The ciphertext is sent to the recipient.
+    let ct_bytes = ciphertext.to_bytes();
+    assert_eq!(ct_bytes.len(), 33);
+
+
+    // == Recipient Side ==
+    // 3. The recipient receives the ciphertext and uses their secret key to decapsulate it.
+    let shared_secret_recipient = EcdhP256::decapsulate(&recipient_sk, &ciphertext)?;
+
+
+    // == Verification ==
+    // 4. Both parties now have the identical 32-byte shared secret.
+    let sender_secret_bytes = shared_secret_sender.to_bytes_zeroizing();
+    let recipient_secret_bytes = shared_secret_recipient.to_bytes_zeroizing();
+
+    assert_eq!(*sender_secret_bytes, *recipient_secret_bytes);
+    assert_eq!(sender_secret_bytes.len(), 32);
+
+    println!("ECDH-P256 shared secret established successfully!");
+
+    Ok(())
+}
+```
+
+## Testing & Benchmarking
+
+This module is supported by an extensive test suite located in `tests.rs`, which validates:
+-   Correctness of the encapsulation/decapsulation roundtrip.
+-   Handling of invalid and tampered public keys and ciphertexts.
+-   Rejection of incorrect secret keys.
+-   Serialization and deserialization integrity.
+-   Proper zeroization of secret material.
+
+To run the dedicated benchmarks for this module and assess its performance, execute:
+
+```bash
+cargo bench --bench ecdh_p256
+```
+
+## License
+
+This crate is licensed under the
+[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).

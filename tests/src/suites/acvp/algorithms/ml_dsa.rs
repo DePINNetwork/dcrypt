@@ -6,7 +6,7 @@ use super::ml_dsa_adapter::AcvpSecretKeyAdapter; // Use the local adapter
 use crate::suites::acvp::error::{EngineError, Result};
 use crate::suites::acvp::model::{TestCase, TestGroup};
 use dcrypt_api::Signature;
-use dcrypt_sign::pq::dilithium::{
+use dcrypt_sign::dilithium::{
     Dilithium2, Dilithium3, Dilithium5, DilithiumPublicKey, DilithiumSecretKey,
     DilithiumSignatureData,
 };

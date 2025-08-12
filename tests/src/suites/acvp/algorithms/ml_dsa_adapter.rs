@@ -17,7 +17,7 @@ use dcrypt_params::pqc::dilithium::{
     Dilithium2Params, Dilithium3Params, Dilithium5Params, DilithiumSchemeParams, DILITHIUM_N,
 };
 use dcrypt_sign::error::Error as SignError;
-use dcrypt_sign::pq::dilithium::DilithiumSecretKey;
+use dcrypt_sign::dilithium::DilithiumSecretKey;
 
 /// Adapter for handling ACVP's non-standard secret key format
 pub struct AcvpSecretKeyAdapter;

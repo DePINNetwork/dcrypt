@@ -1,64 +1,99 @@
-# ECDH-KEM with NIST P-521 (`kem::ecdh::p521`)
+# ECDH-KEM with NIST P-521 (`secp521r1`)
 
-This module provides a Key Encapsulation Mechanism (KEM) based on the Elliptic Curve Diffie-Hellman (ECDH) protocol using the NIST P-521 curve (also known as secp521r1). The implementation is designed for security against timing attacks and adheres to best practices for key derivation, inspired by RFC 9180 (HPKE) for KDF usage.
+This module provides a robust and secure implementation of the Elliptic Curve Diffie-Hellman Key Encapsulation Mechanism (ECDH-KEM) using the **NIST P-521** curve. It offers the highest security level among the standard NIST prime curves.
 
-This KEM variant utilizes compressed point format for ephemeral public keys, optimizing bandwidth efficiency during key exchange.
+The implementation conforms to the `dcrypt::api::Kem` trait, ensuring a consistent and predictable API that is interchangeable with other KEMs in the `dcrypt` ecosystem.
 
-## Algorithm Details (`EcdhP521`)
+## Security Level and Use Cases
 
-The `EcdhP521` struct implements the `api::Kem` trait.
+`EcdhP521` provides approximately **256 bits of security**, making it suitable for applications with the most stringent security requirements, such as:
 
-### Key Types
+-   Protecting top-secret or highly sensitive data.
+-   Ensuring very long-term confidentiality, where data must remain secure for decades.
+-   Systems where maximum cryptographic strength is required and performance is a secondary consideration.
 
--   **`EcdhP521PublicKey`**:
-    *   Wraps a `[u8; algorithms::ec::p521::P521_POINT_COMPRESSED_SIZE]`.
-    *   Stores the P-521 public key point in compressed format (67 bytes).
--   **`EcdhP521SecretKey`**:
-    *   Wraps a `SecretBuffer<{ algorithms::ec::p521::P521_SCALAR_SIZE }>`.
-    *   Stores the P-521 private key scalar (66 bytes) securely.
-    *   Implements `Zeroize` and `ZeroizeOnDrop`.
--   **`EcdhP521SharedSecret`**:
-    *   Wraps an `api::Key` (from `dcrypt-api`).
-    *   Stores the derived shared secret (default 64 bytes from HKDF-SHA512).
-    *   Implements `Zeroize` and `ZeroizeOnDrop`.
--   **`EcdhP521Ciphertext`**:
-    *   Wraps a `[u8; algorithms::ec::p521::P521_POINT_COMPRESSED_SIZE]`.
-    *   Stores the compressed ephemeral public key used during encapsulation (67 bytes).
+Given its computational intensity, P-521 is recommended when the performance overhead is acceptable for the level of security achieved.
 
-### KDF Details
+## Key Characteristics
 
--   **Shared Secret Derivation**: Uses HKDF with SHA-512 (`algorithms::ec::p521::kdf_hkdf_sha512_for_ecdh_kem`).
--   **IKM (Input Keying Material)**: The x-coordinate of the ECDH shared point.
--   **Salt**: The byte representation of the ephemeral public key (compressed format).
--   **Info**: A context string like `"ECDH-P521-KEM v2.0.0"` for domain separation. The version `v2.0.0` (defined as `KEM_KDF_VERSION` in `kem::ecdh::mod.rs`) signifies the use of compressed points in the KDF context.
--   **Output Length**: `algorithms::ec::p521::P521_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE` (64 bytes).
+| Property | Value | Description |
+| :--- | :--- | :--- |
+| **Curve** | NIST P-521 | A prime-order curve over a 521-bit field. |
+| **Security Level** | ~256-bit | The highest classical security level of the NIST curves. |
+| **KDF** | HKDF-SHA512 | Uses HKDF with SHA-512 to derive a 64-byte shared secret. |
+| **Public Key Size**| 67 bytes | A compressed elliptic curve point (`1` byte prefix + `66` byte coordinate).|
+| **Secret Key Size**| 66 bytes | A 521-bit scalar value, padded to 66 bytes. |
+| **Ciphertext Size**| 67 bytes | An ephemeral, compressed public key. |
+| **Shared Secret** | 64 bytes | The output of the HKDF-SHA512 function. |
 
-### Operations
+## Security Features
 
-1.  **`keypair(rng)`**:
-    *   Generates a P-521 key pair using `algorithms::ec::p521::generate_keypair`.
-    *   The public key is serialized in compressed format.
-    *   The private key scalar is stored securely.
+This implementation inherits the security-first design principles of the `dcrypt` library:
 
-2.  **`encapsulate(rng, public_key_recipient)`**:
-    *   Deserializes and validates the recipient's compressed public key.
-    *   Generates an ephemeral P-521 key pair `(ephemeral_scalar, ephemeral_point)`.
-    *   The `ephemeral_point` is serialized in compressed format to become the `EcdhP521Ciphertext`.
-    *   Computes the ECDH shared point: `shared_point = ephemeral_scalar * public_key_recipient_point`.
-    *   Validates that `shared_point` is not the point at infinity.
-    *   Extracts the x-coordinate of `shared_point` as IKM for the KDF.
-    *   Constructs the KDF input by concatenating the x-coordinate, the serialized ephemeral public key, and the recipient's public key (all in compressed format).
-    *   Derives the `EcdhP521SharedSecret` using HKDF-SHA512.
-    *   Ensures the ephemeral scalar is zeroized.
+-   **Strongly-Typed Keys:** Utilizes distinct `EcdhP521PublicKey`, `EcdhP521SecretKey`, and `EcdhP521Ciphertext` structs to prevent accidental misuse of keys from other algorithms.
+-   **Secure Key Derivation:** Employs HKDF-SHA512 to derive a strong shared secret from the ECDH exchange. The KDF input binds the ephemeral and static public keys to the final shared secret.
+-   **Zeroization on Drop:** Both `EcdhP521SecretKey` and `EcdhP521SharedSecret` are automatically wiped from memory when they go out of scope, minimizing the risk of secret key exposure.
+-   **Point Validation:** All public inputs (public keys and ciphertexts) are validated to ensure they are valid points on the P-521 curve and are not the identity point, thwarting invalid curve attacks.
+-   **Controlled API:** Access to raw key bytes is restricted to explicit, well-documented methods, preventing common programming errors that could lead to security vulnerabilities.
 
-3.  **`decapsulate(secret_key_recipient, ciphertext_ephemeral_pk)`**:
-    *   Deserializes the ephemeral public key point from the `ciphertext_ephemeral_pk`. Validates it's not identity.
-    *   Deserializes the recipient's secret key scalar.
-    *   Computes the ECDH shared point: `shared_point = secret_key_recipient_scalar * ephemeral_pk_point`.
-    *   Validates that `shared_point` is not the point at infinity.
-    *   Extracts the x-coordinate.
-    *   Recomputes the recipient's public key (for KDF input consistency).
-    *   Constructs the KDF input identically to encapsulation.
-    *   Re-derives the `EcdhP521SharedSecret` using HKDF-SHA512.
+## Usage Example
 
-This KEM offers a very high level of classical security and forward secrecy.
+Using `EcdhP521` follows the standard `Kem` trait interface.
+
+```rust
+use dcrypt::api::Kem;
+use dcrypt::kem::ecdh::{EcdhP521, EcdhP521PublicKey};
+use rand::rngs::OsRng;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut rng = OsRng;
+
+    // 1. Recipient generates a key pair.
+    println!("Generating P-521 key pair (this may take a moment)...");
+    let (public_key, secret_key) = EcdhP521::keypair(&mut rng)?;
+    println!("Key pair generated.");
+
+    // Serialize for transport.
+    let pk_bytes = public_key.to_bytes();
+
+    // 2. Sender encapsulates a shared secret using the public key.
+    println!("Encapsulating shared secret...");
+    let (ciphertext, shared_secret_sender) = EcdhP521::encapsulate(&mut rng, &public_key)?;
+    println!("Encapsulation complete.");
+
+    // 3. Recipient decapsulates the ciphertext to derive the same secret.
+    println!("Decapsulating ciphertext...");
+    let shared_secret_recipient = EcdhP521::decapsulate(&secret_key, &ciphertext)?;
+    println!("Decapsulation complete.");
+
+    // 4. The derived secrets must match.
+    assert_eq!(
+        shared_secret_sender.to_bytes(),
+        shared_secret_recipient.to_bytes()
+    );
+
+    println!("\nSUCCESS: P-521 KEM roundtrip completed successfully!");
+    println!("-> Public Key Size:      {} bytes", pk_bytes.len());
+    println!("-> Ciphertext Size:      {} bytes", ciphertext.to_bytes().len());
+    println!("-> Derived Secret Size:  {} bytes", shared_secret_sender.to_bytes().len());
+
+    Ok(())
+}
+```
+
+## Performance
+
+Operations on the P-521 curve are significantly more computationally intensive than on smaller curves like P-256. This module includes specific benchmarks to evaluate its performance characteristics.
+
+To run the `EcdhP521` benchmarks:
+
+```bash
+cargo bench --bench ecdh_p521
+```
+
+This will generate a detailed HTML report in the `target/criterion/` directory, which can be used to assess if P-521 meets the performance requirements of your application.
+
+## License
+
+This crate is licensed under either of the
+[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).

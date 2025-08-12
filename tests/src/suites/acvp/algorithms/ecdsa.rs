@@ -3,7 +3,7 @@
 use crate::suites::acvp::error::{EngineError, Result};
 use crate::suites::acvp::model::{TestCase, TestGroup};
 use dcrypt_api::Signature;
-use dcrypt_sign::traditional::ecdsa::{
+use dcrypt_sign::ecdsa::{
     EcdsaP192,
     EcdsaP192PublicKey,
     EcdsaP192Signature, // Added P-192
@@ -646,7 +646,7 @@ fn create_p521_public_key(qx_hex: &str, qy_hex: &str) -> Result<EcdsaP521PublicK
 }
 
 fn create_der_signature(r: &[u8], s: &[u8]) -> Result<Vec<u8>> {
-    use dcrypt_sign::traditional::ecdsa::common::SignatureComponents;
+    use dcrypt_sign::ecdsa::common::SignatureComponents;
     let sig = SignatureComponents {
         r: r.to_vec(),
         s: s.to_vec(),
@@ -655,7 +655,7 @@ fn create_der_signature(r: &[u8], s: &[u8]) -> Result<Vec<u8>> {
 }
 
 fn parse_der_signature(der: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
-    use dcrypt_sign::traditional::ecdsa::common::SignatureComponents;
+    use dcrypt_sign::ecdsa::common::SignatureComponents;
     let sig = SignatureComponents::from_der(der)
         .map_err(|e| EngineError::Crypto(format!("DER parsing failed: {:?}", e)))?;
     Ok((sig.r, sig.s))

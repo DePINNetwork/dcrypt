@@ -1,55 +1,76 @@
 # Elliptic Curve Integrated Encryption Scheme (ECIES)
 
-This module (`pke::ecies`) implements the Elliptic Curve Integrated Encryption Scheme (ECIES). ECIES is a hybrid encryption scheme that combines Elliptic Curve Diffie-Hellman (ECDH) for asymmetric key agreement with a Key Derivation Function (KDF) and a symmetric Authenticated Encryption with Associated Data (AEAD) cipher for efficient bulk encryption.
+This directory contains the implementation of the **Elliptic Curve Integrated Encryption Scheme (ECIES)** for the `dcrypt` library. It provides a modular framework for building secure public-key encryption schemes based on elliptic curve cryptography.
 
-It provides strong security properties, including confidentiality and (typically) authenticity of the encrypted messages.
+## Overview
 
-## General ECIES Workflow
+ECIES is a hybrid encryption scheme that combines the efficiency of symmetric encryption with the convenience of asymmetric (public-key) encryption. This implementation provides a secure and robust way to encrypt data for a recipient using their public key.
 
-1.  **Key Pair Generation (Recipient)**:
-    *   The recipient has a static elliptic curve key pair `(sk_R, PK_R)`, where `sk_R` is a scalar (private key) and `PK_R` is a point on the curve (public key). These keys are long-term.
+The encryption process follows these general steps:
 
-2.  **Encryption (Sender)**:
-    To encrypt a message `M` for the recipient with public key `PK_R`:
-    *   Generate an ephemeral (temporary) ECDH key pair `(sk_E, PK_E)`. This key pair is used only for this encryption operation.
-    *   Perform an ECDH key agreement between the ephemeral secret key `sk_E` and the recipient's static public key `PK_R` to derive a shared secret point `Z = sk_E * PK_R`.
-    *   Extract a byte string from `Z` (commonly the x-coordinate, `z_bytes`).
-    *   Use a Key Derivation Function (KDF), such as HKDF, to derive a symmetric key `K_sym` from `z_bytes`. The ephemeral public key `PK_E` (or its byte representation) is often used as salt or context information for the KDF. This binds `K_sym` to this specific ECIES instance and the ephemeral key.
-        `K_sym = KDF(salt=PK_E_bytes, ikm=z_bytes, info=context_string)`
-    *   Encrypt the plaintext `M` using `K_sym` and an AEAD cipher (e.g., ChaCha20Poly1305, AES-GCM) with a fresh, unique nonce `N`. Optionally, Associated Additional Data (AAD) can be included to be authenticated along with the plaintext. This produces an AEAD ciphertext `C_aead` (which includes the actual encrypted data and an authentication tag).
-    *   The final ECIES ciphertext is typically a composition of `PK_E` (so the recipient can re-derive `Z`), `N`, and `C_aead`. The `EciesCiphertextComponents` struct in this implementation serializes these as: `R_len (1B) || R_bytes || N_len (1B) || N_bytes || CT_len (4B) || (Ciphertext_AEAD || Tag_AEAD)`.
+1.  **Key Agreement**: The sender generates a new, temporary (ephemeral) elliptic curve keypair for each encryption operation. An Elliptic Curve Diffie-Hellman (ECDH) key exchange is performed between the sender's ephemeral private key and the recipient's public key. This results in a shared secret point on the curve.
 
-3.  **Decryption (Recipient)**:
-    To decrypt an ECIES ciphertext (which contains `PK_E_bytes`, `N_bytes`, and `C_aead_bytes`) using their static private key `sk_R`:
-    *   Deserialize `PK_E_bytes` to the ephemeral public key point `PK_E`. Validate `PK_E` to ensure it's a valid point on the curve.
-    *   Perform an ECDH key agreement between the recipient's static secret key `sk_R` and the sender's ephemeral public key `PK_E` to derive the same shared secret point `Z = sk_R * PK_E`.
-    *   Extract `z_bytes` from `Z`.
-    *   Use the same KDF with `z_bytes`, `PK_E_bytes` (as salt/context), and the same context string to re-derive the symmetric key `K_sym`.
-    *   Deserialize `N_bytes` to the nonce `N`.
-    *   Decrypt `C_aead_bytes` using `K_sym`, `N`, and the same AAD (if any) used during encryption. If the AEAD tag verifies successfully, the original plaintext `M` is recovered. Otherwise, decryption fails, indicating tampering or use of an incorrect key.
+2.  **Key Derivation**: The x-coordinate of the shared secret point is used as input to a **HMAC-based Key Derivation Function (HKDF)**. The ephemeral public key is used as a salt for the KDF. This process derives a strong symmetric key suitable for an AEAD (Authenticated Encryption with Associated Data) cipher.
 
-## Implemented Variants
+3.  **Authenticated Encryption**: The actual plaintext message is encrypted using a secure AEAD cipher (such as `ChaCha20Poly1305` or `AES-256-GCM`) with the derived symmetric key. The AEAD cipher ensures both the confidentiality and the integrity/authenticity of the message.
 
-This module provides specific ECIES instantiations:
+4.  **Ciphertext Composition**: The final ciphertext is a concatenation of the necessary components for decryption: the sender's ephemeral public key, the nonce used by the AEAD cipher, and the resulting authenticated ciphertext.
 
-1.  **ECIES with P-256 (`pke::ecies::p256`)**:
-    *   Uses NIST P-256 curve, HKDF-SHA256, and ChaCha20Poly1305.
-    *   Refer to `dcrypt_docs/pke/ecies/p256/README.md`.
+## Module Structure
 
-2.  **ECIES with P-384 (`pke::ecies::p384`)**:
-    *   Uses NIST P-384 curve, HKDF-SHA384, and AES-256-GCM.
-    *   Refer to `dcrypt_docs/pke/ecies/p384/README.md`.
+The `ecies` module is organized into a generic core and specific implementations for different elliptic curves.
 
-3.  **ECIES with P-521 (`pke::ecies::p521`)**:
-    *   Uses NIST P-521 curve, HKDF-SHA512, and AES-256-GCM.
-    *   Refer to `dcrypt_docs/pke/ecies/p521/README.md`.
+*   `mod.rs`: This file is the core of the module. It defines:
+    *   The `EciesCiphertextComponents` struct, which standardizes the structure of the ECIES ciphertext.
+    *   Serialization and deserialization logic for the ciphertext format.
+    *   Generic helper functions for key derivation using HKDF with different hash functions (`derive_symmetric_key_hkdf_sha256`, `derive_symmetric_key_hkdf_sha384`, etc.).
+    *   Re-exports of the concrete ECIES implementations.
 
-## Shared Components
+*   `p192/`, `p224/`, `p256/`, `p384/`, `p521/`: These sub-modules contain the concrete ECIES implementations for the standard NIST elliptic curves. Each module defines a struct (e.g., `EciesP256`) that implements the `dcrypt_api::traits::Pke` trait, bundling a specific curve with a corresponding KDF and AEAD cipher.
 
--   **`derive_symmetric_key_hkdf_sha256 / _sha384 / _sha512`**: Internal helper functions using `algorithms::kdf::hkdf::Hkdf` for deriving the symmetric AEAD key. The shared secret `z_bytes` (x-coordinate of the ECDH shared point) is used as the Input Keying Material (IKM), and the `ephemeral_pk_bytes` (serialized ephemeral public key) is used as the salt for HKDF. A context-specific `info` string further refines the key derivation.
--   **`EciesCiphertextComponents`**: A private struct used by ECIES implementations to structure and serialize/deserialize the components of an ECIES ciphertext.
-    *   **Serialization Format**: The components (ephemeral public key `R`, AEAD nonce `N`, and AEAD ciphertext+tag `C||T`) are serialized with length prefixes to allow unambiguous parsing:
-        `R_len (1 byte) || R_bytes || N_len (1 byte) || N_bytes || CT_len (4 bytes, big-endian) || (Ciphertext_AEAD || Tag_AEAD)`
--   **Constants**: Define key and nonce lengths for the chosen AEAD ciphers (e.g., `CHACHA20POLY1305_KEY_LEN`, `AES256GCM_NONCE_LEN`).
+### Implemented Schemes
 
-These components ensure a consistent structure for ECIES operations across different curve and AEAD choices.
+| Struct | Elliptic Curve | Key Derivation Function (KDF) | AEAD Cipher |
+| :--- | :--- | :--- | :--- |
+| `EciesP192` | NIST P-192 | HKDF-SHA256 | ChaCha20Poly1305 |
+| `EciesP224` | NIST P-224 | HKDF-SHA256 | ChaCha20Poly1305 |
+| `EciesP256` | NIST P-256 | HKDF-SHA256 | ChaCha20Poly1305 |
+| `EciesP384` | NIST P-384 | HKDF-SHA384 | AES-256-GCM |
+| `EciesP521` | NIST P-521 | HKDF-SHA512 | AES-256-GCM |
+
+## Ciphertext Wire Format
+
+The structure of the serialized ECIES ciphertext is defined by `EciesCiphertextComponents::serialize` and is designed to be unambiguous and secure.
+
+The format is: `R_len || R || N_len || N || CT_len || (C||T)`
+
+*   `R_len` (1 byte): The length of the ephemeral public key `R`.
+*   `R` (variable): The uncompressed ephemeral public key generated by the sender.
+*   `N_len` (1 byte): The length of the AEAD nonce `N`.
+*   `N` (variable): The nonce used for the AEAD encryption.
+*   `CT_len` (4 bytes, big-endian): The length of the AEAD ciphertext and tag `(C||T)`.
+*   `(C||T)` (variable): The output of the AEAD encryption, containing the encrypted message (`C`) followed by its authentication tag (`T`).
+
+This format ensures that all variable-length components are clearly delimited, preventing parsing ambiguities.
+
+## Usage
+
+While this module contains the core logic, users of the `dcrypt-pke` crate typically interact with the ECIES structs that are re-exported at the crate level.
+
+```rust
+// Import the desired ECIES implementation and the Pke trait
+use dcrypt_pke::EciesP256;
+use dcrypt_api::traits::Pke;
+use rand::thread_rng;
+
+// Generate a keypair
+let (pk, sk) = EciesP256::keypair(&mut thread_rng()).unwrap();
+
+// Encrypt data
+let plaintext = b"secret data";
+let ciphertext = EciesP256::encrypt(&pk, plaintext, None, &mut thread_rng()).unwrap();
+
+// Decrypt data
+let decrypted = EciesP256::decrypt(&sk, &ciphertext, None).unwrap();
+
+assert_eq!(plaintext, decrypted.as_slice());```

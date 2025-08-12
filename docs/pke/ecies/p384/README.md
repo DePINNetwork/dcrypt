@@ -1,67 +1,71 @@
-# ECIES with P-384 and AES-256-GCM (`pke::ecies::p384`)
+# ECIES with P-384 and ChaCha20Poly1305 
 
-This module provides an implementation of the Elliptic Curve Integrated Encryption Scheme (ECIES) specifically configured to use:
+This module provides a concrete implementation of the Elliptic Curve Integrated Encryption Scheme (ECIES) tailored for the NIST P-384 curve.
 
--   **Elliptic Curve**: NIST P-384 (also known as secp384r1).
--   **Key Derivation Function (KDF)**: HKDF with SHA-384.
--   **Authenticated Encryption with Associated Data (AEAD)**: AES-256-GCM.
+## Overview
 
-This combination provides a high level of security for asymmetric encryption, leveraging well-standardized primitives.
+The `EciesP384` struct encapsulates a complete public-key encryption scheme that offers a high level of security. It conforms to the `dcrypt_api::traits::Pke` trait, providing a standard interface for key generation, encryption, and decryption.
 
-## Algorithm Details (`EciesP384`)
+This implementation is designed for scenarios requiring approximately 192 bits of security, aligning with the strength of the underlying P-384 curve.
 
-The `EciesP384` struct implements the `api::traits::Pke` trait.
+## Cryptographic Primitives
 
-### Key Types
+The `EciesP384` scheme is constructed from the following specific cryptographic algorithms:
 
--   **`EciesP384PublicKey`**:
-    *   Wraps a `[u8; algorithms::ec::p384::P384_POINT_UNCOMPRESSED_SIZE]`.
-    *   Stores the P-384 public key point in uncompressed format (97 bytes: `0x04 || X-coordinate || Y-coordinate`).
--   **`EciesP384SecretKey`**:
-    *   Wraps a `[u8; algorithms::ec::p384::P384_SCALAR_SIZE]`.
-    *   Stores the P-384 private key scalar (48 bytes).
-    *   Implements `Zeroize` and `ZeroizeOnDrop` for secure memory handling.
+*   **Elliptic Curve**: **NIST P-384** (also known as `secp384r1`). This curve provides a 192-bit security level.
+*   **Key Derivation Function (KDF)**: **HKDF-SHA384**. The Elliptic Curve Diffie-Hellman (ECDH) shared secret is processed by the HMAC-based Key Derivation Function (HKDF) using SHA-384 as the underlying hash function. This is a robust method for deriving a strong symmetric key from the initial shared secret.
+*   **Authenticated Encryption with Associated Data (AEAD)**: **AES-256-GCM**. The plaintext is encrypted and authenticated using the Advanced Encryption Standard (AES) with a 256-bit key in Galois/Counter Mode (GCM). AES-256-GCM is a highly secure and widely adopted standard that provides both confidentiality and integrity for the encrypted data.
 
-### Ciphertext
+## Key Details
 
--   The `Ciphertext` type is `Vec<u8>`.
--   It represents the serialized form of `EciesCiphertextComponents` (defined in the parent `pke::ecies` module), which includes:
-    1.  **Ephemeral Public Key (`R`)**: The sender's temporary P-384 public key, serialized in uncompressed format (97 bytes).
-    2.  **AEAD Nonce (`N`)**: A 12-byte nonce for AES-256-GCM (the recommended size).
-    3.  **AEAD Ciphertext+Tag (`C||T`)**: The output of AES-256-GCM encryption, including the encrypted message and the 16-byte GCM authentication tag.
+*   **Public Key (`EciesP384PublicKey`)**: An uncompressed P-384 point, consisting of 97 bytes (1-byte prefix `0x04` + 48-byte x-coordinate + 48-byte y-coordinate).
+*   **Secret Key (`EciesP384SecretKey`)**: A P-384 scalar, which is a 48-byte integer. This key is securely handled and zeroized on drop to prevent accidental leakage.
 
-### Operations
+## Usage Example
 
-1.  **`keypair(rng)`**:
-    *   Generates a P-384 key pair using `algorithms::ec::p384::generate_keypair`.
-    *   The public key is serialized in uncompressed format.
-    *   The private key is the raw scalar.
+The following example demonstrates a complete key generation, encryption, and decryption cycle using `EciesP384`.
 
-2.  **`encrypt(pk_recipient, plaintext, aad, rng)`**:
-    *   Deserializes the recipient's uncompressed public key point. Validates it's not the point at infinity.
-    *   Generates an ephemeral P-384 key pair `(ephemeral_sk_scalar, ephemeral_pk_point)`.
-    *   Performs ECDH: `shared_point = ephemeral_sk_scalar * pk_recipient_point`. Validates that `shared_point` is not identity.
-    *   Extracts the x-coordinate (`z_bytes`) of `shared_point`.
-    *   Derives the symmetric AEAD key using `derive_symmetric_key_hkdf_sha384`:
-        *   **IKM**: `z_bytes`.
-        *   **Salt**: Bytes of the uncompressed `ephemeral_pk_point`.
-        *   **Info**: A context string like `"ECIES-P384-HKDF-SHA384-AES256GCM-KeyMaterial"`.
-        *   **Output Length**: `AES256GCM_KEY_LEN` (32 bytes).
-    *   Generates a random 12-byte nonce for AES-256-GCM.
-    *   Encrypts the `plaintext` with the derived key, nonce, and `aad` using `algorithms::aead::gcm::Gcm<Aes256>`.
-    *   Serializes the `ephemeral_pk_point` (uncompressed), AEAD nonce, and AEAD ciphertext+tag into the final ECIES ciphertext using `EciesCiphertextComponents::serialize()`.
-    *   Ensures `ephemeral_sk_scalar`, `z_bytes`, and `derived_key_material` are zeroized.
+```rust
+use dcrypt::pke::ecies::p384::EciesP384; // Or use dcrypt::pke::EciesP384
+use dcrypt::api::traits::Pke;
+use rand::rngs::OsRng;
 
-3.  **`decrypt(sk_recipient, ciphertext_bytes, aad)`**:
-    *   Deserializes `ciphertext_bytes` into `EciesCiphertextComponents`.
-    *   Deserializes the ephemeral public key point from the components. Validates it's not identity.
-    *   Deserializes the recipient's secret key scalar.
-    *   Performs ECDH: `shared_point = sk_recipient_scalar * ephemeral_pk_point`. Validates that `shared_point` is not identity.
-    *   Extracts the x-coordinate (`z_bytes`).
-    *   Re-derives the symmetric AEAD key using `derive_symmetric_key_hkdf_sha384` with the same parameters as in encryption (using the received ephemeral public key bytes as salt).
-    *   Deserializes the AEAD nonce from the components.
-    *   Decrypts the AEAD ciphertext+tag using `algorithms::aead::gcm::Gcm<Aes256>`.
-    *   If AEAD decryption and authentication succeed, returns the plaintext. Otherwise, returns an error (specifically `PkeError::DecryptionFailed("AEAD authentication failed")` which maps to `ApiError::DecryptionFailed`).
-    *   Ensures `z_bytes` and `derived_key_material` are zeroized.
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut rng = OsRng;
 
-This ECIES variant using P-384 and AES-256-GCM provides a high level of classical security.
+    // 1. Generate a new keypair for the recipient.
+    println!("Generating P-384 keypair...");
+    let (public_key, secret_key) = EciesP384::keypair(&mut rng)?;
+
+    // 2. Define the message and optional associated data (AAD).
+    let plaintext = b"This is a highly confidential message for P-384.";
+    let aad = Some(b"Message context: Project Phoenix, Q3 Report".as_slice());
+
+    // 3. Encrypt the message using the recipient's public key.
+    println!("Encrypting message...");
+    let ciphertext = EciesP384::encrypt(&public_key, plaintext, aad, &mut rng)?;
+
+    // 4. Decrypt the message using the recipient's secret key.
+    // The same AAD must be provided.
+    println!("Decrypting message...");
+    let decrypted_plaintext = EciesP384::decrypt(&secret_key, &ciphertext, aad)?;
+
+    // 5. Verify the decrypted message matches the original.
+    assert_eq!(plaintext, decrypted_plaintext.as_slice());
+
+    println!("\nSuccess! Decryption was successful and the message is authentic.");
+    println!("Plaintext: {}", std::str::from_utf8(plaintext)?);
+
+    Ok(())
+}
+```
+
+## Testing
+
+The `tests.rs` file for this module contains a comprehensive suite of unit tests to ensure correctness and security, including:
+*   Successful key generation.
+*   Encrypt-decrypt round trips with and without associated data.
+*   Guaranteed failure when decrypting with the wrong secret key.
+*   Guaranteed failure when decrypting tampered or corrupted ciphertext.
+*   Guaranteed failure when providing the wrong associated data during decryption.
+*   Correct handling of empty plaintext.

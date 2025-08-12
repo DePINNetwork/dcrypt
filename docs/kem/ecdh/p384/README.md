@@ -1,64 +1,89 @@
-# ECDH-KEM with NIST P-384 (`kem::ecdh::p384`)
+# ECDH-KEM with NIST P-384 (`secp384r1`)
 
-This module provides a Key Encapsulation Mechanism (KEM) based on the Elliptic Curve Diffie-Hellman (ECDH) protocol using the NIST P-384 curve (also known as secp384r1). The implementation is designed for security against timing attacks and adheres to best practices for key derivation, inspired by RFC 9180 (HPKE) for KDF usage.
+This module provides a secure implementation of the Elliptic Curve Diffie-Hellman Key Encapsulation Mechanism (ECDH-KEM) using the **NIST P-384** curve (also known as `secp384r1`). It is part of the `dcrypt::kem::ecdh` module and offers a high level of security suitable for long-term data protection.
 
-This KEM variant utilizes compressed point format for ephemeral public keys, optimizing bandwidth efficiency during key exchange.
+The implementation conforms to the `dcrypt::api::Kem` trait, ensuring a consistent and predictable interface that aligns with other KEMs in the `dcrypt` library.
 
-## Algorithm Details (`EcdhP384`)
+## Security Characteristics
 
-The `EcdhP384` struct implements the `api::Kem` trait.
+The P-384 implementation is built with a strong focus on cryptographic best practices, providing approximately **192 bits of security**.
 
-### Key Types
+-   **Key Derivation Function (KDF):** It uses **HKDF-SHA384** to derive the final shared secret. The choice of SHA-384 aligns with the security level of the P-384 curve itself, producing a robust 48-byte shared secret. The KDF input is constructed from the shared elliptic curve point's x-coordinate, the ephemeral public key, and the recipient's static public key to prevent key-compromise impersonation.
 
--   **`EcdhP384PublicKey`**:
-    *   Wraps a `[u8; algorithms::ec::p384::P384_POINT_COMPRESSED_SIZE]`.
-    *   Stores the P-384 public key point in compressed format (49 bytes).
--   **`EcdhP384SecretKey`**:
-    *   Wraps a `SecretBuffer<{ algorithms::ec::p384::P384_SCALAR_SIZE }>`.
-    *   Stores the P-384 private key scalar (48 bytes) securely.
-    *   Implements `Zeroize` and `ZeroizeOnDrop`.
--   **`EcdhP384SharedSecret`**:
-    *   Wraps an `api::Key` (from `dcrypt-api`).
-    *   Stores the derived shared secret (default 48 bytes from HKDF-SHA384).
-    *   Implements `Zeroize` and `ZeroizeOnDrop`.
--   **`EcdhP384Ciphertext`**:
-    *   Wraps a `[u8; algorithms::ec::p384::P384_POINT_COMPRESSED_SIZE]`.
-    *   Stores the compressed ephemeral public key used during encapsulation (49 bytes).
+-   **Strongly-Typed Data:** The module exposes distinct types to prevent misuse:
+    -   `EcdhP384PublicKey`: A validated P-384 public key.
+    -   `EcdhP384SecretKey`: A P-384 scalar value that is zeroized on drop.
+    -   `EcdhP384Ciphertext`: An ephemeral P-384 public key used for transport.
+    -   `EcdhP384SharedSecret`: The derived secret, also zeroized on drop.
 
-### KDF Details
+-   **Data Format & Efficiency:** Public keys and ciphertexts use **compressed point format**, reducing their on-the-wire size to just 49 bytes.
 
--   **Shared Secret Derivation**: Uses HKDF with SHA-384 (`algorithms::ec::p384::kdf_hkdf_sha384_for_ecdh_kem`).
--   **IKM (Input Keying Material)**: The x-coordinate of the ECDH shared point.
--   **Salt**: The byte representation of the ephemeral public key (compressed format).
--   **Info**: A context string like `"ECDH-P384-KEM v2.0.0"` for domain separation. The version `v2.0.0` (defined as `KEM_KDF_VERSION` in `kem::ecdh::mod.rs`) signifies the use of compressed points in the KDF context.
--   **Output Length**: `algorithms::ec::p384::P384_KEM_SHARED_SECRET_KDF_OUTPUT_SIZE` (typically 48 bytes, matching SHA-384 output).
+-   **Mandatory Validation:** All public keys (static and ephemeral) are validated to ensure they are valid points on the P-384 curve and are not the point at infinity. This protects against invalid curve attacks.
 
-### Operations
+-   **Secure Memory Handling:** `EcdhP384SecretKey` and `EcdhP384SharedSecret` wrappers ensure that sensitive data is securely wiped from memory when it is no longer in use.
 
-1.  **`keypair(rng)`**:
-    *   Generates a P-384 key pair using `algorithms::ec::p384::generate_keypair`.
-    *   The public key is serialized in compressed format.
-    *   The private key scalar is stored securely.
+## Data Structures and Sizes
 
-2.  **`encapsulate(rng, public_key_recipient)`**:
-    *   Deserializes and validates the recipient's compressed public key.
-    *   Generates an ephemeral P-384 key pair `(ephemeral_scalar, ephemeral_point)`.
-    *   The `ephemeral_point` is serialized in compressed format to become the `EcdhP384Ciphertext`.
-    *   Computes the ECDH shared point: `shared_point = ephemeral_scalar * public_key_recipient_point`.
-    *   Validates that `shared_point` is not the point at infinity.
-    *   Extracts the x-coordinate of `shared_point` as IKM for the KDF.
-    *   Constructs the KDF input by concatenating the x-coordinate, the serialized ephemeral public key, and the recipient's public key (all in compressed format).
-    *   Derives the `EcdhP384SharedSecret` using HKDF-SHA384.
-    *   Ensures the ephemeral scalar is zeroized.
+| Component | Struct | Serialized Size (Bytes) | Description |
+| :--- | :--- | :--- | :--- |
+| **Public Key** | `EcdhP384PublicKey` | 49 | A compressed P-384 point. |
+| **Secret Key** | `EcdhP384SecretKey` | 48 | A 384-bit scalar. |
+| **Ciphertext** | `EcdhP384Ciphertext`| 49 | An ephemeral, compressed P-384 public key. |
+| **Shared Secret**| `EcdhP384SharedSecret`| 48 | The output of the HKDF-SHA384 function. |
 
-3.  **`decapsulate(secret_key_recipient, ciphertext_ephemeral_pk)`**:
-    *   Deserializes the ephemeral public key point from the `ciphertext_ephemeral_pk`. Validates it's not identity.
-    *   Deserializes the recipient's secret key scalar.
-    *   Computes the ECDH shared point: `shared_point = secret_key_recipient_scalar * ephemeral_pk_point`.
-    *   Validates that `shared_point` is not the point at infinity.
-    *   Extracts the x-coordinate.
-    *   Recomputes the recipient's public key (for KDF input consistency).
-    *   Constructs the KDF input identically to encapsulation.
-    *   Re-derives the `EcdhP384SharedSecret` using HKDF-SHA384.
+## Usage Example
 
-This KEM offers strong classical security and forward secrecy.
+The interface follows the standard `Kem` trait.
+
+```rust
+use dcrypt::api::Kem;
+use dcrypt::kem::ecdh::EcdhP384;
+use rand::rngs::OsRng;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut rng = OsRng;
+
+    // 1. Recipient generates a key pair for P-384.
+    println!("Generating P-384 key pair...");
+    let (public_key, secret_key) = EcdhP384::keypair(&mut rng)?;
+
+    // 2. Sender encapsulates a secret using the recipient's public key.
+    println!("Encapsulating a shared secret...");
+    let (ciphertext, shared_secret_sender) = EcdhP384::encapsulate(&mut rng, &public_key)?;
+
+    // 3. Recipient decapsulates the ciphertext to derive the same secret.
+    println!("Decapsulating the ciphertext...");
+    let shared_secret_recipient = EcdhP384::decapsulate(&secret_key, &ciphertext)?;
+
+    // 4. The derived secrets must be identical.
+    assert_eq!(
+        shared_secret_sender.to_bytes(),
+        shared_secret_recipient.to_bytes()
+    );
+
+    println!("\nSuccess! ECDH-P384 roundtrip complete.");
+    println!("-> Public Key Size:   {} bytes", public_key.to_bytes().len());
+    println!("-> Secret Key Size:   {} bytes", secret_key.to_bytes().len());
+    println!("-> Ciphertext Size:   {} bytes", ciphertext.to_bytes().len());
+    println!("-> Shared Secret Size: {} bytes", shared_secret_sender.to_bytes().len());
+
+    Ok(())
+}
+```
+
+## Benchmarks
+
+Specific performance benchmarks are provided for the P-384 implementation to evaluate its speed for key generation, encapsulation, and decapsulation.
+
+To run the dedicated P-384 benchmark suite, use the following command:
+
+```bash
+cargo bench --bench ecdh_p384
+```
+
+The results will be available in the `target/criterion/` directory.
+
+## License
+
+This crate is licensed under the
+[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).

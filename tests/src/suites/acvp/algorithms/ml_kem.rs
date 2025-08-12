@@ -116,30 +116,30 @@ fn ml_kem_keygen(group: &TestGroup, case: &TestCase) -> Result<()> {
 
     // Verify or store the public key (ek)
     if let Some(exp_ek) = case.inputs.get("ek").map(|v| v.as_string()) {
-        if hex::decode(&exp_ek)?.ct_eq(pk.as_ref()).unwrap_u8() != 1 {
+        if hex::decode(&exp_ek)?.ct_eq(pk.as_bytes()).unwrap_u8() != 1 {
             return Err(EngineError::Mismatch {
                 expected: exp_ek,
-                actual: hex::encode(pk.as_ref()),
+                actual: hex::encode(pk.as_bytes()),
             });
         }
     } else {
         case.outputs
             .borrow_mut()
-            .insert("ek".into(), hex::encode(pk.as_ref()));
+            .insert("ek".into(), hex::encode(pk.as_bytes()));
     }
 
     // Verify or store the secret key (dk)
     if let Some(exp_dk) = case.inputs.get("dk").map(|v| v.as_string()) {
-        if hex::decode(&exp_dk)?.ct_eq(sk.as_ref()).unwrap_u8() != 1 {
+        if hex::decode(&exp_dk)?.ct_eq(&sk.to_vec()).unwrap_u8() != 1 {
             return Err(EngineError::Mismatch {
                 expected: exp_dk,
-                actual: hex::encode(sk.as_ref()),
+                actual: hex::encode(sk.to_vec()),
             });
         }
     } else {
         case.outputs
             .borrow_mut()
-            .insert("dk".into(), hex::encode(sk.as_ref()));
+            .insert("dk".into(), hex::encode(sk.to_vec()));
     }
 
     Ok(())
@@ -190,29 +190,29 @@ fn ml_kem_encap(group: &TestGroup, case: &TestCase) -> Result<()> {
 
     // verify if expected values present
     if let Some(exp_c) = case.inputs.get("c").map(|v| v.as_string()) {
-        if hex::decode(&exp_c)?.ct_eq(ct.as_ref()).unwrap_u8() != 1 {
+        if hex::decode(&exp_c)?.ct_eq(ct.as_bytes()).unwrap_u8() != 1 {
             return Err(EngineError::Mismatch {
                 expected: exp_c,
-                actual: hex::encode(ct.as_ref()),
+                actual: hex::encode(ct.as_bytes()),
             });
         }
     } else {
         case.outputs
             .borrow_mut()
-            .insert("c".into(), hex::encode(ct.as_ref()));
+            .insert("c".into(), hex::encode(ct.as_bytes()));
     }
 
     if let Some(exp_k) = case.inputs.get("k").map(|v| v.as_string()) {
-        if hex::decode(&exp_k)?.ct_eq(ss.as_ref()).unwrap_u8() != 1 {
+        if hex::decode(&exp_k)?.ct_eq(&*ss.to_bytes_zeroizing()).unwrap_u8() != 1 {
             return Err(EngineError::Mismatch {
                 expected: exp_k,
-                actual: hex::encode(ss.as_ref()),
+                actual: hex::encode(&*ss.to_bytes_zeroizing()),
             });
         }
     } else {
         case.outputs
             .borrow_mut()
-            .insert("k".into(), hex::encode(ss.as_ref()));
+            .insert("k".into(), hex::encode(&*ss.to_bytes_zeroizing()));
     }
 
     Ok(())
@@ -259,16 +259,16 @@ fn ml_kem_decap(group: &TestGroup, case: &TestCase) -> Result<()> {
     let ss = result.map_err(|e| EngineError::Crypto(format!("{:?}", e)))?;
 
     if let Some(exp_k) = case.inputs.get("k").map(|v| v.as_string()) {
-        if hex::decode(&exp_k)?.ct_eq(ss.as_ref()).unwrap_u8() != 1 {
+        if hex::decode(&exp_k)?.ct_eq(&*ss.to_bytes_zeroizing()).unwrap_u8() != 1 {
             return Err(EngineError::Mismatch {
                 expected: exp_k,
-                actual: hex::encode(ss.as_ref()),
+                actual: hex::encode(&*ss.to_bytes_zeroizing()),
             });
         }
     } else {
         case.outputs
             .borrow_mut()
-            .insert("k".into(), hex::encode(ss.as_ref()));
+            .insert("k".into(), hex::encode(&*ss.to_bytes_zeroizing()));
     }
 
     Ok(())

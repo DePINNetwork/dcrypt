@@ -1,107 +1,160 @@
-# Hash Functions (`algorithms/hash`)
+# Cryptographic Hash Functions
 
-This module implements various cryptographic hash functions. Hash functions are fundamental cryptographic primitives that map input data of arbitrary size to a fixed-size string of bits (the hash digest). Secure hash functions exhibit properties like pre-image resistance, second pre-image resistance, and collision resistance.
+This module provides a comprehensive suite of cryptographic hash functions implemented with a strong emphasis on security, type-safety, and a consistent, ergonomic API. The implementations are designed to be constant-time where appropriate and use secure memory-handling practices to mitigate side-channel attacks and prevent data leakage.
 
-The implementations in this module prioritize security, including attempts at constant-time behavior where relevant (though less critical for hashes than for ciphers/MACs involving secret keys) and secure handling of internal state.
+## Overview
 
-## Implemented Hash Functions
+The core of this module is the `HashFunction` trait, which provides a unified interface for both one-shot and incremental (streaming) hashing. All hash functions produce a type-safe `Digest<N>` object, where `N` is the output size in bytes, ensuring that digests of different sizes cannot be accidentally interchanged at compile time.
 
-1.  **SHA-1 (`sha1`)**
-    *   **Standard**: FIPS 180-4
-    *   **Output Size**: 160 bits (20 bytes)
-    *   **Block Size**: 512 bits (64 bytes)
-    *   **Security Notes**: SHA-1 is considered cryptographically broken and should **not** be used for new applications. It is provided primarily for compatibility with legacy systems.
-    *   **Core Struct**: `algorithms::hash::sha1::Sha1`
+## Features
 
-2.  **SHA-2 Family (`sha2`)**
-    *   **Standard**: FIPS 180-4
-    *   **Variants**:
-        *   `Sha224`: Output 224 bits (28 bytes), Block Size 512 bits (64 bytes)
-        *   `Sha256`: Output 256 bits (32 bytes), Block Size 512 bits (64 bytes)
-        *   `Sha384`: Output 384 bits (48 bytes), Block Size 1024 bits (128 bytes)
-        *   `Sha512`: Output 512 bits (64 bytes), Block Size 1024 bits (128 bytes)
-    *   **Security Notes**: Widely used and considered secure. Implementations include secure memory handling for intermediate states (e.g., using `EphemeralSecret` for message schedule words).
-    *   **Core Structs**: `Sha224`, `Sha256`, `Sha384`, `Sha512`.
+- **Unified API:** A consistent `HashFunction` trait for all supported algorithms.
+- **One-Shot & Incremental Hashing:** Support for both simple, single-call hashing and streaming operations for large data.
+- **Type Safety:** Compile-time guarantees on digest sizes using the `Digest<N>` type.
+- **Security-First Design:**
+    - **Constant-Time:** Implementations are designed to be resistant to timing-based side-channel attacks.
+    - **Secure Memory:** Intermediate sensitive values are stored in secure, zeroizing buffers like `EphemeralSecret` to prevent accidental data leakage.
+- **Keyed Hashing:** Native support for keyed hashing with BLAKE2.
+- **`no_std` Compatibility:** Usable in embedded and resource-constrained environments (requires `alloc`).
 
-3.  **SHA-3 Family (`sha3`)**
-    *   **Standard**: FIPS 202
-    *   **Description**: Based on the Keccak sponge construction.
-    *   **Variants**:
-        *   `Sha3_224`: Output 224 bits (28 bytes), Rate 1152 bits (144 bytes)
-        *   `Sha3_256`: Output 256 bits (32 bytes), Rate 1088 bits (136 bytes)
-        *   `Sha3_384`: Output 384 bits (48 bytes), Rate 832 bits (104 bytes)
-        *   `Sha3_512`: Output 512 bits (64 bytes), Rate 576 bits (72 bytes)
-    *   **Security Notes**: A modern and secure hash function standard. Implementations focus on constant-time and side-channel hardened Keccak permutation.
-    *   **Core Structs**: `Sha3_224`, `Sha3_256`, `Sha3_384`, `Sha3_512`.
+## Supported Algorithms
 
-4.  **SHAKE (Fixed-Output Versions) (`shake`)**
-    *   **Standard**: FIPS 202
-    *   **Description**: While SHAKE functions are Extendable Output Functions (XOFs), this module provides fixed-output hash function interfaces for them, common in some applications. For true XOF behavior, see `algorithms::xof::shake`.
-    *   **Variants**:
-        *   `Shake128`: Fixed output of 256 bits (32 bytes). Underlying security strength of 128 bits.
-        *   `Shake256`: Fixed output of 512 bits (64 bytes). Underlying security strength of 256 bits.
-    *   **Core Structs**: `Shake128`, `Shake256`.
+The module includes the following standard hash functions:
 
-5.  **BLAKE2 Family (`blake2`)**
-    *   **Standard**: RFC 7693
-    *   **Description**: Optimized for speed on 64-bit platforms while maintaining high security.
-    *   **Variants**:
-        *   `Blake2b`: 64-bit optimized, digest up to 512 bits (64 bytes). Supports keyed hashing. Block Size 1024 bits (128 bytes).
-        *   `Blake2s`: 32-bit optimized, digest up to 256 bits (32 bytes). Supports keyed hashing. Block Size 512 bits (64 bytes).
-    *   **Security Notes**: Fast and secure. Implementations use `EphemeralSecret` for intermediate compression values.
-    *   **Core Structs**: `Blake2b`, `Blake2s`.
+-   **SHA-2 Family**
+    -   `Sha224`
+    -   `Sha256`
+    -   `Sha384`
+    -   `Sha512`
+    -   `Sha512_224`
+    -   `Sha512_256`
 
-## Key Traits and Types
+-   **SHA-3 (Keccak) Family**
+    -   `Sha3_224`
+    -   `Sha3_256`
+    -   `Sha3_384`
+    -   `Sha3_512`
 
--   **`HashFunction` Trait (`algorithms::hash::HashFunction`)**:
-    *   Defines the common interface for hash functions.
-    *   Associated types: `Algorithm` (marker for output/block sizes), `Output` (typically `Digest<N>`).
-    *   Methods: `new`, `update`, `finalize`, `finalize_reset`, `digest` (one-shot).
-    *   Static methods: `output_size`, `block_size`, `name`, `verify`.
--   **`HashAlgorithm` Trait (`algorithms::hash::HashAlgorithm`)**:
-    *   A marker trait providing compile-time constants: `OUTPUT_SIZE`, `BLOCK_SIZE`, `ALGORITHM_ID`.
--   **`Digest<const N: usize>` (`algorithms::types::Digest`)**:
-    *   A type-safe wrapper for hash digests, ensuring fixed size at compile time.
--   `common::security::SecretBuffer`, `common::security::EphemeralSecret`: Used for secure handling of internal state or temporary values in some hash implementations.
+-   **SHAKE (as fixed-output hashes)**
+    -   `Shake128` (fixed 32-byte output)
+    -   `Shake256` (fixed 64-byte output)
+    > **Note:** For variable-length output (XOF), use the implementations in `dcrypt::algorithms::xof`.
 
-## Usage Example (SHA-256)
+-   **BLAKE2 Family**
+    -   `Blake2b` (64-bit optimized, variable output up to 64 bytes)
+    -   `Blake2s` (32-bit optimized, variable output up to 32 bytes)
+
+-   **Legacy**
+    > ⚠️ **Warning: SHA-1 Deprecation**
+    > `Sha1` is included for interoperability with legacy systems only. It is considered cryptographically broken and should not be used in new protocols or applications.
+
+## Core Abstraction: The `HashFunction` Trait
+
+All hash functions implement the `HashFunction` trait, providing a consistent interface:
 
 ```rust
-use dcrypt_algorithms::hash::{Sha256, HashFunction}; // HashFunction trait for .digest() etc.
-use dcrypt_algorithms::error::Result;
-use dcrypt_algorithms::types::Digest; // For the output type
+pub trait HashFunction {
+    // Creates a new hasher instance.
+    fn new() -> Self;
 
-fn sha256_example() -> Result<()> {
-    let data = b"Hello, DCRYPT hash functions!";
+    // Updates the hash state with more data. Can be called multiple times.
+    fn update(&mut self, data: &[u8]) -> Result<&mut Self>;
 
-    // One-shot hashing
-    let digest1: Digest<32> = Sha256::digest(data)?;
-    println!("SHA-256 Digest 1 (one-shot): {}", digest1.to_hex());
+    // Finalizes the hash computation and returns the digest.
+    fn finalize(&mut self) -> Result<Self::Output>;
 
-    // Incremental hashing
-    let mut hasher = Sha256::new();
-    hasher.update(b"Hello, ")?;
-    hasher.update(b"DCRYPT ")?;
-    hasher.update(b"hash functions!")?;
-    let digest2: Digest<32> = hasher.finalize()?;
-    println!("SHA-256 Digest 2 (incremental): {}", digest2.to_hex());
+    // Convenience method for one-shot hashing.
+    fn digest(data: &[u8]) -> Result<Self::Output>;
 
-    assert_eq!(digest1, digest2);
-
-    // Verification
-    assert!(Sha256::verify(data, &digest1)?);
-    println!("Verification successful!");
-
-    Ok(())
+    // Convenience method for verifying a hash against input data.
+    fn verify(data: &[u8], expected: &Self::Output) -> Result<bool>;
 }
-
-// fn main() {
-//     sha256_example().expect("SHA-256 example failed");
-// }
 ```
 
-## Security Notes
+## Usage Examples
 
--   **Algorithm Choice**: Always choose hash functions appropriate for the required security level. Avoid deprecated algorithms like SHA-1 for new applications.
--   **Salt for Password Hashing**: When hashing passwords, always use a salt and a dedicated password-based key derivation function (PBKDF) like Argon2 or PBKDF2 (found in `algorithms::kdf`), not a raw hash function.
--   **Output Truncation**: While some applications truncate hash outputs, be aware that this can reduce the security properties of the hash function.
+### One-Shot Hashing
+
+The simplest way to compute a hash is with the `digest` static method.
+
+```rust
+use dcrypt::algorithms::hash::{Sha256, HashFunction};
+
+let data = b"hello world";
+let digest = Sha256::digest(data).unwrap();
+
+println!("Data: {}", String::from_utf8_lossy(data));
+println!("SHA-256 Digest: {}", digest.to_hex());
+// Output: SHA-256 Digest: b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9
+```
+
+### Incremental (Streaming) Hashing
+
+For large inputs (e.g., files or network streams), you can use the incremental API.
+
+```rust
+use dcrypt::algorithms::hash::{Sha512, HashFunction};
+
+let mut hasher = Sha512::new();
+hasher.update(b"this is the first part of the message, ")
+      .unwrap()
+      .update(b"and this is the second part.")
+      .unwrap();
+
+let digest = hasher.finalize().unwrap();
+
+println!("SHA-512 Digest: {}", digest.to_hex());
+```
+
+### Hash Verification
+
+The `verify` method provides a convenient and constant-time way to check if a digest matches a given message.
+
+```rust
+use dcrypt::algorithms::hash::{Sha256, HashFunction};
+
+let data = b"my secret data";
+let correct_digest = Sha256::digest(data).unwrap();
+let incorrect_digest = Sha256::digest(b"wrong data").unwrap();
+
+// Verification should succeed
+assert!(Sha256::verify(data, &correct_digest).unwrap());
+
+// Verification should fail
+assert!(!Sha256::verify(data, &incorrect_digest).unwrap());
+```
+
+### Keyed Hashing with BLAKE2b
+
+The BLAKE2 family of hashes natively supports a keyed mode, which is more efficient than the generic HMAC construction.
+
+```rust
+use dcrypt::algorithms::hash::Blake2b;
+
+let key = b"my-secret-key-for-blake2b-auth"; // Can be up to 64 bytes
+let data = b"authenticated message";
+let output_size = 32; // Desired tag size in bytes
+
+// Create a keyed Blake2b instance
+let mut hasher = Blake2b::with_key(key, output_size).unwrap();
+hasher.update(data).unwrap();
+let tag = hasher.finalize().unwrap();
+
+println!("BLAKE2b Tag: {}", tag.to_hex());
+```
+
+### Fixed-Output SHAKE
+
+This module provides an interface to use SHAKE functions as if they were standard hash functions with a fixed default output size.
+
+```rust
+use dcrypt::algorithms::hash::{Shake128, HashFunction};
+
+// SHAKE128 will produce a 32-byte (256-bit) digest by default
+let data = b"some data";
+let digest = Shake128::digest(data).unwrap();
+
+assert_eq!(digest.len(), 32);
+println!("SHAKE-128 (32-byte) Digest: {}", digest.to_hex());
+```
+> For variable-length output from SHAKE, please see the `dcrypt::algorithms::xof` module.

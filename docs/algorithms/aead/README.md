@@ -1,112 +1,132 @@
-# AEAD Ciphers (`algorithms/aead`)
+# Authenticated Encryption with Associated Data (AEAD)
 
-This module implements Authenticated Encryption with Associated Data (AEAD) schemes. AEAD ciphers provide confidentiality, integrity, and authenticity for encrypted messages. They ensure that the data is not only unreadable to unauthorized parties but also that it has not been tampered with.
+## Overview
 
-The implementations here focus on the core cryptographic logic and are designed with constant-time execution for critical parts to resist timing side-channel attacks.
+This module provides implementations of Authenticated Encryption with Associated Data (AEAD) ciphers. AEAD is a mode of operation for symmetric-key ciphers that simultaneously provides confidentiality, integrity, and authenticity for encrypted data.
 
-## Implemented AEAD Schemes
+-   **Confidentiality:** The plaintext is encrypted into ciphertext, which is unintelligible without the key.
+-   **Integrity & Authenticity:** A Message Authentication Code (MAC), called a tag, is generated over the plaintext and "associated data". This tag allows the decrypting party to verify that the data has not been tampered with and that it originated from a party holding the secret key.
+-   **Associated Data (AD):** This is optional, unencrypted data that is included in the authentication process. It is useful for authenticating metadata, headers, or other contextual information that should not be encrypted but must be protected from modification.
 
-1.  **ChaCha20Poly1305 (`chacha20poly1305`)**
-    *   **Standard**: RFC 8439
-    *   **Description**: Combines the ChaCha20 stream cipher with the Poly1305 message authentication code.
-    *   **Key Size**: 256 bits (32 bytes).
-    *   **Nonce Size**: 96 bits (12 bytes).
-    *   **Tag Size**: 128 bits (16 bytes).
-    *   **Security Notes**:
-        *   Provides strong AEAD security.
-        *   Constant-time implementation for Poly1305 tag computation and comparison.
-        *   Relies on unique nonces for each encryption with the same key.
-    *   **Core Struct**: `algorithms::aead::chacha20poly1305::ChaCha20Poly1305`
+## Implemented Algorithms
 
-2.  **XChaCha20Poly1305 (`xchacha20poly1305`)**
-    *   **Standard**: Extension of RFC 8439, common construction.
-    *   **Description**: An extension of ChaCha20Poly1305 that uses an extended 192-bit (24-byte) nonce. This larger nonce size significantly reduces the probability of nonce reuse, especially in distributed systems or when nonces are generated randomly.
-    *   **Key Size**: 256 bits (32 bytes).
-    *   **Nonce Size**: 192 bits (24 bytes). The first 16 bytes are used with HChaCha20 to derive a subkey, and the remaining 8 bytes (prepended with 4 zero bytes) form the 12-byte nonce for ChaCha20Poly1305.
-    *   **Tag Size**: 128 bits (16 bytes).
-    *   **Security Notes**:
-        *   Offers improved nonce misuse resistance compared to ChaCha20Poly1305.
-        *   Builds upon the security of ChaCha20Poly1305.
-    *   **Core Struct**: `algorithms::aead::xchacha20poly1305::XChaCha20Poly1305`
+This module provides the following AEAD schemes:
 
-3.  **AES-GCM (`gcm`)**
-    *   **Standard**: NIST Special Publication 800-38D.
-    *   **Description**: Combines AES in Counter (CTR) mode for encryption with the GHASH algorithm for authentication.
-    *   **Supported AES Variants**: AES-128, AES-256 (depending on the block cipher `B` provided to `Gcm<B>`).
-    *   **Nonce Size**: Typically 96 bits (12 bytes) is recommended for performance and security, but other sizes are permissible.
-    *   **Tag Size**: Typically 128 bits (16 bytes), but can be truncated (though not recommended below 96 bits).
-    *   **Security Notes**:
-        *   Widely adopted and secure AEAD scheme.
-        *   The `GHASH` implementation (`algorithms::aead::gcm::ghash`) is designed to be constant-time.
-        *   Requires unique nonces for each encryption with the same key. Nonce reuse can be catastrophic.
-    *   **Core Struct**: `algorithms::aead::gcm::Gcm<B: BlockCipher>`
+*   **AES-GCM:** The Advanced Encryption Standard (AES) in Galois/Counter Mode. The implementation is generic over the underlying AES block cipher, supporting:
+    *   `Gcm<Aes128>`
+    *   `Gcm<Aes192>`
+    *   `Gcm<Aes256>`
+*   **ChaCha20-Poly1305:** A high-performance stream cipher-based AEAD construction, as specified in RFC 8439.
+*   **XChaCha20-Poly1305:** An extended-nonce variant of ChaCha20-Poly1305, which allows a larger 24-byte nonce to be used safely, making it more robust against nonce misuse.
 
-## Key Traits and Types
+## Key Security Features
 
--   `api::traits::AuthenticatedCipher`: A marker trait implemented by AEAD ciphers, defining `TAG_SIZE` and `ALGORITHM_ID`.
--   `api::traits::SymmetricCipher`: Defines the general interface for symmetric ciphers, including key/nonce generation and encryption/decryption operations using a builder pattern. AEAD ciphers in this module implement this.
--   `algorithms::types::Nonce<N>`: Used for type-safe nonces.
--   `algorithms::types::Tag<N>`: Used for type-safe authentication tags.
--   `algorithms::types::SecretBytes<N>`: For secure key storage.
--   `common::security::SecretBuffer<N>`: Used internally for secure handling of key material.
+The implementations in this module are designed with a focus on security and side-channel resistance.
+
+*   **Constant-Time Execution:** Tag verification is performed in constant time using the `subtle` crate's `ConstantTimeEq` trait. This prevents timing side-channel attacks where an attacker could learn information about the tag by measuring the time it takes for a comparison to complete.
+*   **Secure Memory Management:** All secret key material is handled using `SecretBuffer` and `Zeroizing` types, which ensure that sensitive data is securely wiped from memory when it is no longer needed.
+*   **Correctness:** The implementations are validated against official test vectors from NIST (for AES-GCM) and relevant RFCs to ensure correctness and interoperability.
 
 ## Usage
 
-These AEAD primitives are typically wrapped by higher-level APIs in the `dcrypt-symmetric` crate for more ergonomic use. However, they can be used directly.
+The AEAD ciphers in this module follow a consistent API provided by the `SymmetricCipher` and `AuthenticatedCipher` traits. They use a builder pattern for encryption and decryption operations.
 
-### Example: Direct ChaCha20Poly1305 Usage
+### Example: AES-128-GCM
 
 ```rust
-use dcrypt_algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
-use dcrypt_algorithms::types::{Nonce, SecretBytes};
-use dcrypt_algorithms::error::Result;
-use rand::rngs::OsRng; // For key/nonce generation
-use dcrypt_api::traits::SymmetricCipher; // For generate_key/nonce
+use dcrypt::algorithms::aead::gcm::Gcm;
+use dcrypt::algorithms::block::Aes128;
+use dcrypt::algorithms::types::{Nonce, SecretBytes};
+use dcrypt::api::traits::SymmetricCipher;
+use dcrypt::api::traits::symmetric::{EncryptOperation, DecryptOperation};
 
-fn direct_chacha20poly1305_example() -> Result<()> {
-    // Generate key and nonce using SymmetricCipher trait methods
-    let key_sb = ChaCha20Poly1305::generate_key(&mut OsRng)?; // Returns SecretBytes
-    let nonce_obj = ChaCha20Poly1305::generate_nonce(&mut OsRng)?; // Returns Nonce
+// 1. Setup the key, nonce, and plaintext.
+let key = SecretBytes::new([42u8; 16]);
+let nonce = Nonce::<12>::new([1u8; 12]);
+let plaintext = b"this is a secret message";
+let associated_data = b"metadata";
 
-    // Convert SecretBytes to a fixed-size array for ChaCha20Poly1305::new
-    let mut key_array = [0u8; 32];
-    key_array.copy_from_slice(key_sb.as_ref());
+// 2. Create the AES block cipher and the GCM instance.
+let aes = Aes128::new(&key);
+let gcm = Gcm::new(aes, &nonce).unwrap();
 
-    let cipher = ChaCha20Poly1305::new(&key_array);
+// 3. Encrypt the data using the builder pattern.
+let ciphertext_obj = <Gcm<Aes128> as SymmetricCipher>::encrypt(&gcm)
+    .with_nonce(&nonce)
+    .with_aad(associated_data)
+    .encrypt(plaintext)
+    .unwrap();
 
-    let plaintext = b"Authenticated and encrypted message";
-    let aad = Some(b"Additional data to authenticate");
+// The ciphertext object contains the encrypted data and the authentication tag.
+println!("AES-GCM Ciphertext: {}", hex::encode(ciphertext_obj.as_ref()));
 
-    // Encrypt
-    // The encrypt/decrypt methods in algorithms::aead::chacha20poly1305
-    // are for the raw nonce array. We'll use the SymmetricCipher trait methods for typed Nonce.
-    let ciphertext_package = cipher.encrypt()
-        .with_nonce(&nonce_obj)
-        .with_aad(aad.unwrap_or_default())
-        .encrypt(plaintext)
-        .map_err(dcrypt_algorithms::error::Error::from)?; // Convert CoreError to algorithms::Error
+// 4. Decrypt the data.
+let aes_decrypt = Aes128::new(&key);
+let gcm_decrypt = Gcm::new(aes_decrypt, &nonce).unwrap();
+let decrypted_payload = <Gcm<Aes128> as SymmetricCipher>::decrypt(&gcm_decrypt)
+    .with_nonce(&nonce)
+    .with_aad(associated_data)
+    .decrypt(&ciphertext_obj)
+    .unwrap();
 
-
-    println!("Ciphertext (hex): {}", hex::encode(ciphertext_package.as_ref()));
-
-    // Decrypt
-    let decrypted_plaintext = cipher.decrypt()
-        .with_nonce(&nonce_obj)
-        .with_aad(aad.unwrap_or_default())
-        .decrypt(&ciphertext_package)
-        .map_err(dcrypt_algorithms::error::Error::from)?;
-
-
-    assert_eq!(plaintext, decrypted_plaintext.as_slice());
-    println!("Decryption successful!");
-
-    Ok(())
-}
+assert_eq!(decrypted_payload, plaintext);
+println!("AES-GCM Decryption successful!");
 ```
-*(Note: The example above illustrates direct usage. The `api::SymmetricCipher` trait provides a more structured way to use these, as shown in `ChaCha20Poly1305::encrypt()`.)*
 
-## Security Considerations
+### Example: ChaCha20-Poly1305
 
--   **Nonce Uniqueness**: CRITICAL. Never reuse a nonce with the same key for any AEAD scheme. Nonce reuse can lead to a complete loss of confidentiality and authenticity.
--   **Tag Truncation**: While some AEAD schemes (like GCM) allow tag truncation, it is generally not recommended as it weakens the integrity/authenticity guarantees. This library defaults to full tag sizes.
--   **Key Management**: Secure generation, storage, and handling of keys are paramount. Keys are typically wrapped in `SecretBytes` or `SecretBuffer`.
+```rust
+use dcrypt::algorithms::aead::chacha20poly1305::ChaCha20Poly1305;
+use dcrypt::algorithms::types::Nonce;
+use dcrypt::api::traits::SymmetricCipher;
+use dcrypt::api::traits::symmetric::{EncryptOperation, DecryptOperation};
+
+// 1. Setup the key, nonce, and plaintext.
+let key = [42u8; 32];
+let nonce = Nonce::<12>::new([1u8; 12]);
+let plaintext = b"another secret message";
+let associated_data = b"more metadata";
+
+// 2. Create the ChaCha20-Poly1305 instance.
+let cipher = ChaCha20Poly1305::new(&key);
+
+// 3. Encrypt the data.
+let ciphertext_obj = cipher.encrypt()
+    .with_nonce(&nonce)
+    .with_aad(associated_data)
+    .encrypt(plaintext)
+    .unwrap();
+
+println!("ChaCha20-Poly1305 Ciphertext: {}", hex::encode(ciphertext_obj.as_ref()));
+
+// 4. Decrypt the data.
+let decrypted_payload = cipher.decrypt()
+    .with_nonce(&nonce)
+    .with_aad(associated_data)
+    .decrypt(&ciphertext_obj)
+    .unwrap();
+
+assert_eq!(decrypted_payload, plaintext);
+println!("ChaCha20-Poly1305 Decryption successful!");
+```
+
+**Note on XChaCha20-Poly1305:** The API for `XChaCha20Poly1305` is identical to `ChaCha20Poly1305`, except that it requires a 24-byte nonce (`Nonce<24>`).
+
+## API Design Philosophy
+
+The AEAD API is designed to be both ergonomic and secure:
+
+*   **Builder Pattern:** The `EncryptOperation` and `DecryptOperation` builders guide the user through the process of providing all necessary parameters (nonce, AAD, plaintext/ciphertext) before the final operation is executed. This prevents mistakes like forgetting to specify a nonce.
+*   **Trait-Based:** By implementing the `SymmetricCipher` trait from `dcrypt-api`, all AEAD ciphers in this module provide a consistent interface, making them interchangeable where appropriate.
+*   **Type Safety:** The use of `Nonce<N>` and `SecretBytes<N>` prevents errors related to incorrect nonce or key lengths at compile time.
+
+## `no_std` Support
+
+This module is compatible with `no_std` environments, but it requires an allocator, which can be enabled via the `alloc` feature flag. The `aead` feature flag must also be enabled in your `Cargo.toml`.
+
+```toml
+[dependencies.dcrypt-algorithms]
+version = "0.12.0-beta.1"
+default-features = false
+features = ["alloc", "aead"]
+```

@@ -1,67 +1,79 @@
-# ECIES with P-256 and ChaCha20Poly1305 (`pke::ecies::p256`)
+# ECIES with P-256 and ChaCha20Poly1305 
 
-This module provides an implementation of the Elliptic Curve Integrated Encryption Scheme (ECIES) specifically configured to use:
+This module provides a concrete implementation of the Elliptic Curve Integrated Encryption Scheme (ECIES) using the **NIST P-256** (also known as `secp256r1` or `prime256v1`) curve.
 
--   **Elliptic Curve**: NIST P-256 (also known as secp256r1 or prime256v1).
--   **Key Derivation Function (KDF)**: HKDF with SHA-256.
--   **Authenticated Encryption with Associated Data (AEAD)**: ChaCha20Poly1305.
+It combines the P-256 elliptic curve with a robust set of modern cryptographic primitives to deliver a secure and efficient public-key encryption system. This implementation adheres to the `dcrypt_api::traits::Pke` trait, ensuring a consistent and predictable interface.
 
-This combination offers strong, modern asymmetric encryption suitable for various applications.
+## Cryptographic Scheme
 
-## Algorithm Details (`EciesP256`)
+The `EciesP256` struct implements the following specific cryptographic scheme:
 
-The `EciesP256` struct implements the `api::traits::Pke` trait.
+| Component | Primitive Used |
+| :--- | :--- |
+| **Elliptic Curve** | NIST P-256 |
+| **Key Derivation** | HKDF with SHA-256 (HKDF-SHA256) |
+| **Authenticated Encryption** | ChaCha20Poly1305 |
 
-### Key Types
+The full name for this scheme is **`ECIES-P256-HKDF-SHA256-ChaCha20Poly1305`**.
 
--   **`EciesP256PublicKey`**:
-    *   Wraps a `[u8; algorithms::ec::p256::P256_POINT_UNCOMPRESSED_SIZE]`.
-    *   Stores the P-256 public key point in uncompressed format (65 bytes: `0x04 || X-coordinate || Y-coordinate`).
--   **`EciesP256SecretKey`**:
-    *   Wraps a `[u8; algorithms::ec::p256::P256_SCALAR_SIZE]`.
-    *   Stores the P-256 private key scalar (32 bytes).
-    *   Implements `Zeroize` and `ZeroizeOnDrop` for secure memory handling.
+## Key Structures
 
-### Ciphertext
+This module defines two main structures for handling cryptographic keys:
 
--   The `Ciphertext` type is `Vec<u8>`.
--   It represents the serialized form of `EciesCiphertextComponents` (defined in the parent `pke::ecies` module), which includes:
-    1.  **Ephemeral Public Key (`R`)**: The sender's temporary P-256 public key, serialized in uncompressed format (65 bytes).
-    2.  **AEAD Nonce (`N`)**: A 12-byte nonce for ChaCha20Poly1305.
-    3.  **AEAD Ciphertext+Tag (`C||T`)**: The output of ChaCha20Poly1305 encryption, which includes the encrypted message and the 16-byte Poly1305 authentication tag.
+*   `EciesP256PublicKey`: A wrapper for the public key. It internally stores the 65-byte uncompressed representation of an elliptic curve point (`0x04 || x-coordinate || y-coordinate`).
 
-### Operations
+*   `EciesP256SecretKey`: A wrapper for the secret key. It holds the 32-byte scalar that constitutes the private key. For enhanced security, this struct implements the `Zeroize` and `ZeroizeOnDrop` traits, which securely erase the key material from memory when it goes out of scope.
 
-1.  **`keypair(rng)`**:
-    *   Generates a P-256 key pair using `algorithms::ec::p256::generate_keypair`.
-    *   The public key is serialized in uncompressed format.
-    *   The private key is the raw scalar.
+## `Pke` Trait Implementation
 
-2.  **`encrypt(pk_recipient, plaintext, aad, rng)`**:
-    *   Deserializes the recipient's uncompressed public key point. Validates it's not the point at infinity.
-    *   Generates an ephemeral P-256 key pair `(ephemeral_sk_scalar, ephemeral_pk_point)`.
-    *   Performs ECDH: `shared_point = ephemeral_sk_scalar * pk_recipient_point`. Validates that `shared_point` is not identity.
-    *   Extracts the x-coordinate (`z_bytes`) of `shared_point`.
-    *   Derives the symmetric AEAD key using `derive_symmetric_key_hkdf_sha256`:
-        *   **IKM**: `z_bytes`.
-        *   **Salt**: Bytes of the uncompressed `ephemeral_pk_point`.
-        *   **Info**: A context string like `"ECIES-P256-HKDF-SHA256-ChaCha20Poly1305-KeyMaterial"`.
-        *   **Output Length**: `CHACHA20POLY1305_KEY_LEN` (32 bytes).
-    *   Generates a random 12-byte nonce for ChaCha20Poly1305.
-    *   Encrypts the `plaintext` with the derived key, nonce, and `aad` using `algorithms::aead::chacha20poly1305::ChaCha20Poly1305`.
-    *   Serializes the `ephemeral_pk_point` (uncompressed), AEAD nonce, and AEAD ciphertext+tag into the final ECIES ciphertext using `EciesCiphertextComponents::serialize()`.
-    *   Ensures `ephemeral_sk_scalar`, `z_bytes`, and `derived_key_material` are zeroized.
+The core of this module is the `EciesP256` struct, which provides the main functionality by implementing the `Pke` trait. This offers a standard set of operations:
 
-3.  **`decrypt(sk_recipient, ciphertext_bytes, aad)`**:
-    *   Deserializes `ciphertext_bytes` into `EciesCiphertextComponents`.
-    *   Deserializes the ephemeral public key point from the components. Validates it's not identity.
-    *   Deserializes the recipient's secret key scalar.
-    *   Performs ECDH: `shared_point = sk_recipient_scalar * ephemeral_pk_point`. Validates that `shared_point` is not identity.
-    *   Extracts the x-coordinate (`z_bytes`).
-    *   Re-derives the symmetric AEAD key using `derive_symmetric_key_hkdf_sha256` with the same parameters as in encryption (using the received ephemeral public key bytes as salt).
-    *   Deserializes the AEAD nonce from the components.
-    *   Decrypts the AEAD ciphertext+tag using `algorithms::aead::chacha20poly1305::ChaCha20Poly1305`.
-    *   If AEAD decryption and authentication succeed, returns the plaintext. Otherwise, returns an error (specifically `PkeError::DecryptionFailed("AEAD authentication failed")` which maps to `ApiError::DecryptionFailed`).
-    *   Ensures `z_bytes` and `derived_key_material` are zeroized.
+*   `keypair()`: Generates a new `(EciesP256PublicKey, EciesP256SecretKey)` pair.
+*   `encrypt()`: Encrypts a plaintext message using the recipient's public key.
+*   `decrypt()`: Decrypts a ciphertext using the recipient's secret key.
 
-This construction provides robust public-key encryption with forward secrecy (due to ephemeral keys) and authentication.
+## Usage Example
+
+Here is a complete example demonstrating the key generation, encryption, and decryption roundtrip with `EciesP256`.
+
+```rust
+use dcrypt::pke::ecies::p256::{EciesP256, EciesP256PublicKey, EciesP256SecretKey};
+use dcrypt::api::traits::Pke;
+use rand::rngs::OsRng;
+
+// A cryptographically secure random number generator is required.
+let mut rng = OsRng;
+
+// 1. Generate a new keypair for the recipient.
+let (public_key, secret_key): (EciesP256PublicKey, EciesP256SecretKey) =
+    EciesP256::keypair(&mut rng).expect("Keypair generation failed");
+
+// 2. Define the message and optional associated data (AAD).
+let plaintext = b"This is a highly confidential message.";
+let aad = Some(b"Message context".as_slice());
+
+// 3. Encrypt the plaintext using the recipient's public key.
+//    A new ephemeral key is generated for this specific encryption.
+let ciphertext = EciesP256::encrypt(&public_key, plaintext, aad, &mut rng)
+    .expect("Encryption failed");
+
+// 4. The recipient decrypts the ciphertext with their secret key.
+//    The same AAD must be provided to pass the integrity check.
+let decrypted_plaintext = EciesP256::decrypt(&secret_key, &ciphertext, aad)
+    .expect("Decryption failed");
+
+// 5. Verify the result.
+assert_eq!(plaintext, decrypted_plaintext.as_slice());
+
+println!("Successfully encrypted and decrypted the message!");
+```
+
+## Security Design
+
+This implementation includes several key security features:
+
+*   **Ephemeral Keys**: For each encryption, a new, single-use elliptic curve keypair is generated. The public part of this key is sent with the ciphertext, while the private part is used for the ECDH key exchange and then immediately discarded. This ensures **forward secrecy**, meaning that a compromise of the recipient's long-term secret key will not compromise past encrypted messages.
+
+*   **Authenticated Encryption**: The use of `ChaCha20Poly1305` as the AEAD cipher provides both confidentiality (the message is unreadable) and integrity/authenticity (the message cannot be undetectably altered). Any tampering with the ciphertext or providing incorrect AAD during decryption will cause the operation to fail, preventing attacks that rely on modifying encrypted data.
+
+*   **Secure Error Handling**: The `decrypt` function is designed to be constant-time where possible and to return a single, generic `DecryptionFailed` error for any cryptographic failure (e.g., invalid key, tampered ciphertext, incorrect AAD). This helps prevent cryptographic oracle attacks, where an attacker could otherwise gain information about the secret key by analyzing different error types.

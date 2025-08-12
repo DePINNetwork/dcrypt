@@ -1,101 +1,132 @@
-# Stream Ciphers (`algorithms/stream`)
+# Stream Ciphers
 
-This module provides implementations of stream ciphers. Stream ciphers are a type of symmetric key cipher where plaintext digits are combined with a pseudorandom cipher digit stream (keystream), typically using an XOR operation. Each plaintext digit is encrypted one at a time.
+## Overview
 
-## Implemented Stream Ciphers
+This module provides implementations of stream ciphers, which are symmetric key ciphers that encrypt plaintext one byte at a time using a pseudorandom keystream. The design prioritizes security, correctness, and a type-safe, ergonomic API.
 
-1.  **ChaCha20 (`chacha`)**
-    *   **Standard**: RFC 8439
-    *   **Description**: A high-speed stream cipher designed by Daniel J. Bernstein. It operates by encrypting successive counter blocks to generate a keystream.
-    *   **Key Size**: 256 bits (32 bytes).
-    *   **Nonce Size**: 96 bits (12 bytes).
-    *   **Block Size (for keystream generation)**: 512 bits (64 bytes).
-    *   **Counter Size**: Typically 32 bits, allowing for 2^32 * 64 bytes (256 GiB) of data per nonce/key pair. Some variants use a 64-bit counter. The implementation here uses a 32-bit counter.
-    *   **Security Notes**:
-        *   Widely regarded as secure and efficient.
-        *   CRITICAL: Requires a unique nonce for every message encrypted with the same key. Nonce reuse leads to catastrophic failure, allowing recovery of XORed plaintexts.
-        *   The implementation includes secure handling of the key (`SecretBuffer`) and intermediate ChaCha20 state.
-    *   **Core Struct**: `algorithms::stream::chacha::chacha20::ChaCha20`
+The core implementation, **ChaCha20**, is designed to be constant-time and utilizes secure memory handling to automatically zeroize sensitive state and key material when it goes out of scope.
 
-## Key Traits and Types
+### Key Features
 
--   **`StreamCipher` Trait (`algorithms::stream::StreamCipher`)**:
-    *   Defines a common interface for stream cipher implementations.
-    *   Constants: `KEY_SIZE`, `NONCE_SIZE`, `BLOCK_SIZE`.
-    *   Methods:
-        *   `process(&mut self, data: &mut [u8])`: Encrypts or decrypts data in place.
-        *   `encrypt(&mut self, data: &mut [u8])`: Alias for `process`.
-        *   `decrypt(&mut self, data: &mut [u8])`: Alias for `process`.
-        *   `keystream(&mut self, output: &mut [u8])`: Fills the output buffer with keystream bytes.
-        *   `reset(&mut self)`: Resets the cipher to its initial state (same key, nonce, initial counter).
-        *   `seek(&mut self, position: u64)`: Seeks to a specific byte position in the keystream (by adjusting the block counter).
--   **`algorithms::types::Nonce<N>`**: Used for type-safe nonces, with compatibility traits like `ChaCha20Compatible`.
--   **`algorithms::types::SymmetricKey<A, N>` or `[u8; KEY_SIZE]`**: Used for keys. The `ChaCha20` struct takes `&[u8; CHACHA20_KEY_SIZE]`.
--   `common::security::SecretBuffer`: Used internally by `ChaCha20` for secure key storage.
--   `common::security::EphemeralSecret`: Used by `ChaCha20` for secure handling of the keystream generation state.
+*   **Security-First:** Uses secure wrappers like `SecretBuffer` and implements `Zeroize` on stateful structs to prevent sensitive data leakage.
+*   **Type Safety:** Leverages Rust's type system with generic `Nonce<N>` types and compatibility traits (`ChaCha20Compatible`) to prevent API misuse at compile time.
+*   **Stateful Operations:** Provides a full suite of stream cipher operations, including `encrypt`, `decrypt`, direct `keystream` generation, `seek` to arbitrary block positions, and `reset`.
+*   **RFC Compliance:** The ChaCha20 implementation is validated against official RFC 8439 test vectors.
+*   **`no_std` Compatible:** Suitable for use in embedded and resource-constrained environments (requires an allocator).
 
-## Usage Example (ChaCha20)
+---
+
+## Available Ciphers
+
+*   **ChaCha20:** A high-speed, secure stream cipher as specified in [RFC 8439](https://tools.ietf.org/html/rfc8439). It is widely used in protocols like TLS 1.3 and WireGuard.
+
+---
+
+## The `StreamCipher` Trait
+
+A common interface is provided through the `StreamCipher` trait, which defines the core functionality for all stream ciphers in this module.
+
+### Methods
+
+*   `process(&mut self, data: &mut [u8])`: Encrypts or decrypts data in place by XORing it with the keystream. In a stream cipher, these two operations are identical.
+*   `keystream(&mut self, output: &mut [u8])`: Generates the raw keystream and writes it directly to the output buffer without requiring any plaintext or ciphertext.
+*   `seek(&mut self, block_offset: u64)`: Jumps to a specific block position in the keystream. This is useful for randomly accessing encrypted data without processing the entire stream.
+*   `reset(&mut self)`: Resets the cipher to its initial state (counter = 0), allowing it to be reused with the same key and nonce.
+
+---
+
+## ⚠️ Critical Security Warning: Nonce Reuse
+
+The security of all stream ciphers, including ChaCha20, depends critically on the uniqueness of the **nonce** for every message encrypted with the same key.
+
+**NEVER REUSE A (KEY, NONCE) PAIR.**
+
+Reusing a nonce allows an attacker to compute the XOR of the two plaintexts, which can lead to a complete loss of confidentiality. It is the responsibility of the user to ensure nonce uniqueness, for example, by using a counter or a random number generator.
+
+---
+
+## Usage Examples
+
+### Basic Encryption and Decryption
 
 ```rust
-use dcrypt_algorithms::stream::chacha::chacha20::ChaCha20;
-use dcrypt_algorithms::stream::StreamCipher; // The StreamCipher trait
-use dcrypt_algorithms::types::Nonce;
-use dcrypt_algorithms::types::nonce::ChaCha20Compatible; // Marker trait for nonce
-use dcrypt_algorithms::error::Result;
-use rand::rngs::OsRng; // For key/nonce generation
+use dcrypt::algorithms::stream::ChaCha20;
+use dcrypt::algorithms::types::Nonce;
 
-// Ensure Nonce<12> implements ChaCha20Compatible (it does in algorithms::types::nonce)
-struct MyChaCha20Nonce(Nonce<12>);
-impl ChaCha20Compatible for MyChaCha20Nonce {}
+// A 32-byte (256-bit) key
+let key = [0x42; 32];
+// A 12-byte (96-bit) nonce, which must be unique for each message
+let nonce_data = [0x24; 12];
+let nonce = Nonce::<12>::new(nonce_data);
 
+// Create a new cipher instance
+let mut cipher = ChaCha20::new(&key, &nonce);
 
-fn chacha20_example() -> Result<()> {
-    // Generate key and nonce
-    let mut key_bytes = [0u8; dcrypt_algorithms::stream::chacha::chacha20::CHACHA20_KEY_SIZE];
-    OsRng.fill_bytes(&mut key_bytes);
+let mut message = *b"this is a secret message";
 
-    let mut nonce_bytes = [0u8; dcrypt_algorithms::stream::chacha::chacha20::CHACHA20_NONCE_SIZE];
-    OsRng.fill_bytes(&mut nonce_bytes);
-    let nonce = Nonce::<12>::new(nonce_bytes); // ChaCha20 uses a 12-byte nonce
+// Encrypt the message in place
+cipher.encrypt(&mut message);
 
-    // Create ChaCha20 cipher instance
-    // The `new` method expects a reference to a Nonce that implements ChaCha20Compatible
-    let mut cipher = ChaCha20::new(&key_bytes, &nonce);
+println!("Ciphertext: {:?}", message);
+// Ciphertext will be different from the original plaintext
 
-    let mut message = *b"This is a secret message to be encrypted by ChaCha20.";
-    println!("Original:  {:?}", String::from_utf8_lossy(&message));
+// To decrypt, reset the cipher to its initial state
+cipher.reset();
 
-    // Encrypt
-    cipher.encrypt(&mut message)?;
-    println!("Encrypted: {:?}", hex::encode(&message));
+// Decrypt the message in place
+cipher.decrypt(&mut message);
 
-    // To decrypt, reset the cipher (or create a new one with same key, nonce, initial counter)
-    // The current API resets to the initial counter provided at construction (which is 0 by default).
-    cipher.reset()?;
-    // If seeking was used, or a non-zero initial counter, ensure to re-seek or re-initialize.
-    // For simple full message encryption/decryption, reset is sufficient.
-
-    cipher.decrypt(&mut message)?;
-    println!("Decrypted: {:?}", String::from_utf8_lossy(&message));
-
-    assert_eq!(message, *b"This is a secret message to be encrypted by ChaCha20.");
-
-    // Keystream generation
-    let mut keystream_output = [0u8; 10];
-    cipher.reset()?; // Reset to get keystream from the beginning
-    cipher.keystream(&mut keystream_output)?;
-    println!("First 10 keystream bytes: {:?}", hex::encode(&keystream_output));
-
-    Ok(())
-}
-
-// fn main() {
-//     chacha20_example().expect("ChaCha20 example failed");
-// }
+println!("Decrypted: {:?}", String::from_utf8_lossy(&message));
+assert_eq!(&message, b"this is a secret message");
 ```
 
-## Security Considerations
+### Direct Keystream Generation
 
--   **Nonce Uniqueness**: This is the most critical security requirement for stream ciphers. **NEVER** reuse a (key, nonce) pair to encrypt different messages. Doing so will allow an attacker to XOR the two ciphertexts together, cancelling out the keystream and revealing the XOR of the two plaintexts, often leading to full plaintext recovery.
--   **Initial Counter**: While the RFC specifies a 32-bit block counter, some protocols might use a portion of the 96-bit nonce for the initial counter value. The `ChaCha20::with_counter` constructor allows setting an initial counter. Ensure this is managed correctly if not starting from block 0.
--   **Integrity**: Stream ciphers like ChaCha20 provide confidentiality but **not** integrity or authenticity. An attacker can flip bits in the ciphertext, and these changes will propagate to the decrypted plaintext without detection. If integrity/authenticity is required, ChaCha20 should be combined with a MAC (e.g., Poly1305, as in ChaCha20Poly1305 AEAD).
+You can also generate the raw keystream for use in other protocols.
+
+```rust
+use dcrypt::algorithms::stream::ChaCha20;
+use dcrypt::algorithms::types::Nonce;
+
+let key = [0x01; 32];
+let nonce = Nonce::<12>::new([0x02; 12]);
+let mut cipher = ChaCha20::new(&key, &nonce);
+
+// Generate 128 bytes of keystream
+let mut keystream = [0u8; 128];
+cipher.keystream(&mut keystream).unwrap();
+
+// The `keystream` buffer is now filled with the pseudorandom output.
+// This is equivalent to encrypting a buffer of 128 zero bytes.
+```
+
+### Seeking to a Keystream Position
+
+The `seek` method allows you to jump to a specific block in the keystream without generating all preceding blocks. Each block is 64 bytes long.
+
+```rust
+use dcrypt::algorithms::stream::ChaCha20;
+use dcrypt::algorithms::types::Nonce;
+
+let key = [0x03; 32];
+let nonce = Nonce::<12>::new([0x04; 12]);
+
+// Create two identical cipher instances
+let mut cipher1 = ChaCha20::new(&key, &nonce);
+let mut cipher2 = ChaCha20::new(&key, &nonce);
+
+// 1. Advance the first cipher by processing 64 bytes of data (1 full block)
+let mut data = [0u8; 64];
+cipher1.process(&mut data);
+
+// 2. Seek the second cipher to the start of the second block (offset 1)
+cipher2.seek(1).unwrap();
+
+// 3. The keystream generated by both ciphers should now be identical
+let mut keystream1 = [0u8; 32];
+let mut keystream2 = [0u8; 32];
+cipher1.keystream(&mut keystream1).unwrap();
+cipher2.keystream(&mut keystream2).unwrap();
+
+assert_eq!(keystream1, keystream2);
+```

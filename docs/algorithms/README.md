@@ -1,121 +1,182 @@
-# DCRYPT Algorithms (`algorithms`)
+# docs/algorithms/README.md
 
-The `algorithms` crate is the heart of the DCRYPT library, providing foundational implementations of various cryptographic primitives. It is designed with a strong emphasis on security, particularly constant-time execution for operations involving secret data, and robust memory safety through the use of Rust's ownership model and specialized secure types.
+[![Crates.io](https://img.shields.io/crates/v/dcrypt-algorithms.svg)](https://crates.io/crates/dcrypt-algorithms)
+[![Docs.rs](https://docs.rs/dcrypt-algorithms/badge.svg)](https://docs.rs/dcrypt-algorithms)
+[![License](https://img.shields.io/crates/l/dcrypt-algorithms.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/your-repo/rust.yml?branch=main)](https://github.com/your-repo/actions)
 
-This crate serves as the building block for higher-level cryptographic functionalities provided by other crates in the DCRYPT workspace, such as `dcrypt-symmetric`, `dcrypt-kem`, and `dcrypt-sign`.
+`dcrypt-algorithms` is a comprehensive, high-assurance cryptographic library for Rust, providing a wide array of primitives with a strong focus on security, correctness, and type-safety.
 
-## Key Features
+This crate serves as the core cryptographic engine for the `dcrypt` ecosystem, implementing algorithms designed to be resistant to side-channel attacks through constant-time execution and secure memory handling.
 
--   **Pure Rust Implementations**: All algorithms are written entirely in Rust.
--   **Constant-Time Focus**: Critical operations are designed to be resistant to timing side-channel attacks, adhering to the project's [Constant-Time Policy](../../CONSTANT_TIME_POLICY.md).
--   **Secure Memory Handling**: Utilizes types like `SecretBuffer` from `dcrypt-common` for keys and sensitive intermediate values, ensuring they are zeroized on drop.
--   **Comprehensive Test Coverage**: Algorithms are tested against official test vectors (e.g., NIST, RFCs) where available.
--   **Modular Design**: Cryptographic primitives are organized into distinct sub-modules.
--   **Type Safety**: Leverages Rust's type system, including generic types like `Nonce<N>`, `Tag<N>`, `Digest<N>`, and `SymmetricKey<A, N>` to enforce correct usage at compile time.
+## Overview
 
-## Modules and Functionality
+This library provides low-level cryptographic implementations intended to be used through the higher-level APIs of the `dcrypt` suite. It is built with the following principles:
 
-The `algorithms` crate is organized into the following main sub-modules:
+*   **Security-First:** Implementations prioritize resistance to side-channel attacks. Operations on secret data are designed to be constant-time, and sensitive memory is securely zeroed on drop.
+*   **Correctness:** Algorithms are rigorously tested against official test vectors from sources like NIST (CAVP) and RFCs to ensure interoperability and correctness.
+*   **Type Safety:** A strong type system is used to prevent common cryptographic mistakes at compile time. Keys, nonces, and other cryptographic types are bound to the algorithms they are intended for.
+*   **Flexibility:** The crate is designed to work in both `std` and `no_std` environments (with `alloc`), making it suitable for a wide range of applications from servers to embedded systems.
+*   **Modern Cryptography:** Includes a selection of modern, post-quantum and pairing-friendly primitives alongside traditional, widely-adopted standards.
 
--   **`dcrypt_docs/algorithms/aead/README.md`**: Authenticated Encryption with Associated Data (AEAD) schemes.
-    -   ChaCha20Poly1305 (RFC 8439)
-    -   XChaCha20Poly1305 (extended nonce)
-    -   AES-GCM (NIST SP 800-38D)
--   **`dcrypt_docs/algorithms/block/README.md`**: Block cipher algorithms and modes of operation.
-    -   AES (AES-128, AES-192, AES-256 based on FIPS 197) with bitsliced S-Boxes.
-    -   Modes: CBC, CTR.
--   **`dcrypt_docs/algorithms/error/README.md`**: Custom error types and validation utilities specific to this crate.
--   **`dcrypt_docs/algorithms/hash/README.md`**: Cryptographic hash functions.
-    -   SHA-1 (deprecated, for compatibility)
-    -   SHA-2 family (SHA-224, SHA-256, SHA-384, SHA-512 based on FIPS 180-4)
-    -   SHA-3 family (SHA3-224, SHA3-256, SHA3-384, SHA3-512 based on FIPS 202)
-    -   SHAKE (fixed-output versions: SHAKE128, SHAKE256)
-    -   BLAKE2 (BLAKE2b, BLAKE2s based on RFC 7693)
--   **`dcrypt_docs/algorithms/kdf/README.md`**: Key Derivation Functions.
-    -   PBKDF2 (RFC 8018)
-    -   HKDF (RFC 5869)
-    -   Argon2 (Argon2d, Argon2i, Argon2id)
--   **`dcrypt_docs/algorithms/mac/README.md`**: Message Authentication Codes.
-    -   HMAC (RFC 2104)
-    -   Poly1305 (RFC 8439)
--   **`dcrypt_docs/algorithms/operation/README.md`**: Traits and builders for constructing cryptographic operations fluently (e.g., AEAD encryption/decryption, KDF derivation).
--   **`dcrypt_docs/algorithms/stream/README.md`**: Stream ciphers.
-    -   ChaCha20 (RFC 8439)
--   **`dcrypt_docs/algorithms/types/README.md`**: Core data types with compile-time size guarantees and security properties (e.g., `Nonce`, `Salt`, `Tag`, `Digest`, `SymmetricKey`).
--   **`dcrypt_docs/algorithms/xof/README.md`**: Extendable Output Functions.
-    -   SHAKE (XOF versions: `ShakeXof128`, `ShakeXof256` based on FIPS 202)
-    -   BLAKE3 (XOF version)
+## Features
 
-## Core Traits and Types
+The crate provides a broad range of cryptographic primitives, categorized as follows:
 
-Refer to `dcrypt_docs/algorithms/types/README.md` for detailed information on:
+### Hashing
+*   **SHA-2 Family:** SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, SHA-512/256
+*   **SHA-3 Family:** SHA3-224, SHA3-256, SHA3-384, SHA3-512
+*   **BLAKE2:** BLAKE2b (64-bit optimized) and BLAKE2s (32-bit optimized)
+*   **SHA-1:** Included for legacy compatibility, but its use is strongly discouraged.
 
--   `Nonce<const N: usize>`: For cryptographic nonces.
--   `Salt<const N: usize>`: For cryptographic salts.
--   `Tag<const N: usize>`: For authentication tags.
--   `Digest<const N: usize>`: For hash function outputs.
--   `SymmetricKey<A: SymmetricAlgorithm, const N: usize>`: For symmetric keys.
--   And various compatibility marker traits (e.g., `ChaCha20Compatible`, `AesGcmCompatible`).
+### Extendable-Output Functions (XOFs)
+*   **SHAKE:** SHAKE128 and SHAKE256
+*   **BLAKE3:** A high-performance XOF with built-in parallelism.
 
-Key traits defining algorithm contracts are found in `dcrypt-api` but are heavily utilized here:
+### Authenticated Encryption with Associated Data (AEAD)
+*   **AES-GCM:** AES in Galois/Counter Mode with 128, 192, and 256-bit keys.
+*   **ChaCha20-Poly1305:** As specified in RFC 8439.
+*   **XChaCha20-Poly1305:** ChaCha20-Poly1305 with an extended 24-byte nonce.
 
--   `api::HashAlgorithm`, `algorithms::hash::HashFunction`
--   `api::BlockCipher` (trait), `algorithms::block::BlockCipher` (trait within `algorithms`)
--   `api::SymmetricCipher`, `api::AuthenticatedCipher`
--   `algorithms::mac::Mac`
--   `algorithms::kdf::KeyDerivationFunction`
--   `algorithms::xof::ExtendableOutputFunction`
+### Key Derivation Functions (KDFs)
+*   **Argon2:** The password-hashing competition winner, with `Argon2id`, `Argon2i`, and `Argon2d` variants.
+*   **PBKDF2:** Password-Based Key Derivation Function 2.
+*   **HKDF:** HMAC-based Key Derivation Function.
 
-## Usage Example (Low-Level AES-128 Encryption)
+### Message Authentication Codes (MACs)
+*   **HMAC:** Hash-based MAC.
+*   **Poly1305:** A high-speed, one-time authenticator.
 
-This example demonstrates direct usage of an AES block cipher primitive. For most applications, using higher-level AEAD ciphers like AES-GCM (from `aead::Gcm`) is recommended.
+### Block Ciphers & Modes
+*   **AES:** AES-128, AES-192, and AES-256.
+*   **Modes of Operation:** Cipher Block Chaining (CBC) and Counter (CTR) mode.
 
-```rust
-use dcrypt_algorithms::block::aes::Aes128;
-use dcrypt_algorithms::block::BlockCipher; // The trait from within algorithms
-use dcrypt_algorithms::types::SymmetricKey;
-use dcrypt_algorithms::types::algorithms::Aes128 as Aes128Algorithm; // Marker type
-use dcrypt_algorithms::error::Result;
-use rand::rngs::OsRng; // For key generation
+### Elliptic Curve Cryptography
+*   **NIST Prime Curves:** P-256, P-384, P-521, P-224, and P-192.
+*   **Koblitz Curve:** `secp256k1`.
+*   **Binary Curve:** `sect283k1`.
+*   **Pairing-Friendly Curve:** BLS12-381, including G1/G2 operations and optimal Ate pairing.
 
-fn aes128_block_encrypt_example() -> Result<()> {
-    // Generate a random AES-128 key
-    // Assuming SymmetricKey<Aes128Algorithm, 16> has a random generation method
-    // or use:
-    let mut key_bytes = [0u8; 16];
-    OsRng.fill_bytes(&mut key_bytes);
-    let key = SymmetricKey::<Aes128Algorithm, 16>::new(key_bytes);
-
-    let cipher = Aes128::new(&key); // Aes128::new expects &SecretBytes<16>
-                                    // SymmetricKey<Aes128Algorithm, 16> derefs to [u8; 16]
-                                    // and its SecretBuffer<16> also derefs to [u8;16]
-                                    // This should align if SymmetricKey's inner `data` is a SecretBytes
-
-    let mut block = [0x42u8; 16]; // A 16-byte block of data
-    println!("Plaintext block: {:?}", block);
-
-    cipher.encrypt_block(&mut block)?;
-    println!("Encrypted block: {:?}", block);
-
-    cipher.decrypt_block(&mut block)?;
-    println!("Decrypted block: {:?}", block);
-
-    assert_eq!(block, [0x42u8; 16]);
-    Ok(())
-}
-
-// fn main() {
-//     aes128_block_encrypt_example().expect("AES-128 example failed");
-// }
-```
+### Post-Quantum Primitives
+*   **Lattice-Based Math:** Includes a generic polynomial engine with Number-Theoretic Transform (NTT) implementations for Dilithium (FIPS-204) and Kyber parameters.
 
 ## Security
 
-The `algorithms` crate is foundational to the security of DCRYPT. Key security aspects include:
+This library is written with a security-first mindset.
 
--   **Constant-Time Implementations**: As detailed in the project's policy, algorithms handling secret data (e.g., AES rounds, Poly1305 multiplication, HMAC processing) are designed to be constant-time.
--   **Zeroization**: `SecretBuffer` and other secure types from `dcrypt-common` are used for keys and sensitive intermediate values to ensure they are wiped from memory after use.
--   **Validation**: Input parameters (key lengths, nonce sizes, etc.) are validated to prevent misuse that could lead to security vulnerabilities. The `validate` module within `error` provides helpers for this.
--   **Minimal `unsafe` Code**: The crate strives to minimize or avoid `unsafe` blocks.
+*   **Constant-Time Execution:** Primitives that handle secret data, particularly elliptic curve and block cipher operations, are implemented to be "constant-time." This means their execution time does not depend on the values of the secret inputs, mitigating a broad class of timing side-channel attacks.
+*   **Secure Memory Handling:** Sensitive data like keys, intermediate cryptographic state, and nonces are handled using secure memory buffers (`SecretBuffer`, `Zeroizing`) that automatically zero their contents when they go out of scope, preventing accidental leakage.
+*   **Type System:** We leverage Rust's type system to enforce cryptographic properties at compile time. For example, a `SymmetricKey<Aes128, 16>` cannot be accidentally used with a ChaCha20 cipher, preventing API misuse.
 
-This crate provides the low-level building blocks. For application-level cryptography, it's generally recommended to use the higher-level abstractions in `dcrypt-symmetric`, `dcrypt-kem`, etc., which compose these primitives into secure schemes.
+## Usage
+
+Here are a few examples of how to use the primitives in this crate.
+
+### AEAD: ChaCha20-Poly1305
+
+```rust
+use dcrypt::algorithms::aead::ChaCha20Poly1305;
+use dcrypt::algorithms::types::Nonce;
+
+// Create a key and nonce
+let key = [0x42; 32];
+let nonce_data = [0x24; 12];
+let nonce = Nonce::<12>::new(nonce_data);
+
+// Create a cipher instance
+let cipher = ChaCha20Poly1305::new(&key);
+
+// Encrypt plaintext with associated data
+let plaintext = b"Hello, secure world!";
+let aad = b"metadata";
+let ciphertext = cipher.encrypt(&nonce, plaintext, Some(aad)).unwrap();
+
+// Decrypt
+let decrypted = cipher.decrypt(&nonce, &ciphertext, Some(aad)).unwrap();
+
+assert_eq!(decrypted, plaintext);
+```
+
+### Hashing: SHA-256
+
+```rust
+use dcrypt::algorithms::hash::{Sha256, HashFunction};
+
+// One-shot hashing
+let digest = Sha256::digest(b"some data").unwrap();
+println!("SHA-256 Digest: {}", digest.to_hex());
+
+// Incremental hashing
+let mut hasher = Sha256::new();
+hasher.update(b"some ").unwrap();
+hasher.update(b"data").unwrap();
+let digest2 = hasher.finalize().unwrap();
+
+assert_eq!(digest, digest2);
+```
+
+### Elliptic Curves: P-256 ECDH
+
+```rust
+use dcrypt::algorithms::ec::p256;
+use rand::rngs::OsRng;
+
+// 1. Alice generates a keypair.
+let (alice_sk, alice_pk) = p256::generate_keypair(&mut OsRng).unwrap();
+
+// 2. Bob generates a keypair.
+let (bob_sk, bob_pk) = p256::generate_keypair(&mut OsRng).unwrap();
+
+// 3. Alice and Bob compute their shared secrets.
+let alice_shared_secret = p256::scalar_mult(&alice_sk, &bob_pk).unwrap();
+let bob_shared_secret = p256::scalar_mult(&bob_sk, &alice_pk).unwrap();
+
+// Both secrets will be the same elliptic curve point.
+assert_eq!(alice_shared_secret, bob_shared_secret);
+
+// They can then use a KDF on the x-coordinate to derive a symmetric key.
+let key_material = alice_shared_secret.x_coordinate_bytes();
+let derived_key = p256::kdf_hkdf_sha256_for_ecdh_kem(&key_material, Some(b"ecdh-example")).unwrap();
+```
+
+## `no_std` Support
+
+This crate supports `no_std` environments by disabling the default `std` feature. Many algorithms require an allocator, which can be enabled with the `alloc` feature.
+
+```toml
+[dependencies.dcrypt-algorithms]
+version = "0.12.0-beta.1"
+default-features = false
+features = ["alloc", "hash", "mac", "aead"] # Enable desired algorithm modules
+```
+
+## Benchmarks
+
+This crate includes a comprehensive benchmark suite using `criterion`. To run the benchmarks:
+
+```sh
+cargo bench
+```
+
+HTML reports will be generated in the `target/criterion/report` directory.
+
+## Feature Flags
+
+This crate uses feature flags to control which algorithm modules are compiled.
+
+*   `std`: Enables functionality that requires the standard library. Enables `alloc` automatically.
+*   `alloc`: Enables functionality that requires a memory allocator (like `Vec` and `Box`).
+*   `hash`: Enables all hash function modules (SHA-2, SHA-3, BLAKE2, etc.).
+*   `xof`: Enables extendable-output functions (SHAKE, BLAKE3). Requires `alloc`.
+*   `aead`: Enables authenticated encryption ciphers (AES-GCM, ChaCha20-Poly1305). Requires `alloc`.
+*   `block`: Enables block ciphers (AES) and modes (CBC, CTR).
+*   `kdf`: Enables key derivation functions (Argon2, PBKDF2, HKDF). Requires `alloc`.
+*   `mac`: Enables message authentication codes (HMAC, Poly1305).
+*   `stream`: Enables stream ciphers (ChaCha20).
+*   `ec`: Enables all elliptic curve cryptography. Requires `alloc`.
+
+By default, `std`, `xof`, and `ec` are enabled.
+
+## License
+
+This project is licensed under the [APACHE 2.0 License](LICENSE).

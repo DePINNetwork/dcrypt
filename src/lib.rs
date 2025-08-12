@@ -30,13 +30,16 @@
 //! - [`dcrypt-hybrid`]: Hybrid constructions
 //!
 //! ## Example Usage
-//!
+//! 
 //! ```rust,no_run
-//! // Using through the main crate
+//! # #[cfg(feature = "sign")]
+//! # {
+//! // Using through the main crate (requires 'sign' feature)
 //! use dcrypt::api::Signature;
 //! use dcrypt::sign::dilithium::{DilithiumSigningKey, DilithiumVerifyingKey};
+//! # }
 //! 
-//! // Or using the prelude
+//! // Or using the prelude (always available)
 //! use dcrypt::prelude::*;
 //! ```
 

@@ -43,10 +43,17 @@ block = []
 kdf = ["alloc"]
 mac = []
 stream = []
-ec = ["alloc"]
+ec = ["alloc", "groups", "pairings", "zeroize"]
+groups = []
+pairings = ["groups"]
+experimental = []
 
 # Optional features
 serde_json = ["dep:serde_json", "dep:serde"]
+zeroize = ["dep:zeroize"]
+
+# Debug feature for pairing troubleshooting
+pairing-debug = []
 
 [dependencies]
 # Internal dependencies
@@ -56,7 +63,7 @@ dcrypt-internal = { path = "../internal", version = "=0.12.0-beta.1", default-fe
 dcrypt-params = { path = "../params", version = "=0.12.0-beta.1" }
 
 # Core cryptographic dependencies
-zeroize = { version = "1.5.7", features = ["zeroize_derive"] }
+zeroize = { version = "1.5.7", features = ["zeroize_derive"], optional = true }
 subtle = { version = "2.6.1", default-features = false }
 byteorder = { version = "1.4.3", default-features = false }
 
@@ -69,6 +76,7 @@ serde_json = { version = "1.0.107", optional = true }
 
 # Random number generation
 rand = { version = "0.8.5", default-features = false }
+rand_core = { version = "0.6.4", default-features = false }
 getrandom = { version = "0.2.15", default-features = false, optional = true, features = ["custom"] }
 
 # Platform-specific dependencies

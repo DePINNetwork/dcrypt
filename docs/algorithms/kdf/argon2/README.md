@@ -1,204 +1,166 @@
-# Argon2 Key Derivation Function (`algorithms/kdf/argon2`)
+# Argon2 Key Derivation and Password Hashing Function
 
 ## Overview
 
-Argon2 is a modern, memory-hard password hashing and key derivation function designed to be resistant against various attacks including GPU cracking attacks, time-memory trade-offs, and side-channel attacks. It was the winner of the 2015 Password Hashing Competition (PHC).
+This module provides a secure, constant-time, and RFC 9106 compliant implementation of the Argon2 key derivation and password hashing function. Argon2 was the winner of the [Password Hashing Competition](https://password-hashing.net/) and is the current state-of-the-art for hashing passwords and deriving keys from secrets.
 
-This implementation follows RFC 9106 specifications with proper error handling, configurability, and robust security properties.
+This implementation is designed with a focus on security and ergonomics:
+*   **RFC 9106 Compliance:** Follows the latest specification for interoperability.
+*   **Security-First:** Uses secure memory types (`SecretBuffer`, `Zeroizing`) to prevent accidental leakage of sensitive data and performs hash comparisons in constant time to mitigate timing attacks.
+*   **Flexible API:** Supports both high-level password hashing via the `PasswordHashFunction` trait and general-purpose key derivation through the `KeyDerivationFunction` trait.
+*   **Type Safety:** Uses a strong type system for parameters (`Argon2Params`) and variants (`Argon2Type`) to ensure correct usage.
 
-## Variants
+## Core Concepts
 
-The implementation supports all three official Argon2 variants:
+### Argon2 Variants
 
-- **Argon2d** (`Algorithm::Argon2d`): Maximizes resistance to GPU cracking attacks through data-dependent memory access. This offers the highest resistance against GPU attacks but may be vulnerable to side-channel attacks.
+Argon2 comes in three main variants, each with different trade-offs. This implementation supports all three:
 
-- **Argon2i** (`Algorithm::Argon2i`): Uses data-independent memory access to protect against side-channel attacks. This provides better protection against side-channel attacks but less resistance against GPU attacks.
+*   `Argon2id` (**Recommended Default**): A hybrid variant that uses data-independent memory access for the first half of the first pass and data-dependent access for the rest. It provides the best resistance against both side-channel attacks (like Argon2i) and GPU cracking attacks (like Argon2d). This is the recommended choice for most applications.
+*   `Argon2i`: Uses data-independent memory access. This variant is optimized to resist side-channel timing attacks by preventing an attacker from inferring information about the secret input based on memory access patterns.
+*   `Argon2d`: Uses data-dependent memory access. This variant provides the highest resistance to GPU-based cracking attacks but is more vulnerable to side-channel attacks.
 
-- **Argon2id** (`Algorithm::Argon2id`): A hybrid approach that combines features of both Argon2d and Argon2i. It uses Argon2i for the first half of the first pass and Argon2d for the rest. This is generally recommended for password hashing as it provides a good balance of security properties.
+### Parameters
 
-## Parameters
+Argon2's strength is highly configurable through three main parameters:
 
-Argon2 is highly configurable through the `Params<S>` struct:
+*   **Memory Cost (`m`)**: The amount of memory to use in KiB. This is the primary factor in resisting time-memory tradeoff (TMTO) attacks and making the algorithm difficult to parallelize on GPUs.
+*   **Time Cost (`t`)**: The number of passes (iterations) over the memory. This increases the total runtime and provides a secondary work factor.
+*   **Parallelism (`p`)**: The number of parallel lanes (threads). This allows the algorithm to leverage multi-core processors to increase computational cost without proportionally increasing the time for a legitimate user.
 
-```rust
-pub struct Params<const S: usize> where Salt<S>: Argon2Compatible {
-    pub argon_type: Algorithm,       // Argon2 variant (d, i, or id)
-    pub version: u32,                // Argon2 version (0x13 for v1.3)
-    pub memory_cost: u32,            // Memory usage in KiB
-    pub time_cost: u32,              // Number of iterations
-    pub parallelism: u32,            // Degree of parallelism (lanes)
-    pub output_len: usize,           // Length of output hash in bytes
-    pub salt: Salt<S>,               // Salt value
-    pub ad: Option<Zeroizing<Vec<u8>>>,     // Optional associated data
-    pub secret: Option<Zeroizing<Vec<u8>>>, // Optional secret key
-}
-```
+**OWASP Recommendations (as of 2023):**
+A good starting point for interactive logins is:
+*   `m`: 65536 (64 MiB)
+*   `t`: 3
+*   `p`: 4
 
-### Parameter Recommendations
-
-- **Memory Cost**: Set as high as your system can tolerate. Higher values increase resistance to GPU attacks.
-- **Time Cost**: Number of iterations through the memory matrix. Higher values increase computational cost.
-- **Parallelism**: Should be set according to available CPU cores for optimal performance.
-- **Salt**: Must be at least 8 bytes (16 bytes recommended) and should be unique for each hashed password.
-- **Associated Data**: Optional context information that will be included in the hash calculation.
-- **Secret**: Optional key that can be used to further protect against rainbow table attacks.
+These values should be benchmarked and adjusted based on your specific hardware and security requirements.
 
 ## Usage
 
-### Basic Usage
+The `Argon2` implementation can be used for two primary purposes: password hashing and general-purpose key derivation.
+
+### 1. Password Hashing (Primary Use Case)
+
+This is the most common use for Argon2. The `PasswordHashFunction` trait provides a simple and secure API.
+
+#### Hashing a New Password
+
+When a user creates a new password, you generate a random salt, hash the password with your chosen parameters, and store the resulting PHC (Password Hash Competition) string.
 
 ```rust
-use dcrypt_algorithms::kdf::argon2::{Argon2, Algorithm, Params};
-use dcrypt_algorithms::types::Salt;
-use dcrypt_common::security::SecretVec;
+use dcrypt::algorithms::kdf::{Argon2, Argon2Params, Argon2Type, PasswordHashFunction};
+use dcrypt::algorithms::types::{Salt, SecretBytes};
+use rand::rngs::OsRng;
 
-// Create a salt
-const SALT_SIZE: usize = 16;
-let salt_bytes = [0x02; SALT_SIZE];
-let salt = Salt::<SALT_SIZE>::new(salt_bytes);
-
-// Configure Argon2 parameters
-let params = Params {
-    argon_type: Algorithm::Argon2id,  // Recommended variant
-    version: 0x13,                    // v1.3
-    memory_cost: 65536,               // 64 MB
-    time_cost: 2,                     // 2 iterations
-    parallelism: 4,                   // 4 threads
-    output_len: 32,                   // 32-byte output
+// 1. Define your Argon2 parameters.
+let salt = Argon2::<16>::generate_salt(&mut OsRng); // Generate a random 16-byte salt.
+let params = Argon2Params {
+    argon_type: Argon2Type::Argon2id,
+    memory_cost: 65536, // 64 MB
+    time_cost: 3,       // 3 iterations
+    parallelism: 4,     // 4 threads
     salt,
-    ad: None,                         // No associated data
-    secret: None,                     // No secret
+    ..Default::default()
 };
 
-// Create Argon2 instance
-let argon2 = Argon2::<SALT_SIZE>::new_with_params(params);
+// 2. Create an Argon2 instance with your parameters.
+let argon2 = Argon2::new_with_params(params);
 
-// Hash a password
-let password = SecretVec::from_slice(b"my_secure_password");
-let hash = argon2.hash_password(password.as_ref()).expect("Hashing failed");
+// 3. Use a secure type for the user's password.
+let password = SecretBytes::<32>::new(*b"a-very-secure-password!         ");
+
+// 4. Hash the password.
+let password_hash = argon2.hash_password(&password).unwrap();
+
+// 5. Serialize the result to a PHC string for storage in your database.
+// The string contains the algorithm, version, parameters, salt, and hash.
+let hash_string = password_hash.to_string();
+println!("Stored Password Hash: {}", hash_string);
 ```
 
-### Password Hashing and Verification
+#### Verifying a Password
+
+When a user logs in, you retrieve their stored PHC string, parse it, and use the `verify` method to check their submitted password. The verification process automatically uses the parameters stored in the hash string.
 
 ```rust
-use dcrypt_algorithms::kdf::argon2::{Argon2, Algorithm, Params};
-use dcrypt_algorithms::kdf::PasswordHashFunction;
-use dcrypt_algorithms::types::{Salt, SecretBytes};
+use dcrypt::algorithms::kdf::{Argon2, PasswordHash, PasswordHashFunction};
+use dcrypt::algorithms::types::SecretBytes;
+use std::str::FromStr;
 
-// Password to hash
-let password = SecretBytes::<32>::new(*b"my_secure_password\0\0\0\0\0\0\0\0\0\0\0\0\0\0");
+// This is the string you would retrieve from your database.
+let stored_hash_string = "$argon2id$v=19$m=65536,t=3,p=4$YlJpblR1V2hFRGhzY2k2Rg$08dshrD8jI1K/I98An2sVpt34A045w0YwYx4AFjJgHI";
 
-// Configure parameters for password hashing
-const SALT_SIZE: usize = 16;
-let salt = Argon2::<SALT_SIZE>::generate_salt(&mut rand::rngs::OsRng);
+// 1. Parse the PHC string into a `PasswordHash` object.
+let parsed_hash = PasswordHash::from_str(stored_hash_string).unwrap();
 
-let params = Params {
-    argon_type: Algorithm::Argon2id,
-    version: 0x13,
-    memory_cost: 65536,
-    time_cost: 2,
-    parallelism: 4,
-    output_len: 32,
-    salt,
-    ad: None,
-    secret: None,
-};
+// 2. Create a default Argon2 instance for verification.
+// The parameters from `parsed_hash` will be used automatically.
+let argon2 = Argon2::<16>::new();
 
-// Create Argon2 instance
-let argon2 = Argon2::<SALT_SIZE>::new_with_params(params);
+// 3. Verify the correct password. This is a constant-time comparison.
+let correct_password = SecretBytes::<32>::new(*b"a-very-secure-password!         ");
+assert!(argon2.verify(&correct_password, &parsed_hash).unwrap());
 
-// Hash password and create PHC-format hash
-let password_hash = argon2.hash_password(&password).expect("Hashing failed");
-
-// Verify password against stored hash
-let is_valid = argon2.verify(&password, &password_hash).expect("Verification failed");
-assert!(is_valid);
+// 4. Verify an incorrect password.
+let incorrect_password = SecretBytes::<32>::new(*b"incorrect-password...           ");
+assert!(!argon2.verify(&incorrect_password, &parsed_hash).unwrap());
 ```
 
-### Key Derivation
+### 2. General-Purpose Key Derivation
+
+Argon2 can also be used as a general, high-cost KDF. This is useful when you need to derive a key from a low-entropy source like a passphrase. The `KeyDerivationFunction` trait and its builder pattern are used for this.
 
 ```rust
-use dcrypt_algorithms::kdf::argon2::{Argon2, Algorithm, Params};
-use dcrypt_algorithms::kdf::{KeyDerivationFunction, KdfOperation};
-use dcrypt_algorithms::types::Salt;
+use dcrypt::algorithms::kdf::{Argon2, KeyDerivationFunction, KdfOperation};
 
-const SALT_SIZE: usize = 16;
-let salt = Salt::<SALT_SIZE>::random(&mut rand::rngs::OsRng).expect("Salt generation failed");
+let kdf = Argon2::<16>::new(); // Create with default parameters
 
-let params = Params {
-    argon_type: Algorithm::Argon2id,
-    version: 0x13,
-    memory_cost: 32768,
-    time_cost: 3,
-    parallelism: 2,
-    output_len: 32,
-    salt,
-    ad: None,
-    secret: None,
-};
+let derived_key: [u8; 64] = kdf.builder()
+    .with_ikm(b"user passphrase")
+    .with_salt(b"a-unique-salt-for-this-key")
+    .with_info(b"AES-256 key for file encryption")
+    .with_output_length(64)
+    .derive_array() // Derives directly into a fixed-size array
+    .unwrap();
 
-let argon2 = Argon2::<SALT_SIZE>::new_with_params(params);
-
-// Input key material
-let ikm = b"my input key material";
-
-// Derive key using the direct method
-let derived_key = argon2.derive_key(
-    ikm,
-    None,            // Use salt from params
-    None,            // No additional info
-    0                // Use default output length
-).expect("Key derivation failed");
-
-// Or use the builder pattern
-let derived_key_via_builder = argon2.builder()
-    .with_ikm(ikm)
-    .with_output_length(64)  // Override output length
-    .derive()
-    .expect("Key derivation failed");
+assert_eq!(derived_key.len(), 64);
+println!("Argon2 Derived Key: {}", hex::encode(derived_key));
 ```
 
-## Implementation Details
+## Parameter Tuning
 
-This implementation is fully compliant with RFC 9106 and includes:
+The security of Argon2 is critically dependent on choosing the right parameters. The highest values that your system can tolerate for a legitimate user provide the best security.
 
-- Complete support for all Argon2 variants (d, i, id)
-- Support for the PHC string format for password hashing
-- Proper validation of all parameters
-- Secure management of sensitive data using `Zeroizing`
-- Protection against timing attacks using constant-time comparisons
-- Comprehensive test coverage including all RFC 9106 test vectors
+This library provides tools to help you tune these parameters:
 
-### Core Algorithm Components
+*   `benchmark()`: Measures the time it takes to hash a password with the current parameters on the local machine.
+*   `recommended_params(target_duration)`: Suggests a new set of parameters (primarily by adjusting the iteration count `t`) to meet a target duration.
 
-The implementation includes the following key components:
+```rust
+use std::time::Duration;
+use dcrypt::algorithms::kdf::{Argon2, PasswordHashFunction};
 
-1. **H₀** Pre-hash function: Uses BLAKE2b with specific parameters to hash the initial inputs
-2. **H′** Variable-length hash function: Extending BLAKE2b for various output lengths
-3. **G** Mixing function: Implements the Argon2 G mixing function with BLAMKA rounds
-4. Data-dependent and data-independent addressing modes
-5. Memory matrix manipulation with proper synchronization points
-6. Password verification with constant-time comparisons
+// Target a 250ms delay for password hashing on your server.
+let target_latency = Duration::from_millis(250);
 
-### Security Considerations
+// Get a recommended set of parameters.
+let params = Argon2::<16>::recommended_params(target_latency);
 
-- Always use a unique, cryptographically random salt for each password hash
-- Set memory cost as high as possible for your environment (minimum 32 MB recommended)
-- Use a time cost of at least 2 iterations
-- For sensitive applications, consider using a secret key
-- For highest resistance to both GPU and side-channel attacks, use Argon2id variant
-- Verify compatibility with RFC 9106 test vectors (included in test suite)
+println!("Recommended Parameters:");
+println!("  Memory Cost (m): {}", params.memory_cost);
+println!("  Time Cost (t):   {}", params.time_cost);
+println!("  Parallelism (p): {}", params.parallelism);
+```
 
-## Traits and Interfaces
+## Security Considerations
 
-The Argon2 implementation implements the following traits:
+*   **Salt**: Always use a cryptographically random salt that is unique for each password. The `generate_salt` method is provided for this purpose. Salts should be stored alongside the password hash.
+*   **Secret Key (`secret`)**: The `secret` parameter can be used to provide a secret key (often called a "pepper") to the hashing process. This adds another layer of protection; if your database of hashes is stolen, the attacker still needs the pepper to crack them. The pepper must be kept separate from the database.
+*   **Associated Data (`ad`)**: The `ad` parameter allows you to bind the hash to a specific context, such as a username or a key ID. This can prevent certain types of attacks where a hash from one context might be misused in another. This data is included in the hash calculation but is not part of the final output tag.
 
-- `KeyDerivationFunction`: For general key derivation purposes
-- `PasswordHashFunction`: Specifically for password hashing and verification
-- `ParamProvider`: For configuration parameter management
-- `KdfOperation`: For builder pattern operations
+## Module API at a Glance
 
-## References
-
-- [RFC 9106: Argon2 Memory-Hard Function for Password Hashing and Proof-of-Work Applications](https://datatracker.ietf.org/doc/html/rfc9106)
-- [Password Hashing Competition (PHC)](https://www.password-hashing.net/)
+*   **`struct Argon2<const S: usize>`**: The main struct for Argon2 operations. Generic over the salt size `S`.
+*   **`struct Params<const S: usize>`**: A struct to hold all configuration parameters for an Argon2 operation.
+*   **`enum Algorithm`**: Represents the three Argon2 variants: `Argon2d`, `Argon2i`, and `Argon2id`.

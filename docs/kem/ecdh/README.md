@@ -1,64 +1,96 @@
-# Elliptic Curve Diffie-Hellman KEM (`kem/ecdh`)
+# Elliptic Curve Diffie-Hellman KEM
 
-This module implements Key Encapsulation Mechanisms (KEMs) based on the Elliptic Curve Diffie-Hellman (ECDH) key exchange protocol. ECDH adapts the Diffie-Hellman concept to groups of points on an elliptic curve, offering smaller key sizes for equivalent security compared to traditional DH over finite fields.
+This module provides robust and secure implementations of the Elliptic Curve Diffie-Hellman Key Encapsulation Mechanism (ECDH-KEM) for a variety of standard curves. It is a core component of the `dcrypt` cryptographic library.
 
-The implementations aim for security against timing attacks and adhere to best practices for key derivation, drawing inspiration from standards like RFC 9180 (HPKE) for the use of Key Derivation Functions (KDFs).
+All implementations are designed with a security-first mindset, adhering to best practices for cryptographic software development. They provide a unified API by implementing the `dcrypt::api::Kem` trait, making them interchangeable based on security and performance requirements.
 
-## Algorithm Overview
+## Supported Elliptic Curves
 
-ECDH key exchange allows two parties to establish a shared secret. A KEM variant can be constructed from ECDH:
+The module includes support for NIST prime curves, a Koblitz curve (used in Bitcoin), and a binary curve, offering a wide range of security levels and performance characteristics.
 
--   **Parameters**: A specific elliptic curve (e.g., NIST P-256, P-384, P-521) and a base point `G` on that curve. These are public.
--   **Key Generation (Recipient)**:
-    1.  Generates a private key `d_R` (a random scalar).
-    2.  Computes their public key `Q_R = d_R * G` (elliptic curve point multiplication).
--   **Encapsulation (Sender)**:
-    1.  Generates an ephemeral private key `d_S` (a random scalar).
-    2.  Computes an ephemeral public key `Q_S = d_S * G`. This `Q_S` (typically serialized in compressed format) forms the KEM ciphertext.
-    3.  Computes the shared secret point `P = d_S * Q_R = d_S * (d_R * G) = (d_S * d_R) * G`.
-    4.  The actual shared secret key `K` is derived from the x-coordinate of `P` (and potentially other information like `Q_S` and `Q_R` for binding) using a KDF: `K = KDF(x_P, Q_S_bytes, Q_R_bytes, context_string)`.
--   **Decapsulation (Recipient)**:
-    1.  Receives `Q_S` (the KEM ciphertext).
-    2.  Computes the shared secret point `P = d_R * Q_S = d_R * (d_S * G) = (d_R * d_S) * G`.
-    3.  Derives the shared secret key `K` using the same KDF, incorporating `x_P`, `Q_S_bytes`, their own public key `Q_R_bytes`, and the context string.
+| Curve Name | Struct Name | Approx. Security | Key Derivation | Point Format |
+| :--- | :--- | :--- | :--- | :--- |
+| NIST P-192 | `EcdhP192` | ~80-bit | HKDF-SHA256 | Compressed |
+| NIST P-224 | `EcdhP224` | ~112-bit | HKDF-SHA256 | Compressed |
+| NIST P-256 | `EcdhP256` | ~128-bit | HKDF-SHA256 | Compressed |
+| secp256k1 | `EcdhK256` | ~128-bit | HKDF-SHA256 | Compressed |
+| sect283k1 | `EcdhB283k` | ~142-bit | HKDF-SHA384 | Compressed |
+| NIST P-384 | `EcdhP384` | ~192-bit | HKDF-SHA384 | Compressed |
+| NIST P-521 | `EcdhP521` | ~256-bit | HKDF-SHA512 | Compressed |
 
-## Implemented Variants
+## Core Design & Security Features
 
-1.  **`EcdhP256` (`p256`)**:
-    *   Uses the NIST P-256 (secp256r1) curve.
-    *   **Shared Secret Derivation**: Uses HKDF with SHA-256.
-    *   **Public Key / Ciphertext Format**: Compressed EC points (33 bytes for P-256).
-    *   Refer to `docs/kem/ecdh/p256/README.md`.
+This module prioritizes cryptographic correctness and resilience against common attack vectors.
 
-2.  **`EcdhP384` (`p384`)**:
-    *   Uses the NIST P-384 (secp384r1) curve.
-    *   **Shared Secret Derivation**: Uses HKDF with SHA-384.
-    *   **Public Key / Ciphertext Format**: Compressed EC points (49 bytes for P-384).
-    *   Refer to `docs/kem/ecdh/p384/README.md`.
+-   **Type Safety:** Each curve has its own set of distinct, strongly-typed structs for public keys, secret keys, and ciphertexts (e.g., `EcdhP256PublicKey`, `EcdhP384SecretKey`). This prevents accidental mixing of keys from different algorithms at compile time.
 
-3.  **`EcdhP521` (`p521`)**:
-    *   Uses the NIST P-521 (secp521r1) curve.
-    *   **Shared Secret Derivation**: Uses HKDF with SHA-512.
-    *   **Public Key / Ciphertext Format**: Compressed EC points (67 bytes for P-521).
-    *   Refer to `docs/kem/ecdh/p521/README.md`.
+-   **Secure Key Derivation:** Shared secrets are derived using a robust Key Derivation Function (HKDF) as recommended by standards like RFC 9180 (HPKE). The KDF input includes the ephemeral public key and the recipient's static public key, binding the shared secret to the entire exchange and preventing unknown key-share attacks.
 
-## KDF Usage and Domain Separation
-The ECDH-KEM implementations use HKDF as the Key Derivation Function.
--   The **Input Keying Material (IKM)** for HKDF is the x-coordinate of the raw ECDH shared secret point.
--   The **Salt** for HKDF is the byte representation of the ephemeral public key generated during encapsulation (in compressed format).
--   An **Info** string, typically including the KEM name and a version (e.g., `"ECDH-P256-KEM v2.0.0"`), is used for domain separation. The version string `v2.0.0` (defined as `KEM_KDF_VERSION` in `kem::ecdh::mod.rs`) signifies the use of compressed points for keys and ciphertexts, and specific KDF inputs.
+-   **Memory Safety & Zeroization:** All secret key and shared secret types implement the `ZeroizeOnDrop` trait. This ensures that sensitive cryptographic material is automatically wiped from memory as soon as it goes out of scope, minimizing the window of exposure.
 
-## `api::Kem` Trait Implementation
+-   **Controlled Data Access:** To prevent accidental leakage or misuse, sensitive types do not implement generic traits like `AsRef<[u8]>`. Access to the underlying bytes is provided only through explicit methods (e.g., `to_bytes()`, `to_bytes_zeroizing()`) that are clearly documented with security warnings.
 
-All `EcdhP*` structs implement the `api::Kem` trait, providing a consistent interface for key generation, encapsulation, and decapsulation.
+-   **Point Validation:** All public keys and ciphertexts (which are ephemeral public keys) are rigorously validated upon creation or deserialization. The code checks that the point is on the curve and is not the identity element, protecting against invalid curve and small subgroup attacks.
 
-## Security Considerations
+-   **Bandwidth Efficiency:** All implementations use compressed elliptic curve points for public keys and ciphertexts, significantly reducing their size compared to uncompressed or hybrid formats.
 
--   **Curve Choice**: Standard, well-vetted elliptic curves (NIST P-curves) are used.
--   **Point Validation**: Public keys received from external parties and ephemeral keys generated internally are validated to ensure they are on the curve and not the point at infinity, preventing certain attacks. The underlying `algorithms::ec` primitives handle these checks.
--   **Ephemeral Keys**: The use of ephemeral keys for each encapsulation ensures forward secrecy. Compromise of a long-term static private key does not compromise past session keys.
--   **Key Derivation Function (KDF)**: The raw ECDH shared secret (x-coordinate) is always processed by a strong KDF (HKDF with an appropriate hash function) to produce the final symmetric key. This step is crucial for cryptographic hygiene and security.
--   **Random Number Generation**: Secure generation of private key scalars is critical and relies on a `CryptoRng`.
--   **Compressed vs. Uncompressed Points**: While uncompressed points could also be used, this implementation opts for compressed points in the KEM ciphertext for bandwidth efficiency. The KDF input includes public keys, also in compressed format, to ensure consistent derivation.
+## Usage Example
 
-This module provides robust and secure classical KEMs based on ECDH, suitable for integration into hybrid schemes or standalone use where classical PKE is appropriate.
+The `Kem` trait provides a simple, unified interface for all supported curves.
+
+```rust
+use dcrypt::api::Kem;
+use dcrypt::kem::ecdh::{EcdhP256, EcdhP256PublicKey, EcdhP256SecretKey, EcdhP256Ciphertext};
+use rand::rngs::OsRng;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut rng = OsRng;
+
+    // 1. Recipient: Generate a key pair.
+    let (pk, sk) = EcdhP256::keypair(&mut rng)?;
+
+    // Serialize the public key to send to others.
+    let pk_bytes = pk.to_bytes();
+
+    // 2. Sender: Restore the public key and encapsulate.
+    let recipient_pk = EcdhP256PublicKey::from_bytes(&pk_bytes)?;
+    let (ciphertext, shared_secret_sender) = EcdhP256::encapsulate(&mut rng, &recipient_pk)?;
+
+    // 3. Recipient: Decapsulate the ciphertext with the secret key.
+    let shared_secret_recipient = EcdhP256::decapsulate(&sk, &ciphertext)?;
+
+    // 4. Verification: The derived secrets must match.
+    assert_eq!(
+        shared_secret_sender.to_bytes(),
+        shared_secret_recipient.to_bytes()
+    );
+
+    println!("ECDH-P256 KEM roundtrip successful!");
+    println!("Public Key Size: {} bytes", pk_bytes.len());
+    println!("Ciphertext Size: {} bytes", ciphertext.to_bytes().len());
+    println!("Shared Secret Size: {} bytes", shared_secret_sender.to_bytes().len());
+
+    Ok(())
+}
+```
+
+## Benchmarks
+
+Performance is a critical aspect of cryptographic algorithm selection. This module is accompanied by a comprehensive benchmark suite that measures the performance of key generation, encapsulation, and decapsulation for every supported curve.
+
+To run the benchmarks:
+
+```bash
+# Run all ECDH benchmarks
+cargo bench --bench 'ecdh_*'
+
+# Run a specific comparison suite
+cargo bench --bench ecdh_comparison
+```
+
+The results are generated in the `target/criterion/` directory and provide detailed HTML reports, allowing you to choose the best curve for your application's performance and security needs.
+
+## License
+
+This crate is licensed under the
+[Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).

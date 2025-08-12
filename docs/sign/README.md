@@ -1,94 +1,160 @@
-# Digital Signature Schemes (`sign`)
+# Digital Signature Schemes
 
-The `sign` crate is dedicated to implementing various digital signature schemes. Digital signatures provide message authenticity (proof of origin), integrity (proof that the message has not been altered), and non-repudiation (the signer cannot deny having signed the message).
+[![Crates.io](https://img.shields.io/crates/v/dcrypt-sign.svg)](https://crates.io/crates/dcrypt-sign)
+[![Docs.rs](https://docs.rs/dcrypt-sign/badge.svg)](https://docs.rs/dcrypt-sign)
+[![License](https://img.shields.io/crates/l/dcrypt-sign.svg)](https://crates.io/crates/dcrypt-sign)
+[![Build Status](https://github.com/your-repo/dcrypt-sign/actions/workflows/rust.yml/badge.svg)](https://github.com/your-repo/dcrypt-sign/actions)
 
-This crate aims to provide implementations for both traditional (classical) signature algorithms and post-quantum signature algorithms.
+Digital Signature Schemes for the DCRYPT library.
 
-**Note on Current Status:** While ECDSA implementations for P-256, P-384, and P-521 are detailed, many other signature schemes (both traditional and PQC) listed in the snapshot are currently placeholders. They define the necessary structs for keys and signatures and implement the `api::Signature` trait with dummy logic, indicating the intended structure rather than full cryptographic functionality.
+## Overview
 
-## Core Trait
+`dcrypt-sign` is a crate that provides a comprehensive suite of digital signature algorithms. It features a unified API for both traditional, widely-used schemes and next-generation, post-quantum cryptographic standards. The implementations are designed with security, correctness, and performance in mind, conforming to official standards such as FIPS and RFCs.
 
-All signature schemes in this crate are expected to implement the `api::Signature` trait, which defines the standard interface:
+The primary goal of this crate is to offer robust, production-ready signature algorithms that adhere to the `dcrypt-api` traits, ensuring seamless integration within the DCRYPT ecosystem.
 
--   `type PublicKey`, `type SecretKey`, `type SignatureData`, `type KeyPair`
--   `name() -> &'static str`
--   `keypair<R: CryptoRng + RngCore>(...) -> Result<Self::KeyPair>`
--   `public_key(keypair: &Self::KeyPair) -> Self::PublicKey`
--   `secret_key(keypair: &Self::KeyPair) -> Self::SecretKey`
--   `sign(message: &[u8], secret_key: &Self::SecretKey) -> Result<Self::SignatureData>`
--   `verify(message: &[u8], signature: &Self::SignatureData, public_key: &Self::PublicKey) -> Result<()>`
--   `batch_sign(...)` and `batch_verify(...)` (with default implementations).
+## Features
 
-## Implemented/Planned Signature Schemes
+-   **Unified API**: All signature schemes implement the `dcrypt-api::Signature` trait for consistent usage.
+-   **Post-Quantum Cryptography**: Includes FIPS 204 compliant implementations of CRYSTALS-Dilithium (ML-DSA). [2, 4, 6]
+-   **Traditional Cryptography**: Provides implementations for industry-standard algorithms:
+    -   ECDSA over NIST curves P-192, P-224, P-256, P-384, and P-521, compliant with FIPS 186-4. [1, 3]
+    -   Ed25519, compliant with RFC 8032. [7, 14]
+-   **Security Focused**:
+    -   Automatic zeroization of secret key material on drop to mitigate data remanence.
+    -   Deterministic signing for Ed25519 and deterministic nonce generation (RFC 6979) for ECDSA to enhance security against fault attacks and weak RNGs.
+    -   Constant-time operations where applicable to resist timing-based side-channel attacks.
+-   **Selective Compilation**: Use feature flags (`traditional`, `post-quantum`) to include only the necessary algorithm families, reducing binary size.
+-   **Future-Proof**: Includes placeholder support for Falcon, Rainbow, and SPHINCS+ to be implemented as standards finalize and mature.
 
-### Traditional Signature Schemes (`dcrypt_docs/sign/traditional/README.md`)
+## Implemented Schemes
 
-1.  **EdDSA (`traditional::eddsa`)**
-    *   **`Ed25519`**: EdDSA signature scheme using Curve25519.
-    *   **Status**: Placeholder implementation.
+### Post-Quantum Signatures
 
-2.  **ECDSA (Elliptic Curve Digital Signature Algorithm) (`traditional::ecdsa`)**
-    *   **Description**: Widely used signature scheme based on elliptic curves. DCRYPT implementations use deterministic nonce generation (RFC 6979 + hedging).
-    *   **Variants**:
-        *   `EcdsaP256` (NIST P-256 curve with SHA-256)
-        *   `EcdsaP384` (NIST P-384 curve with SHA-384)
-        *   `EcdsaP521` (NIST P-521 curve with SHA-512)
-    *   **Status**: Implemented for P-256, P-384, and P-521.
+| Algorithm | Variants Implemented | Standard |
+| :--- | :--- | :--- |
+| **CRYSTALS-Dilithium** | `Dilithium2`, `Dilithium3`, `Dilithium5` | FIPS 204 |
+| **Falcon** | `Falcon512`, `Falcon1024` | *(Placeholder)* |
+| **Rainbow** | `RainbowI`, `RainbowIII`, `RainbowV` | *(Placeholder)* |
+| **SPHINCS+** | `SphincsSha2`, `SphincsShake` | *(Placeholder)* |
 
-3.  **RSA Signatures (`traditional::rsa`)**
-    *   **Description**: Signature schemes based on the RSA cryptosystem.
-    *   **Variants**: `RsaPss`, `RsaPkcs1`.
-    *   **Status**: Placeholder implementations.
+### Traditional Signatures
 
-4.  **DSA (Digital Signature Algorithm) (`traditional::dsa`)**
-    *   **Description**: Older standard for digital signatures.
-    *   **Status**: Placeholder implementation.
+| Algorithm | Variants Implemented | Standard |
+| :--- | :--- | :--- |
+| **ECDSA** | `EcdsaP192`, `EcdsaP224`, `EcdsaP256`, `EcdsaP384`, `EcdsaP521` | FIPS 186-4 |
+| **EdDSA** | `Ed25519` | RFC 8032 |
 
-### Post-Quantum Signature Schemes (`dcrypt_docs/sign/pq/README.md`)
+## Installation
 
-1.  **Dilithium (`pq::dilithium`)**
-    *   **Description**: A lattice-based signature scheme, NIST PQC selected.
-    *   **Variants**: `Dilithium2`, `Dilithium3`, `Dilithium5`.
-    *   **Status**: Placeholder implementations. Parameters in `dcrypt-params`.
+Add `dcrypt-sign` to your `Cargo.toml`. To enable specific algorithm suites, use the `features` attribute.
 
-2.  **Falcon (`pq::falcon`)**
-    *   **Description**: A lattice-based signature scheme (NTRU lattices), NIST PQC selected. Known for compact signatures.
-    *   **Variants**: `Falcon512`, `Falcon1024`.
-    *   **Status**: Placeholder implementations. Parameters in `dcrypt-params`.
+```toml
+[dependencies]
+# By default, both traditional and post-quantum schemes are available
+dcrypt-sign = "0.12.0-beta.1"
 
-3.  **SPHINCS+ (`pq::sphincs`)**
-    *   **Description**: A stateless hash-based signature scheme, NIST PQC selected. Relies on hash function security.
-    *   **Variants**: `SphincsSha2`, `SphincsShake`.
-    *   **Status**: Placeholder implementations. Parameters in `dcrypt-params`.
+# To include only post-quantum schemes:
+# dcrypt-sign = { version = "0.12.0-beta.1", default-features = false, features = ["post-quantum"] }
 
-4.  **Rainbow (`pq::rainbow`)**
-    *   **Description**: A multivariate quadratic signature scheme, NIST PQC selected.
-    *   **Variants**: `RainbowI`, `RainbowIII`, `RainbowV`.
-    *   **Status**: Placeholder implementations. Parameters in `dcrypt-params`.
+# To include only traditional schemes:
+# dcrypt-sign = { version = "0.12.0-beta.1", default-features = false, features = ["traditional"] }
+```
+
+You will also need a cryptographically secure random number generator, like `rand`.
+
+```toml
+[dependencies]
+rand = "0.8"
+```
 
 ## Usage
 
-Once fully implemented, signature schemes would be used as follows (conceptual example using `EcdsaP256`):
+All signature schemes in this crate implement the `dcrypt::api::Signature` trait, providing a consistent and easy-to-use interface.
+
+### Example: Dilithium2 (Post-Quantum)
 
 ```rust
-use dcrypt_sign::traditional::ecdsa::EcdsaP256; // Example
-use dcrypt_api::Signature;
+use dcrypt::api::Signature;
+use dcrypt::sign::Dilithium2;
 use rand::rngs::OsRng;
-use dcrypt_api::error::Result as ApiResult; // Use API's Result type
 
-fn signature_usage_example() -> ApiResult<()> {
+fn main() -> dcrypt::api::Result<()> {
     let mut rng = OsRng;
-    let message = b"This is a message to be signed.";
+    let message = b"This is a test message for the Dilithium signature algorithm.";
 
-    // 1. Generate key pair
-    let (public_key, secret_key) = EcdsaP256::keypair(&mut rng)?;
+    // 1. Generate a keypair
+    let (pk, sk) = Dilithium2::keypair(&mut rng)?;
 
-    // 2. Sign the message
-    let signature = EcdsaP256::sign(message, &secret_key)?;
+    // 2. Sign the message with the secret key
+    println!("Signing message...");
+    let signature = Dilithium2::sign(message, &sk)?;
+    println!("Signature generated successfully.");
 
-    // 3. Verify the signature
-    EcdsaP256::verify(message, &signature, &public_key)?; // Returns Ok(()) on success
+    // 3. Verify the signature with the public key
+    println!("Verifying signature...");
+    Dilithium2::verify(message, &signature, &pk)?;
+    println!("Signature is valid!");
 
-    println!("ECDSA P256 Signature created and verified successfully!");
+    // Verification will fail for a tampered message
+    let tampered_message = b"This is a tampered message.";
+    assert!(Dilithium2::verify(tampered_message, &signature, &pk).is_err());
+    println!("Signature verification failed for tampered message, as expected.");
+
     Ok(())
 }
+```
+
+### Example: Ed25519 (Traditional)
+
+The API remains the same, just switch the type.
+
+```rust
+use dcrypt::api::Signature;
+use dcrypt::sign::Ed25519;
+use rand::rngs::OsRng;
+
+fn main() -> dcrypt::api::Result<()> {
+    let mut rng = OsRng;
+    let message = b"A message signed with Ed25519.";
+
+    // 1. Generate a keypair
+    let (pk, sk) = Ed25519::keypair(&mut rng)?;
+
+    // 2. Sign the message
+    let signature = Ed25519::sign(message, &sk)?;
+
+    // 3. Verify the signature
+    assert!(Ed25519::verify(message, &signature, &pk).is_ok());
+    println!("Ed25519 signature is valid!");
+
+    Ok(())
+}
+```
+
+## Feature Flags
+
+This crate uses feature flags to control which code is included, allowing you to optimize binary size by excluding unused algorithm families.
+
+-   `std`: (Enabled by default) Enables functionality that requires the standard library.
+-   `serde`: Enables serialization and deserialization of keys and signatures via the `serde` framework.
+-   `traditional`: Enables ECDSA and EdDSA signature schemes.
+-   `post-quantum`: Enables Dilithium, Falcon, Rainbow, and SPHINCS+ signature schemes.
+
+By default, `std`, `traditional`, and `post-quantum` are enabled.
+
+## Security
+
+This library has been developed with a focus on security. Secret key types implement the `Zeroize` trait, which securely erases their contents from memory when they go out of scope. However, security is a shared responsibility. Users of this crate should follow best practices for handling cryptographic keys, such as:
+
+-   Using a cryptographically secure random number generator (CSPRNG) like `rand::rngs::OsRng`.
+-   Protecting secret key material at rest (e.g., via encryption) and in transit.
+-   Ensuring the authenticity of public keys before use to prevent impersonation attacks.
+
+## License
+
+This crate is licensed under the terms of the license specified in `Cargo.toml`.
+
+## Contribution
+
+Contributions are welcome! Please feel free to submit pull requests or open issues on the project repository.
