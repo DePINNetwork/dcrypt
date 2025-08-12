@@ -12,3 +12,4 @@ SECURITY.md
 release-dcrypt.sh
 verify-publish-ready.sh
 .release-state.json
+cargo_snapshot.md

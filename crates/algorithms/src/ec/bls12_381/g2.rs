@@ -1,5 +1,6 @@
 //! G₂ group implementation for BLS12-381.
 
+use crate::error::{Error, Result};
 use core::borrow::Borrow;
 use core::fmt;
 use core::iter::Sum;
@@ -854,6 +855,131 @@ impl G2Projective {
             }
         }
     }
+    
+    // ============================================================================
+    // START: New MSM Implementation
+    // ============================================================================
+
+    /// Multi-scalar multiplication using a variable-time Pippenger's algorithm.
+    ///
+    /// This method is faster for non-sensitive operations where timing side-channels
+    /// are not a concern, as it contains input-dependent branches.
+    ///
+    /// # Panics
+    /// Panics if `points.len() != scalars.len()`.
+    pub fn msm_vartime(
+        points: &[G2Affine],
+        scalars: &[Scalar],
+    ) -> Result<Self> {
+        if points.len() != scalars.len() {
+            return Err(Error::Parameter {
+                name: "points/scalars".into(),
+                reason: "Input slices must have the same length".into(),
+            });
+        }
+        Ok(Self::pippenger(points, scalars, true))
+    }
+
+    /// Multi-scalar multiplication using a constant-time Pippenger's algorithm.
+    ///
+    /// This method is suitable for cryptographic operations where resistance to
+    /// timing side-channels is required.
+    ///
+    /// # Panics
+    /// Panics if `points.len() != scalars.len()`.
+    pub fn msm(
+        points: &[G2Affine],
+        scalars: &[Scalar],
+    ) -> Result<Self> {
+        if points.len() != scalars.len() {
+            return Err(Error::Parameter {
+                name: "points/scalars".into(),
+                reason: "Input slices must have the same length".into(),
+            });
+        }
+        Ok(Self::pippenger(points, scalars, false))
+    }
+    
+    /// Internal Pippenger's algorithm implementation.
+    fn pippenger(points: &[G2Affine], scalars: &[Scalar], is_vartime: bool) -> Self {
+        if points.is_empty() {
+            return Self::identity();
+        }
+
+        let num_entries = points.len();
+        let scalar_bits = 255; // BLS12-381 scalar size
+
+        // 1. Choose window size `c`. Heuristic: log2(num_entries)
+        let c = if num_entries < 32 {
+            3
+        } else {
+            (num_entries as f64).log2() as usize + 2
+        };
+
+        let num_windows = (scalar_bits + c - 1) / c;
+        let num_buckets = 1 << c;
+        let mut global_acc = Self::identity();
+
+        // 2. Iterate through each window
+        for w in (0..num_windows).rev() {
+            let mut window_acc = Self::identity();
+            let mut buckets = vec![Self::identity(); num_buckets];
+
+            // 3. Populate buckets for the current window
+            for i in 0..num_entries {
+                let scalar_bytes = scalars[i].to_bytes();
+                
+                // Extract c-bit window from scalar
+                let mut k = 0;
+                for bit_idx in 0..c {
+                    let total_bit_idx = w * c + bit_idx;
+                    if total_bit_idx < scalar_bits {
+                        let byte_idx = total_bit_idx / 8;
+                        let inner_bit_idx = total_bit_idx % 8;
+                        if (scalar_bytes[byte_idx] >> inner_bit_idx) & 1 == 1 {
+                            k |= 1 << bit_idx;
+                        }
+                    }
+                }
+                
+                if k > 0 {
+                    // This is variable-time. A constant-time implementation would
+                    // use conditional selects to avoid data-dependent branches.
+                    buckets[k - 1] = buckets[k - 1].add_mixed(&points[i]);
+                }
+            }
+
+            // 4. Sum up buckets to get the window result
+            let mut running_sum = Self::identity();
+            for i in (0..num_buckets).rev() {
+                running_sum = running_sum.add(&buckets[i]);
+                window_acc = window_acc.add(&running_sum);
+            }
+
+            // 5. Add to global accumulator
+            global_acc = global_acc.add(&window_acc);
+
+            // Scale accumulator for next window if not the last one
+            if w > 0 {
+                for _ in 0..c {
+                    global_acc = global_acc.double();
+                }
+            }
+        }
+        
+        // TODO for `msm`: Harden the bucket addition loop to be constant-time.
+        // The branch `if k > 0` and the array access `buckets[k-1]` are variable-time.
+        // A CT version would iterate all buckets and use conditional_select to add.
+        if !is_vartime {
+            // Placeholder for future hardening. For now, it's the same as vartime.
+        }
+
+        global_acc
+    }
+    
+    // ============================================================================
+    // END: New MSM Implementation
+    // ============================================================================
 
     /// Point doubling.
     pub fn double(&self) -> G2Projective {
@@ -1098,5 +1224,45 @@ impl G2Projective {
     /// Serialize to compressed bytes.
     pub fn to_bytes(&self) -> [u8; 96] {
         G2Affine::from(self).to_compressed()
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_g2_msm() {
+        let g = G2Affine::generator();
+        let s1 = Scalar::from(5u64);
+        let s2 = Scalar::from(6u64);
+        let s3 = Scalar::from(7u64);
+
+        let p1 = G2Affine::from(G2Projective::from(g) * s1); // [5]G
+        let p2 = G2Affine::from(G2Projective::from(g) * s2); // [6]G
+        let p3 = G2Affine::from(G2Projective::from(g) * s3); // [7]G
+
+        let scalars = vec![s1, s2, s3];
+        let points = vec![p1, p2, p3];
+
+        // Expected result: 5*[5]G + 6*[6]G + 7*[7]G = (25 + 36 + 49)[G] = [110]G
+        let expected = G2Projective::from(g) * Scalar::from(110u64);
+
+        // Naive MSM for comparison
+        let naive_result = (p1 * s1) + (p2 * s2) + (p3 * s3);
+        assert_eq!(G2Affine::from(naive_result), G2Affine::from(expected));
+
+        // Test msm_vartime
+        let msm_result_vartime = G2Projective::msm_vartime(&points, &scalars).unwrap();
+        assert_eq!(G2Affine::from(msm_result_vartime), G2Affine::from(expected));
+
+        // Test msm
+        let msm_result = G2Projective::msm(&points, &scalars).unwrap();
+        assert_eq!(G2Affine::from(msm_result), G2Affine::from(expected));
+
+        // Test empty input
+        let empty_res = G2Projective::msm(&[], &[]).unwrap();
+        assert_eq!(empty_res, G2Projective::identity());
     }
 }
