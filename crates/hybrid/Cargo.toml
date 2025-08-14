@@ -13,12 +13,15 @@ default = ["std"]
 std = [
     "dcrypt-api/std", 
     "dcrypt-common/std", 
-    "dcrypt-internal/std"
+    "dcrypt-internal/std",
+    "alloc"
 ]
+alloc = []
 no_std = [
     "dcrypt-api/no_std", 
     "dcrypt-common/no_std", 
-    "dcrypt-internal/no_std"
+    "dcrypt-internal/no_std",
+    "alloc"
 ]
 serde = [
     "dep:serde", 

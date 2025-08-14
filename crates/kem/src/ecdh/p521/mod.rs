@@ -9,7 +9,7 @@
 //! This implementation uses compressed point format for optimal bandwidth efficiency.
 //!
 //! # Security Features
-//! 
+//!
 //! - No direct byte access to keys (prevents tampering and exposure)
 //! - Constant-time operations
 //! - Proper validation of curve points
@@ -17,7 +17,11 @@
 
 use crate::error::Error as KemError;
 use dcrypt_algorithms::ec::p521 as ec_p521;
-use dcrypt_api::{error::Error as ApiError, Kem, Key as ApiKey, Result as ApiResult};
+use dcrypt_api::{
+    error::Error as ApiError,
+    traits::serialize::{Serialize, SerializeSecret},
+    Kem, Key as ApiKey, Result as ApiResult,
+};
 use dcrypt_common::security::SecretBuffer;
 use rand::{CryptoRng, RngCore};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
@@ -41,22 +45,9 @@ pub struct EcdhP521SharedSecret(ApiKey);
 #[derive(Clone)]
 pub struct EcdhP521Ciphertext([u8; ec_p521::P521_POINT_COMPRESSED_SIZE]);
 
-// Public key methods
+// --- Public key methods ---
 impl EcdhP521PublicKey {
-    /// Create a public key from bytes with validation
-    /// 
-    /// # Arguments
-    /// * `bytes` - The compressed point representation (67 bytes for P-521)
-    /// 
-    /// # Returns
-    /// * `Ok(PublicKey)` if the bytes represent a valid point on the curve
-    /// * `Err` if the bytes are invalid (wrong length, invalid point, or identity)
-    /// 
-    /// # Security Note
-    /// This method validates that the point is on the curve and not the identity,
-    /// preventing invalid key attacks.
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
-        // Validate length
         if bytes.len() != ec_p521::P521_POINT_COMPRESSED_SIZE {
             return Err(ApiError::InvalidLength {
                 context: "EcdhP521PublicKey::from_bytes",
@@ -64,12 +55,8 @@ impl EcdhP521PublicKey {
                 actual: bytes.len(),
             });
         }
-        
-        // Validate it's a valid point on the curve
         let point = ec_p521::Point::deserialize_compressed(bytes)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-        
-        // Reject the identity point
         if point.is_identity() {
             return Err(ApiError::InvalidKey {
                 context: "EcdhP521PublicKey::from_bytes",
@@ -77,41 +64,27 @@ impl EcdhP521PublicKey {
                 message: "Public key cannot be the identity point".to_string(),
             });
         }
-        
-        // Create the key
         let mut key_bytes = [0u8; ec_p521::P521_POINT_COMPRESSED_SIZE];
         key_bytes.copy_from_slice(bytes);
         Ok(Self(key_bytes))
     }
-    
-    /// Export the public key to bytes
-    /// 
-    /// # Returns
-    /// The compressed point representation (67 bytes for P-521)
-    /// 
-    /// # Security Note
-    /// Public keys are not secret and can be shared freely.
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
 }
 
-// Secret key methods
+impl Serialize for EcdhP521PublicKey {
+    fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        Self::from_bytes(bytes)
+    }
+    fn to_bytes(&self) -> Vec<u8> {
+        self.to_bytes()
+    }
+}
+
+// --- Secret key methods ---
 impl EcdhP521SecretKey {
-    /// Create a secret key from bytes with validation
-    /// 
-    /// # Arguments
-    /// * `bytes` - The scalar value (66 bytes for P-521)
-    /// 
-    /// # Returns
-    /// * `Ok(SecretKey)` if the bytes represent a valid scalar
-    /// * `Err` if the bytes are invalid (wrong length or out of range)
-    /// 
-    /// # Security
-    /// The input bytes should be treated as sensitive material and zeroized after use.
-    /// This method validates that the scalar is in the valid range [1, n-1].
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
-        // Validate length
         if bytes.len() != ec_p521::P521_SCALAR_SIZE {
             return Err(ApiError::InvalidLength {
                 context: "EcdhP521SecretKey::from_bytes",
@@ -119,61 +92,47 @@ impl EcdhP521SecretKey {
                 actual: bytes.len(),
             });
         }
-        
-        // Create a secret buffer from the bytes
         let mut buffer_bytes = [0u8; ec_p521::P521_SCALAR_SIZE];
         buffer_bytes.copy_from_slice(bytes);
         let buffer = SecretBuffer::new(buffer_bytes);
-        
-        // Validate the scalar is in valid range [1, n-1]
         let scalar = ec_p521::Scalar::from_secret_buffer(buffer.clone())
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-        
-        // The scalar is valid, so we can use the buffer
-        drop(scalar); // Explicitly drop to ensure zeroization
+        drop(scalar);
         Ok(Self(buffer))
     }
-    
-    /// Export the secret key to bytes (with zeroization on drop)
-    /// 
-    /// # Returns
-    /// The scalar value wrapped in `Zeroizing` (66 bytes for P-521)
-    /// 
-    /// # Security
-    /// The returned value will be automatically zeroized when dropped.
-    /// Handle with care and minimize the lifetime of the returned value.
     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
         Zeroizing::new(self.0.as_ref().to_vec())
     }
 }
 
-// Shared secret methods
+impl SerializeSecret for EcdhP521SecretKey {
+    fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        Self::from_bytes(bytes)
+    }
+    fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        self.to_bytes()
+    }
+}
+
+// --- Shared secret methods ---
 impl EcdhP521SharedSecret {
-    /// Export the shared secret to bytes (with zeroization on drop)
-    /// 
-    /// # Returns
-    /// The derived shared secret bytes (64 bytes for P-521 with SHA-512)
-    /// 
-    /// # Security Note
-    /// The shared secret should be used immediately for key derivation
-    /// and not stored long-term. The returned value is automatically zeroized.
     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>> {
         Zeroizing::new(self.0.as_ref().to_vec())
     }
 }
 
-// Ciphertext methods
+impl SerializeSecret for EcdhP521SharedSecret {
+    fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        Ok(Self(ApiKey::new(bytes)))
+    }
+    fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
+        self.to_bytes()
+    }
+}
+
+// --- Ciphertext methods ---
 impl EcdhP521Ciphertext {
-    /// Create a ciphertext from bytes with validation
-    /// 
-    /// # Arguments
-    /// * `bytes` - The compressed ephemeral public key (67 bytes for P-521)
-    /// 
-    /// # Returns
-    /// * `Ok(Ciphertext)` if the bytes represent a valid ephemeral key
-    /// * `Err` if the bytes are invalid
     pub fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
-        // Validate length
         if bytes.len() != ec_p521::P521_POINT_COMPRESSED_SIZE {
             return Err(ApiError::InvalidLength {
                 context: "EcdhP521Ciphertext::from_bytes",
@@ -181,12 +140,8 @@ impl EcdhP521Ciphertext {
                 actual: bytes.len(),
             });
         }
-        
-        // Validate it's a valid point on the curve
         let point = ec_p521::Point::deserialize_compressed(bytes)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-        
-        // Reject the identity point
         if point.is_identity() {
             return Err(ApiError::InvalidCiphertext {
                 context: "EcdhP521Ciphertext::from_bytes",
@@ -194,23 +149,23 @@ impl EcdhP521Ciphertext {
                 message: "Ephemeral public key cannot be the identity point".to_string(),
             });
         }
-        
-        // Create the ciphertext
         let mut ct_bytes = [0u8; ec_p521::P521_POINT_COMPRESSED_SIZE];
         ct_bytes.copy_from_slice(bytes);
         Ok(Self(ct_bytes))
     }
-    
-    /// Export the ciphertext to bytes
-    /// 
-    /// # Returns
-    /// The compressed ephemeral public key (67 bytes for P-521)
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_vec()
     }
 }
 
-// NO AsRef or AsMut implementations - prevents direct byte access
+impl Serialize for EcdhP521Ciphertext {
+    fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        Self::from_bytes(bytes)
+    }
+    fn to_bytes(&self) -> Vec<u8> {
+        self.to_bytes()
+    }
+}
 
 impl Kem for EcdhP521 {
     type PublicKey = EcdhP521PublicKey;
@@ -224,17 +179,10 @@ impl Kem for EcdhP521 {
     }
 
     fn keypair<R: CryptoRng + RngCore>(rng: &mut R) -> ApiResult<Self::KeyPair> {
-        // Generate a keypair using the EC implementation
-        // The EC implementation already ensures proper scalar range and point validation
         let (sk_scalar, pk_point) =
             ec_p521::generate_keypair(rng).map_err(|e| ApiError::from(KemError::from(e)))?;
-
-        // Serialize the public key point using compressed format
         let public_key = EcdhP521PublicKey(pk_point.serialize_compressed());
-
-        // Wrap the secret scalar in our type
         let secret_key = EcdhP521SecretKey(sk_scalar.as_secret_buffer().clone());
-
         Ok((public_key, secret_key))
     }
 
@@ -250,11 +198,8 @@ impl Kem for EcdhP521 {
         rng: &mut R,
         public_key_recipient: &Self::PublicKey,
     ) -> ApiResult<(Self::Ciphertext, Self::SharedSecret)> {
-        // 1. Deserialize and validate recipient's public key (compressed format)
         let pk_r_point = ec_p521::Point::deserialize_compressed(&public_key_recipient.0)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-
-        // Explicitly check for identity point (deserialize_compressed already does other validation)
         if pk_r_point.is_identity() {
             return Err(ApiError::InvalidKey {
                 context: "ECDH-P521 encapsulate",
@@ -262,19 +207,11 @@ impl Kem for EcdhP521 {
                 message: "Recipient public key cannot be the identity point".to_string(),
             });
         }
-
-        // 2. Generate ephemeral keypair for this encapsulation
         let (ephemeral_scalar, ephemeral_point) =
             ec_p521::generate_keypair(rng).map_err(|e| ApiError::from(KemError::from(e)))?;
-
-        // 3. Serialize ephemeral public key as the ciphertext (compressed format)
         let ciphertext = EcdhP521Ciphertext(ephemeral_point.serialize_compressed());
-
-        // 4. Compute shared point: [ephemeral_scalar] * recipient_pk
         let shared_point = ec_p521::scalar_mult(&ephemeral_scalar, &pk_r_point)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-
-        // 5. Check for identity point (which would lead to a weak key)
         if shared_point.is_identity() {
             return Err(ApiError::DecryptionFailed {
                 context: "ECDH-P521 encapsulate",
@@ -282,31 +219,18 @@ impl Kem for EcdhP521 {
                 message: "Shared point is the identity".to_string(),
             });
         }
-
-        // 6. Extract the x-coordinate for the KDF input
         let x_coord_bytes = shared_point.x_coordinate_bytes();
-
-        // 7. Prepare KDF input: x-coordinate || ephemeral_pk || recipient_pk
-        // This binding prevents the standard KDF inputs from being domain-separated
         let mut kdf_ikm = Vec::with_capacity(
-            ec_p521::P521_FIELD_ELEMENT_SIZE + 2 * ec_p521::P521_POINT_COMPRESSED_SIZE, // Using compressed size
+            ec_p521::P521_FIELD_ELEMENT_SIZE + 2 * ec_p521::P521_POINT_COMPRESSED_SIZE,
         );
         kdf_ikm.extend_from_slice(&x_coord_bytes);
         kdf_ikm.extend_from_slice(&ephemeral_point.serialize_compressed());
         kdf_ikm.extend_from_slice(&public_key_recipient.0);
-
-        // 8. Derive the shared secret with domain separation
         let info: Option<&[u8]> = Some(b"ECDH-P521-KEM");
         let ss_bytes = ec_p521::kdf_hkdf_sha512_for_ecdh_kem(&kdf_ikm, info)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-
-        // 9. Create the shared secret and ensure the ephemeral scalar is zeroized
         let shared_secret = EcdhP521SharedSecret(ApiKey::new(&ss_bytes));
-
-        // Explicitly zeroize the ephemeral scalar for defense-in-depth
-        // (even though it already implements ZeroizeOnDrop)
-        drop(ephemeral_scalar); // This will trigger zeroization
-
+        drop(ephemeral_scalar);
         Ok((ciphertext, shared_secret))
     }
 
@@ -314,18 +238,13 @@ impl Kem for EcdhP521 {
         secret_key_recipient: &Self::SecretKey,
         ciphertext_ephemeral_pk: &Self::Ciphertext,
     ) -> ApiResult<Self::SharedSecret> {
-        // 1. Create a Scalar from the secret key
         let scalar_result = ec_p521::Scalar::from_secret_buffer(secret_key_recipient.0.clone());
         let sk_r_scalar = match scalar_result {
             Ok(scalar) => scalar,
             Err(e) => return Err(ApiError::from(KemError::from(e))),
         };
-
-        // 2. Deserialize and validate the ephemeral public key from ciphertext (compressed format)
         let q_e_point = ec_p521::Point::deserialize_compressed(&ciphertext_ephemeral_pk.0)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-
-        // Check for identity point
         if q_e_point.is_identity() {
             return Err(ApiError::InvalidCiphertext {
                 context: "ECDH-P521 decapsulate",
@@ -333,12 +252,8 @@ impl Kem for EcdhP521 {
                 message: "Ephemeral public key cannot be the identity point".to_string(),
             });
         }
-
-        // 3. Compute the shared point: [recipient_scalar] * ephemeral_pk
         let shared_point = ec_p521::scalar_mult(&sk_r_scalar, &q_e_point)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-
-        // 4. Check for identity point
         if shared_point.is_identity() {
             return Err(ApiError::DecryptionFailed {
                 context: "ECDH-P521 decapsulate",
@@ -346,28 +261,18 @@ impl Kem for EcdhP521 {
                 message: "Shared point is the identity".to_string(),
             });
         }
-
-        // 5. Get the x-coordinate
         let x_coord_bytes = shared_point.x_coordinate_bytes();
-
-        // 6. Compute the recipient's public key for KDF input
         let q_r_point = ec_p521::scalar_mult_base_g(&sk_r_scalar)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-
-        // 7. Prepare KDF input with the same order as encapsulation
         let mut kdf_ikm = Vec::with_capacity(
-            ec_p521::P521_FIELD_ELEMENT_SIZE + 2 * ec_p521::P521_POINT_COMPRESSED_SIZE, // Using compressed size
+            ec_p521::P521_FIELD_ELEMENT_SIZE + 2 * ec_p521::P521_POINT_COMPRESSED_SIZE,
         );
         kdf_ikm.extend_from_slice(&x_coord_bytes);
         kdf_ikm.extend_from_slice(&ciphertext_ephemeral_pk.0);
         kdf_ikm.extend_from_slice(&q_r_point.serialize_compressed());
-
-        // 8. Derive the shared secret with same domain separation
         let info: Option<&[u8]> = Some(b"ECDH-P521-KEM");
         let ss_bytes = ec_p521::kdf_hkdf_sha512_for_ecdh_kem(&kdf_ikm, info)
             .map_err(|e| ApiError::from(KemError::from(e)))?;
-
-        // 9. Create and return the shared secret
         let shared_secret = EcdhP521SharedSecret(ApiKey::new(&ss_bytes));
         Ok(shared_secret)
     }

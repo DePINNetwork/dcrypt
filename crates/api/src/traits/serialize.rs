@@ -1,12 +1,22 @@
-//! Trait definition for serialization
+// File: crates/api/src/traits/serialize.rs
+
+//! Traits for byte serialization of cryptographic types.
 
 use crate::Result;
+use zeroize::Zeroizing;
 
-/// Trait for objects that can be serialized to and from bytes
+/// A trait for public types that can be serialized to and from bytes.
 pub trait Serialize: Sized {
-    /// Convert the object to a byte array
-    fn to_bytes(&self) -> Result<Vec<u8>>;
-
-    /// Create an object from a byte array
+    /// Creates an object from a byte slice.
     fn from_bytes(bytes: &[u8]) -> Result<Self>;
+    /// Converts the object to a byte vector.
+    fn to_bytes(&self) -> Vec<u8>;
+}
+
+/// A trait for secret types that can be securely serialized.
+pub trait SerializeSecret: Sized {
+    /// Creates an object from a byte slice. Input should be zeroized after use.
+    fn from_bytes(bytes: &[u8]) -> Result<Self>;
+    /// Converts the object to a byte vector that is zeroized on drop.
+    fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>>;
 }

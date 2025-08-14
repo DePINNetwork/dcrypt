@@ -14,7 +14,7 @@ pub mod symmetric;
 // Original trait re-exports
 pub use kem::Kem;
 pub use pke::Pke;
-pub use serialize::Serialize;
+pub use serialize::{Serialize, SerializeSecret};
 pub use signature::Signature;
 pub use symmetric::SymmetricCipher;
 
