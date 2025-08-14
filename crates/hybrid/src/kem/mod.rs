@@ -7,7 +7,7 @@
 //! both classical and quantum adversaries.
 
 // Internal modules
-pub mod engine;
+pub(crate) mod engine;
 mod traits;
 
 // Concrete hybrid KEM implementations
