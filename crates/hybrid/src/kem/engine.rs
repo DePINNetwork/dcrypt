@@ -89,15 +89,30 @@ impl<C: KemDimensions, P: KemDimensions> Drop for HybridSecretKey<C, P> {
 impl<C: KemDimensions, P: KemDimensions> ZeroizeOnDrop for HybridSecretKey<C, P> {}
 
 impl<C: KemDimensions, P: KemDimensions> SerializeSecret for HybridSecretKey<C, P> {
-    // A composite hybrid secret key should not be deserialized from a single byte slice.
-    fn from_bytes(_bytes: &[u8]) -> ApiResult<Self> {
-        Err(ApiError::NotImplemented {
-            feature: "Deserialization of HybridSecretKey",
+    // FIX: Implement from_bytes to correctly deserialize a concatenated key.
+    fn from_bytes(bytes: &[u8]) -> ApiResult<Self> {
+        let total_len = C::SECRET_KEY_LEN + P::SECRET_KEY_LEN;
+        if bytes.len() != total_len {
+            return Err(ApiError::InvalidLength {
+                context: "HybridSecretKey::from_bytes",
+                expected: total_len,
+                actual: bytes.len(),
+            });
+        }
+        let (classical_bytes, post_quantum_bytes) = bytes.split_at(C::SECRET_KEY_LEN);
+        Ok(Self {
+            classical_sk: C::SecretKey::from_bytes(classical_bytes)?,
+            post_quantum_sk: P::SecretKey::from_bytes(post_quantum_bytes)?,
         })
     }
-    // A composite hybrid secret key should not be serialized into a single byte slice.
+    // FIX: Implement to_bytes_zeroizing to correctly serialize by concatenating the keys.
     fn to_bytes_zeroizing(&self) -> Zeroizing<Vec<u8>> {
-        Zeroizing::new(Vec::new())
+        let classical_bytes = self.classical_sk.to_bytes_zeroizing();
+        let post_quantum_bytes = self.post_quantum_sk.to_bytes_zeroizing();
+        let mut combined = Vec::with_capacity(classical_bytes.len() + post_quantum_bytes.len());
+        combined.extend_from_slice(&classical_bytes);
+        combined.extend_from_slice(&post_quantum_bytes);
+        Zeroizing::new(combined)
     }
 }
 
