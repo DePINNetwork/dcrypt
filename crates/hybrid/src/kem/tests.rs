@@ -1,7 +1,9 @@
 // File: crates/hybrid/src/kem/tests.rs
 
-use super::{EcdhP256Kyber768, EcdhP384Kyber1024};
-use dcrypt_api::{Kem, Serialize}; // CORRECT: Add Serialize to the use statement
+use super::{
+    EcdhK256Kyber512, EcdhP256Kyber512, EcdhP256Kyber768, EcdhP384Kyber1024, EcdhP521Kyber1024,
+};
+use dcrypt_api::{Kem, Serialize};
 use rand::rngs::OsRng;
 
 #[test]
@@ -18,8 +20,8 @@ fn test_ecdh_p256_kyber_768_kem_full_roundtrip() {
     assert_eq!(ss_sender.len(), 32);
 
     // Verify key and ciphertext lengths (Now compiles because `to_bytes` is in scope)
-    assert_eq!(pk.to_bytes().len(), 1217);
-    assert_eq!(ciphertext.to_bytes().len(), 1121);
+    assert_eq!(pk.to_bytes().len(), 1217); // 33 + 1184
+    assert_eq!(ciphertext.to_bytes().len(), 1121); // 33 + 1088
 }
 
 #[test]
@@ -36,8 +38,53 @@ fn test_ecdh_p384_kyber_1024_kem_full_roundtrip() {
     assert_eq!(ss_sender.len(), 32);
 
     // Verify key and ciphertext lengths (Now compiles because `to_bytes` is in scope)
-    assert_eq!(pk.to_bytes().len(), 1617);
-    assert_eq!(ciphertext.to_bytes().len(), 1617);
+    assert_eq!(pk.to_bytes().len(), 1617); // 49 + 1568
+    assert_eq!(ciphertext.to_bytes().len(), 1617); // 49 + 1568
+}
+
+#[test]
+fn test_ecdh_p256_kyber_512_kem_full_roundtrip() {
+    let mut rng = OsRng;
+    let (pk, sk) = EcdhP256Kyber512::keypair(&mut rng).expect("Keypair generation failed");
+
+    let (ciphertext, ss_sender) = EcdhP256Kyber512::encapsulate(&mut rng, &pk).unwrap();
+    let ss_recipient = EcdhP256Kyber512::decapsulate(&sk, &ciphertext).unwrap();
+
+    assert_eq!(*ss_sender.to_bytes_zeroizing(), *ss_recipient.to_bytes_zeroizing());
+    assert_eq!(ss_sender.len(), 32);
+
+    assert_eq!(pk.to_bytes().len(), 833); // 33 + 800
+    assert_eq!(ciphertext.to_bytes().len(), 801); // 33 + 768
+}
+
+#[test]
+fn test_ecdh_p521_kyber_1024_kem_full_roundtrip() {
+    let mut rng = OsRng;
+    let (pk, sk) = EcdhP521Kyber1024::keypair(&mut rng).expect("Keypair generation failed");
+
+    let (ciphertext, ss_sender) = EcdhP521Kyber1024::encapsulate(&mut rng, &pk).unwrap();
+    let ss_recipient = EcdhP521Kyber1024::decapsulate(&sk, &ciphertext).unwrap();
+
+    assert_eq!(*ss_sender.to_bytes_zeroizing(), *ss_recipient.to_bytes_zeroizing());
+    assert_eq!(ss_sender.len(), 32);
+
+    assert_eq!(pk.to_bytes().len(), 1635); // 67 + 1568
+    assert_eq!(ciphertext.to_bytes().len(), 1635); // 67 + 1568
+}
+
+#[test]
+fn test_ecdh_k256_kyber_512_kem_full_roundtrip() {
+    let mut rng = OsRng;
+    let (pk, sk) = EcdhK256Kyber512::keypair(&mut rng).expect("Keypair generation failed");
+
+    let (ciphertext, ss_sender) = EcdhK256Kyber512::encapsulate(&mut rng, &pk).unwrap();
+    let ss_recipient = EcdhK256Kyber512::decapsulate(&sk, &ciphertext).unwrap();
+
+    assert_eq!(*ss_sender.to_bytes_zeroizing(), *ss_recipient.to_bytes_zeroizing());
+    assert_eq!(ss_sender.len(), 32);
+
+    assert_eq!(pk.to_bytes().len(), 833); // 33 + 800
+    assert_eq!(ciphertext.to_bytes().len(), 801); // 33 + 768
 }
 
 #[test]
