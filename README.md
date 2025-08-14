@@ -1,155 +1,159 @@
-# DCRYPT - Pure Rust Cryptographic Library
+# DCRYPT: A Modern, High-Assurance Cryptographic Library for Rust
 
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-<!-- TO DO: other badges as appropriate, e.g., build status, crates.io version -->
+[![Crates.io](https://img.shields.io/crates/v/dcrypt.svg?style=flat-square)](https://crates.io/crates/dcrypt)
+[![Docs.rs](https://img.shields.io/docsrs/dcrypt?style=flat-square)](https://docs.rs/dcrypt)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg?style=flat-square)](https://opensource.org/licenses/Apache-2.0)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/DePINNetwork/dcrypt/rust.yml?branch=main&style=flat-square)](https://github.com/DePINNetwork/dcrypt/actions)
 
-DCRYPT is a modern, pure Rust cryptographic library designed from the ground up with a focus on security, modularity, and ease of use. It provides a comprehensive suite of both traditional (classical) and post-quantum cryptographic (PQC) algorithms, all implemented entirely in Rust to ensure memory safety and cross-platform compatibility without relying on FFI.
+**dcrypt** is a pure Rust software-only cryptographic library for DePIN Network's Web4 infrastructure framework providing both traditional and post-quantum cryptography. Designed with emphasis on security, modularity, performance, and usability, dcrypt eliminates foreign function interfaces (FFI) ensuring memory safety and cross-platform compatibility.
 
-Our mission is to offer robust, audited, and developer-friendly cryptographic tools suitable for a wide range of applications, from embedded systems (`no_std` environments) to high-performance servers.
+## Key Principles
 
-## Key Features
-
-*   **Pure Rust Implementation**: Ensures memory safety and eliminates the complexities and risks associated with FFI.
-*   **Comprehensive Algorithm Support**:
-    *   **Symmetric Ciphers**: AES (GCM, CBC, CTR), ChaCha20Poly1305, XChaCha20Poly1305.
-    *   **Hash Functions**: SHA-2, SHA-3, SHAKE, BLAKE2, BLAKE3 (as XOF).
-    *   **MACs**: HMAC, Poly1305.
-    *   **KDFs**: PBKDF2, HKDF, Argon2.
-    *   **Key Encapsulation Mechanisms (KEMs)**:
-        *   *Traditional*: RSA-KEM, DH, ECDH (P-256, P-384).
-        *   *Post-Quantum*: Kyber, NTRU, Saber, McEliece.
-    *   **Digital Signatures**:
-        *   *Traditional*: Ed25519, ECDSA (P-256, P-384), RSA (PSS, PKCS#1 v1.5), DSA.
-        *   *Post-Quantum*: Dilithium, Falcon, SPHINCS+, Rainbow.
-    *   **Hybrid Schemes**: Combinations of traditional and PQC algorithms for KEMs and signatures (e.g., ECDH+Kyber KEM, ECDSA+Dilithium Signatures).
-*   **Security-First Design**:
-    *   **Constant-Time Operations**: Critical components are designed to resist timing side-channel attacks (see [CONSTANT_TIME_POLICY.md](./CONSTANT_TIME_POLICY.md)).
-    *   **Secure Memory Handling**: Automatic zeroization of sensitive data (keys, intermediate values) using `zeroize` and custom secure types.
-    *   **Type Safety**: Strong typing and Rust's ownership model are leveraged to prevent common cryptographic misuses.
-*   **Modular Architecture**: Organized as a Rust workspace with specialized crates for API, common utilities, cryptographic primitives, and high-level algorithm categories.
-*   **Cross-Platform & Environment Support**:
-    *   Works in `std` and `no_std` (with `alloc`) environments.
-    *   Designed with WebAssembly (WASM) compatibility in mind.
-*   **Ergonomic API**: Aims for interfaces that are easy to use correctly and hard to misuse, including builder patterns for complex operations.
-*   **Extensive Testing**: Includes unit tests, integration tests, and constant-time verification tests, using official test vectors where available.
-
-## Project Structure
-
-DCRYPT is a Rust workspace composed of several crates:
-
-*   **`crates/api`**: Defines the public API traits, core error types, and fundamental data types (e.g., `SecretBytes`, `Key`).
-*   **`crates/common`**: Provides shared utilities, especially security primitives like `SecretBuffer`, `EphemeralSecret`, and constant-time comparison helpers.
-*   **`crates/internal`**: Contains low-level, non-public utility functions for internal use (e.g., endian conversions, specific constant-time logic).
-*   **`crates/params`**: A `no_std` crate centralizing cryptographic parameters and constants for all supported algorithms.
-*   **`crates/algorithms`**: The core crate implementing foundational cryptographic primitives (hashes, block ciphers, MACs, AEADs, KDFs, XOFs).
-*   **`crates/symmetric`**: High-level APIs for symmetric encryption, including AEAD ciphers and streaming encryption.
-*   **`crates/kem`**: Implementations of Key Encapsulation Mechanisms (traditional and PQC).
-*   **`crates/sign`**: Implementations of Digital Signature schemes (traditional and PQC).
-*   **`crates/hybrid`**: Implementations of hybrid KEMs and signature schemes.
-*   **`crates/utils`**: Development utilities (testing helpers, benchmarks, etc.).
-*   **`tests`**: A dedicated crate for integration and specialized tests (e.g., constant-time verification).
-
-For detailed documentation on each crate and module, please see the [DCRYPT Documentation](./docs/README.md).
+*   **Pure Rust & Memory Safe**: Implemented entirely in Rust without FFI, preventing entire classes of memory-related bugs and ensuring seamless portability.
+*   **Security-First Design**: Prioritizes resistance to side-channel attacks through constant-time execution for critical operations and secure memory handling with automatic zeroization of sensitive data.
+*   **Comprehensive & Modern**: Provides a full suite of traditional (AES-GCM, SHA-2, ECDH, Ed25519) and post-quantum (Kyber, Dilithium) algorithms, ready for the next generation of secure applications.
+*   **Modular & Ergonomic API**: A clean, layered architecture with high-level, easy-to-use APIs for common tasks like authenticated encryption, password hashing, and digital signatures.
+*   **`no_std` & Cross-Platform**: Fully compatible with `no_std` environments (with `alloc`), making it ideal for everything from embedded devices and IoT to high-performance web servers.
 
 ## Quick Start
 
-Add DCRYPT crates to your `Cargo.toml`. For example, to use AES-256-GCM:
+Add `dcrypt` and `rand` to your project's `Cargo.toml`:
 
 ```toml
 [dependencies]
-# For the API traits and core types
-dcrypt-api = { path = "crates/api" } # Or from crates.io: "0.1.0"
-# For symmetric cipher implementations
-dcrypt-symmetric = { path = "crates/symmetric" } # Or from crates.io: "0.1.0"
-# For AES keys and algorithm implementations (symmetric depends on this)
-dcrypt-algorithms = { path = "crates/algorithms" } # Or from crates.io: "0.1.0"
-# For random number generation
+# This assumes a future top-level 'dcrypt' crate.
+# For now, you would depend on the specific crates like `dcrypt-symmetric`.
+# dcrypt = "0.13.0" 
 rand = "0.8"
-# For hex encoding in example
-hex = "0.4"
 ```
 
-## Example: AES-256-GCM Encryption & Decryption
+### Example 1: Authenticated Encryption (AES-256-GCM)
+
+Securely encrypt data with authentication to protect against tampering.
 
 ```rust
-use dcrypt_symmetric::aes::{Aes256Key, Aes256Gcm, GcmNonce};
-use dcrypt_symmetric::cipher::{SymmetricCipher, Aead};
-use dcrypt_symmetric::error::Result as SymmetricResult; // Use the crate-specific Result
+use dcrypt::symmetric::{Aes256Gcm, Aes256Key, Aead, SymmetricCipher, Result};
 
-fn main() -> SymmetricResult<()> {
-    // 1. Generate a new AES-256 key
-    // In a real application, you'd securely store and manage this key.
+fn main() -> Result<()> {
+    // 1. Generate a new, random key for AES-256-GCM.
     let key = Aes256Key::generate();
 
-    // 2. Create a new AES-256-GCM cipher instance
+    // 2. Create a new cipher instance with the key.
     let cipher = Aes256Gcm::new(&key)?;
 
-    // 3. Prepare plaintext and optional associated data (AAD)
-    let plaintext = b"This is a highly confidential message!";
-    let aad = Some(b"Important metadata to authenticate");
+    let plaintext = b"this is a very secret message";
+    let associated_data = b"metadata"; // Optional: authenticated but not encrypted
 
-    // 4. Generate a unique nonce for this encryption
-    // CRITICAL: Nonce must be unique for every encryption with the same key.
+    // 3. Generate a random nonce. MUST be unique for each encryption with the same key.
     let nonce = Aes256Gcm::generate_nonce();
 
-    // 5. Encrypt the plaintext
-    let ciphertext = cipher.encrypt(&nonce, plaintext, aad)?;
-    println!("Plaintext: {}", String::from_utf8_lossy(plaintext));
-    println!("AAD: {}", String::from_utf8_lossy(aad.unwrap_or_default()));
-    println!("Nonce (Base64): {}", nonce.to_string());
-    println!("Ciphertext (Hex): {}", hex::encode(&ciphertext));
+    // 4. Encrypt the data.
+    println!("Encrypting: '{}'", String::from_utf8_lossy(plaintext));
+    let ciphertext = cipher.encrypt(&nonce, plaintext, Some(associated_data))?;
 
-    // 6. Decrypt the ciphertext
-    // The same key, nonce, and AAD must be used for decryption.
-    let decrypted_plaintext = cipher.decrypt(&nonce, &ciphertext, aad)?;
+    // 5. Decrypt the data.
+    let decrypted_plaintext = cipher.decrypt(&nonce, &ciphertext, Some(associated_data))?;
+    println!("Decrypted: '{}'", String::from_utf8_lossy(&decrypted_plaintext));
 
-    // 7. Verify
-    assert_eq!(plaintext, decrypted_plaintext.as_slice());
-    println!("Decrypted Plaintext: {}", String::from_utf8_lossy(&decrypted_plaintext));
-    println!("AES-256-GCM encryption and decryption successful!");
+    // 6. Verify the result.
+    assert_eq!(plaintext, &decrypted_plaintext[..]);
+    println!("\nAES-256-GCM roundtrip successful!");
 
     Ok(())
 }
 ```
 
-For more examples, including post-quantum KEMs and digital signatures, please see the examples/ directory in the codebase and the documentation for individual crates.
+### Example 2: Password Hashing & Verification (Argon2)
 
-## Security
+Securely hash user passwords for storage using the state-of-the-art Argon2id algorithm.
 
-Security is the paramount design goal of DCRYPT.
+```rust
+use dcrypt::kdf::{Argon2, PasswordHash, PasswordHashFunction, Result};
+use dcrypt::types::SecretBytes;
+use std::str::FromStr;
 
-* **No unsafe in core primitives (goal)**: We strive to write safe Rust. Where unsafe might be strictly necessary for performance or low-level interaction (e.g., SIMD), it will be rigorously reviewed and minimized.
-* **Constant-Time Execution**: Critical cryptographic operations are implemented to be resistant to timing side-channel attacks. See our Constant-Time Policy.
-* **Secure Memory Management**: All sensitive data (keys, intermediate states) is handled using types that ensure automatic zeroization on drop.
-* **Extensive Testing**: Rigorous testing against official test vectors and statistical analysis for side-channel resistance.
-* **Formal Audits (Future Goal)**: We aim to have core components of the library formally audited by security professionals.
+fn main() -> Result<()> {
+    let argon2 = Argon2::<16>::new(); // Default Argon2id, salt size 16
+    let password = SecretBytes::<32>::new(*b"a-very-secure-password!         ");
 
-**Disclaimer**: Cryptography is complex. While DCRYPT aims for high security, always ensure you understand the security implications of the algorithms and parameters you choose. If in doubt, consult with a cryptography expert.
+    // 1. Hash a new password. This generates a random salt.
+    let password_hash = argon2.hash_password(&password)?;
+
+    // 2. The result is a PHC format string, safe to store in your database.
+    let hash_string = password_hash.to_string();
+    println!("Stored Password Hash: {}", hash_string);
+
+    // --- Later, during login ---
+
+    // 3. Parse the stored hash string.
+    let parsed_hash = PasswordHash::from_str(&hash_string)?;
+
+    // 4. Verify the password against the parsed hash.
+    // This is a constant-time comparison to prevent timing attacks.
+    assert!(argon2.verify(&password, &parsed_hash)?);
+
+    println!("\nPassword verified successfully!");
+
+    // Verification with the wrong password will fail.
+    let wrong_password = SecretBytes::<32>::new(*b"incorrect-password...           ");
+    assert!(!argon2.verify(&wrong_password, &parsed_hash)?);
+    println!("Verification with wrong password failed, as expected.");
+
+    Ok(())
+}
+```
+
+## Available Algorithms
+
+DCRYPT provides a broad range of cryptographic primitives:
+
+| Category | Algorithms |
+| :--- | :--- |
+| **AEAD Ciphers** | `AES-GCM`, `ChaCha20-Poly1305`, `XChaCha20-Poly1305` |
+| **Hash Functions** | `SHA-2`, `SHA-3`, `BLAKE2` |
+| **XOFs** | `SHAKE`, `BLAKE3` |
+| **Password Hashing** | `Argon2id` (default), `Argon2i`, `Argon2d` |
+| **Key Derivation** | `HKDF`, `PBKDF2` |
+| **Digital Signatures** | `ECDSA` (P-256, P-384), `Ed25519` |
+| **Post-Quantum Sigs** | `Dilithium` |
+| **KEMs** | `ECDH` (P-256, P-384, etc.) |
+| **Post-Quantum KEMs**| `Kyber` |
+| **Hybrid Schemes** | `ECDH+Kyber` (KEM), `ECDSA+Dilithium` (Signature) |
+
+## Project Architecture
+
+The `dcrypt` library is organized as a workspace with several specialized crates to ensure a clean separation of concerns:
+
+*   **`api`**: Defines the core public traits, error handling, and fundamental types.
+*   **`common`**: Provides shared security primitives, such as secure memory wrappers.
+*   **`internal`**: Low-level, non-public utilities for constant-time operations.
+*   **`params`**: A `no_std` crate centralizing cryptographic parameters and constants.
+*   **`algorithms`**: The core cryptographic engine with low-level implementations of all primitives.
+*   **`symmetric`**: High-level APIs for symmetric ciphers, including key management and streaming.
+*   **`kem`**: Implementations of Key Encapsulation Mechanisms (KEMs).
+*   **`sign`**: Implementations of Digital Signature schemes.
+*   **`pke`**: Implementations of Public Key Encryption (PKE) schemes like ECIES.
+*   **`hybrid`**: Ready-to-use hybrid schemes combining classical and post-quantum algorithms.
+*   **`tests`**: Integration tests, constant-time verification, and test vectors.
+
+## Security Philosophy
+
+Security is the primary design driver for DCRYPT.
+
+*   **Constant-Time Execution**: Primitives handling secret data (e.g., key operations, signature verification) are implemented to execute in constant time, mitigating a broad class of timing side-channel attacks.
+*   **Secure Memory Handling**: Sensitive data like keys and intermediate cryptographic state are handled using secure memory types that automatically zero their contents when they go out of scope, preventing accidental data leakage from memory.
+*   **Type Safety**: We leverage Rust's powerful type system to enforce cryptographic properties at compile time. For example, a key for `AES-256` cannot be accidentally used with a `ChaCha20` cipher, preventing common API misuse.
+*   **No Unsafe Code in Primitives**: The core cryptographic logic is written in safe Rust, eliminating the risks associated with FFI and manual memory management.
 
 ## Feature Flags
 
-DCRYPT uses feature flags to allow users to tailor the library to their specific needs, especially for no_std environments or to include/exclude specific algorithm families. Common flags include:
+DCRYPT uses feature flags to allow you to tailor the build for your specific needs, helping to minimize binary size.
 
-* **std (default)**: Enables functionality dependent on the Rust standard library.
-* **alloc**: Enables functionality requiring heap allocation (like Vec), for no_std environments that have an allocator.
-* **no_std**: For building without the standard library.
-* **serde**: Enables serialization/deserialization support for various types using the serde framework.
-* **xof**: Enables Extendable Output Functions.
-
-Specific algorithm features (e.g., aes, sha256, kyber) may be available in individual crates to control code size.
-
-Refer to the Cargo.toml files of individual crates for detailed feature flags.
-
-## Further Documentation
-
-Comprehensive documentation for each crate and major module can be found in the docs/ directory.
+*   `std` (default): Enables functionality requiring the Rust standard library.
+*   `alloc`: For `no_std` environments that have a heap allocator.
+*   `serde`: Enables serialization and deserialization for various types via the Serde framework.
+*   **Algorithm Flags**: Granular flags like `hash`, `aead`, `kdf`, `sign`, `kem`, `post-quantum`, and `traditional` allow you to include only the cryptographic families you need.
 
 ## License
 
-DCRYPT is distributed under the terms of the Apache License (Version 2.0).
-
-See LICENSE-APACHE for details.
-
-## Contributing
-
-We welcome contributions to DCRYPT! Whether it's reporting issues, submitting pull requests for bug fixes, implementing new features, or improving documentation, your help is appreciated. Please see CONTRIBUTING.md for guidelines on how to contribute.
+This project is licensed under the **Apache License, Version 2.0**.
