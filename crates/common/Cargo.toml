@@ -21,8 +21,8 @@ thiserror = { version = "1.0.37", optional = true }
 subtle = { version = "2.4.1" }
 serde = { version = "1.0.147", features = ["derive"], optional = true }
 rand = { version = "0.8.5", optional = false }
-dcrypt-internal = { path = "../internal", version = "=0.14.0-beta.4" }
-dcrypt-api = { path = "../api", version = "=0.14.0-beta.4" }
+dcrypt-internal = { path = "../internal", version = "=0.14.0-beta.5" }
+dcrypt-api = { path = "../api", version = "=0.14.0-beta.5" }
 
 [dev-dependencies]
 rand = { version = "0.8.5" }

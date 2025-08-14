@@ -31,13 +31,13 @@ serde = [
 
 
 [dependencies]
-dcrypt-api = { path = "../api", version = "=0.14.0-beta.4", default-features = false }
-dcrypt-common = { path = "../common", version = "=0.14.0-beta.4", default-features = false }
-dcrypt-internal = { path = "../internal", version = "=0.14.0-beta.4", default-features = false }
-dcrypt-params = { path = "../params", version = "=0.14.0-beta.4" }
-dcrypt-algorithms = { path = "../algorithms", version = "=0.14.0-beta.4" }
-dcrypt-kem = { path = "../kem", version = "=0.14.0-beta.4" }
-dcrypt-sign = { path = "../sign", version = "=0.14.0-beta.4" }
+dcrypt-api = { path = "../api", version = "=0.14.0-beta.5", default-features = false }
+dcrypt-common = { path = "../common", version = "=0.14.0-beta.5", default-features = false }
+dcrypt-internal = { path = "../internal", version = "=0.14.0-beta.5", default-features = false }
+dcrypt-params = { path = "../params", version = "=0.14.0-beta.5" }
+dcrypt-algorithms = { path = "../algorithms", version = "=0.14.0-beta.5" }
+dcrypt-kem = { path = "../kem", version = "=0.14.0-beta.5" }
+dcrypt-sign = { path = "../sign", version = "=0.14.0-beta.5" }
 zeroize = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true, optional = true }
