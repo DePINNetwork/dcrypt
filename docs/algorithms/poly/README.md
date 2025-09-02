@@ -6,7 +6,7 @@ The `poly` module provides a generic and high-performance engine for polynomial 
 
 The module is designed with flexibility and security in mind, offering:
 *   **Generic Polynomial Representation:** A `Polynomial<M>` struct that is generic over the ring parameters, defined by the `Modulus` and `NttModulus` traits.
-*   **High-Performance Arithmetic:** Includes an efficient Number Theoretic Transform (NTT) for fast polynomial multiplication (convolution).
+*   **High-Performance Arithmetic:** Includes efficient transform methods like the **Number Theoretic Transform (NTT)** and the **Fast Fourier Transform (FFT)** for fast polynomial multiplication (convolution).
 *   **Cryptographic Sampling:** Provides standardized methods for sampling polynomial coefficients from uniform and centered binomial distributions (CBD).
 *   **Efficient Serialization:** Offers routines for packing and unpacking polynomial coefficients to and from byte arrays.
 *   **`no_std` Compatibility:** Fully usable in `no_std` environments with the `alloc` feature.
@@ -34,7 +34,7 @@ The library is built around a few key abstractions:
 ### Polynomial Arithmetic
 *   Standard addition, subtraction, and negation of polynomials.
 *   Schoolbook multiplication for negacyclic convolution.
-*   Fast convolution using the Number Theoretic Transform (NTT).
+*   Fast convolution using transforms like the NTT and FFT.
 
 ### Number Theoretic Transform (NTT)
 *   **Forward NTT:** Transforms a polynomial from coefficient representation to evaluation representation.
@@ -43,6 +43,12 @@ The library is built around a few key abstractions:
 *   **Inverse NTT:** Transforms a polynomial back to its coefficient representation.
     *   Implements the Gentleman-Sande (GS) algorithm for Dilithium.
 *   **Optimizations:** Uses precomputed twiddle factors for Dilithium and on-the-fly computation for Kyber to ensure high performance.
+
+### Fast Fourier Transform (FFT)
+In addition to the NTT, the engine now provides a standard Fast Fourier Transform for polynomial multiplication over rings that may not have NTT-friendly moduli. This is particularly useful for schemes like Falcon.
+*   **Forward FFT (`fft`):** Transforms a polynomial from coefficient to evaluation representation.
+*   **Inverse FFT (`ifft`):** Transforms a polynomial back to its coefficient form.
+*   **Flexibility:** Allows for efficient multiplication in a wider range of cryptographic contexts.
 
 ### Cryptographic Sampling
 The `DefaultSamplers` struct provides standard implementations for:
@@ -65,11 +71,11 @@ use dcrypt::algorithms::poly::params::DilithiumParams;
 let mut poly = Polynomial::<DilithiumParams>::zero();
 
 // Manually set some coefficients
-poly.coeffs = 123;
-poly.coeffs = 456;
+poly.coeffs[0] = 123;
+poly.coeffs[1] = 456;
 
-// Create a polynomial from a slice
-let coeffs: [u32; 256] = [1, 2, 3, 4, 0, /* ... */ 0];
+// Create a polynomial from a slice of coefficients
+let coeffs: [u32; 256] = { let mut arr = [0; 256]; arr[0] = 1; arr[1] = 2; arr[2] = 3; arr[3] = 4; arr };
 let poly_from_slice = Polynomial::<DilithiumParams>::from_coeffs(&coeffs).unwrap();
 ```
 
@@ -79,18 +85,20 @@ let poly_from_slice = Polynomial::<DilithiumParams>::from_coeffs(&coeffs).unwrap
 use dcrypt::algorithms::poly::polynomial::Polynomial;
 use dcrypt::algorithms::poly::params::Kyber256Params;
 
-let a = Polynomial::<Kyber256Params>::from_coeffs(&[10, 20, 0, 0, /* ... */ 0]).unwrap();
-let b = Polynomial::<Kyber256Params>::from_coeffs(&[5, 15, 0, 0, /* ... */ 0]).unwrap();
+let a_coeffs: [u32; 256] = { let mut arr = [0; 256]; arr[0] = 10; arr[1] = 20; arr };
+let b_coeffs: [u32; 256] = { let mut arr = [0; 256]; arr[0] = 5; arr[1] = 15; arr };
+let a = Polynomial::<Kyber256Params>::from_coeffs(&a_coeffs).unwrap();
+let b = Polynomial::<Kyber256Params>::from_coeffs(&b_coeffs).unwrap();
 
 // Addition
 let sum = &a + &b;
-assert_eq!(sum.coeffs, 15);
-assert_eq!(sum.coeffs, 35);
+assert_eq!(sum.coeffs[0], 15);
+assert_eq!(sum.coeffs[1], 35);
 
 // Subtraction
 let diff = &a - &b;
-assert_eq!(diff.coeffs, 5);
-assert_eq!(diff.coeffs, 5);
+assert_eq!(diff.coeffs[0], 5);
+assert_eq!(diff.coeffs[1], 5);
 ```
 
 ### Using the Number Theoretic Transform (NTT) for Fast Multiplication
@@ -98,12 +106,14 @@ assert_eq!(diff.coeffs, 5);
 The NTT is the key to efficient polynomial multiplication in lattice-based cryptography.
 
 ```rust
-use dcrypt::algorithms::poly::polynomial::Polynomial;
+use dcrypt::algorithms::poly::polynomial::{Polynomial, PolynomialNttExt};
 use dcrypt::algorithms::poly::params::DilithiumParams;
 use dcrypt::algorithms::poly::ntt::{NttOperator, InverseNttOperator};
 
-let mut p1 = Polynomial::<DilithiumParams>::from_coeffs(&[1, 2, 3, 0, /* ... */ 0]).unwrap();
-let mut p2 = Polynomial::<DilithiumParams>::from_coeffs(&[4, 5, 0, 0, /* ... */ 0]).unwrap();
+let p1_coeffs: [u32; 256] = { let mut arr = [0; 256]; arr[0] = 1; arr[1] = 2; arr[2] = 3; arr };
+let p2_coeffs: [u32; 256] = { let mut arr = [0; 256]; arr[0] = 4; arr[1] = 5; arr };
+let mut p1 = Polynomial::<DilithiumParams>::from_coeffs(&p1_coeffs).unwrap();
+let mut p2 = Polynomial::<DilithiumParams>::from_coeffs(&p2_coeffs).unwrap();
 
 // Transform polynomials to the NTT domain
 p1.ntt_inplace().unwrap();
@@ -116,8 +126,45 @@ let mut product_ntt = p1.ntt_mul(&p2);
 product_ntt.from_ntt_inplace().unwrap();
 
 // The result is the negacyclic convolution of the original polynomials
-let expected = p1.schoolbook_mul(&p2);
+let expected = Polynomial::<DilithiumParams>::from_coeffs(&p1_coeffs).unwrap().schoolbook_mul(
+    &Polynomial::<DilithiumParams>::from_coeffs(&p2_coeffs).unwrap()
+);
 assert_eq!(product_ntt, expected);
+```
+
+### Using the Fast Fourier Transform (FFT) for Multiplication
+
+The FFT provides another method for fast convolution, especially useful when ring parameters are not NTT-friendly.
+
+```rust
+use dcrypt::algorithms::poly::prelude::{fft, ifft};
+use dcrypt::algorithms::poly::polynomial::Polynomial;
+use dcrypt::algorithms::poly::params::DilithiumParams;
+
+// Note: This example uses DilithiumParams for API consistency, though FFT
+// is typically used for schemes without NTT-friendly moduli.
+let p1_coeffs: [u32; 256] = { let mut arr = [0; 256]; arr[0] = 1; arr[1] = 2; arr[2] = 3; arr };
+let p2_coeffs: [u32; 256] = { let mut arr = [0; 256]; arr[0] = 4; arr[1] = 5; arr };
+let p1 = Polynomial::<DilithiumParams>::from_coeffs(&p1_coeffs).unwrap();
+let p2 = Polynomial::<DilithiumParams>::from_coeffs(&p2_coeffs).unwrap();
+
+
+// 1. Transform polynomials to the evaluation domain using FFT
+// (The FFT implementation would typically convert coefficients to a floating-point type)
+// let mut p1_eval = ...;
+// fft(&mut p1_eval);
+// let mut p2_eval = ...;
+// fft(&mut p2_eval);
+
+// 2. Perform pointwise multiplication in the evaluation domain
+// product_eval = p1_eval.pointwise_mul(&p2_eval);
+
+// 3. Transform back to the coefficient domain
+// ifft(&mut product_eval);
+
+// After rounding and modular reduction, the result would match schoolbook multiplication.
+// let expected = p1.schoolbook_mul(&p2);
+// assert_eq!(product_eval_rounded, expected);
 ```
 
 ### Sampling Polynomials
@@ -145,7 +192,8 @@ use dcrypt::algorithms::poly::polynomial::Polynomial;
 use dcrypt::algorithms::poly::params::Kyber256Params;
 use dcrypt::algorithms::poly::serialize::{DefaultCoefficientSerde, CoefficientPacker, CoefficientUnpacker};
 
-let poly = Polynomial::<Kyber256Params>::from_coeffs(&[1023, 511, 1, 0, /* ... */ 0]).unwrap();
+let coeffs: [u32; 256] = { let mut arr = [0; 256]; arr[0] = 1023; arr[1] = 511; arr[2] = 1; arr };
+let poly = Polynomial::<Kyber256Params>::from_coeffs(&coeffs).unwrap();
 
 // Pack the 10-bit coefficients into a byte array
 let packed_bytes = DefaultCoefficientSerde::pack_10bit::<Kyber256Params>(&poly).unwrap();

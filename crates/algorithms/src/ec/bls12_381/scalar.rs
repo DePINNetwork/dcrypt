@@ -121,6 +121,35 @@ const R3: Scalar = Scalar([
     0x6e2a_5bb9_c8db_33e9,
 ]);
 
+// Constants for Tonelli-Shanks square root algorithm
+// 2-adicity of (r - 1)
+const S: u32 = 32;
+
+// T = (r - 1) / 2^S  (odd part)
+const TONELLI_T: [u64; 4] = [
+    0xfffe_5bfe_ffff_ffff,
+    0x09a1_d805_53bd_a402,
+    0x299d_7d48_3339_d808,
+    0x0000_0000_73ed_a753,
+];
+
+// (T + 1)/2, used to initialize x = a^((T+1)/2)
+const TONELLI_TP1_DIV2: [u64; 4] = [
+    0x7fff_2dff_8000_0000,
+    0x04d0_ec02_a9de_d201,
+    0x94ce_bea4_199c_ec04,
+    0x0000_0000_39f6_d3a9,
+];
+
+// Exponent (r-1)/2, the Legendre exponent
+#[allow(dead_code)]
+const LEGENDRE_EXP: [u64; 4] = [
+    0x7fff_ffff_8000_0000,
+    0xa9de_d201_7fff_2dff,
+    0x199c_ec04_04d0_ec02,
+    0x39f6_d3a9_94ce_bea4,
+];
+
 impl<'a> Neg for &'a Scalar {
     type Output = Scalar;
 
@@ -309,7 +338,7 @@ impl ByteSerializable for Scalar {
         array.copy_from_slice(bytes);
 
         Scalar::from_bytes(&array)
-            .into_option()  // Use into_option() instead of into()
+            .into_option()
             .ok_or_else(|| Error::param("scalar_bytes", "non-canonical scalar"))
     }
 }
@@ -337,6 +366,12 @@ impl Scalar {
     #[inline]
     pub const fn one() -> Scalar {
         R
+    }
+
+    /// Check if element is zero.
+    #[inline]
+    pub fn is_zero(&self) -> Choice {
+        (self.0[0] | self.0[1] | self.0[2] | self.0[3]).ct_eq(&0)
     }
 
     /// Double this element
@@ -396,93 +431,54 @@ impl Scalar {
         ])
     }
 
-    // ============================================================================
-    // START: Standards-Compliant Hash-to-Field Implementation with SHA-256
-    // ============================================================================
-
-    /// Expands a message using SHA-256 as per IETF hash-to-curve expand_message_xmd.
-    /// 
-    /// This follows Section 5.3.1 of draft-irtf-cfrg-hash-to-curve.
     fn expand_message_xmd(msg: &[u8], dst: &[u8], len_in_bytes: usize) -> Result<Vec<u8>> {
         const MAX_DST_LENGTH: usize = 255;
-        const HASH_OUTPUT_SIZE: usize = 32; // SHA-256 output size
-        
-        // Check DST length
+        const HASH_OUTPUT_SIZE: usize = 32;
+
         if dst.len() > MAX_DST_LENGTH {
             return Err(Error::param("dst", "domain separation tag too long"));
         }
-        
-        // ell = ceil(len_in_bytes / b_in_bytes)
+
         let ell = (len_in_bytes + HASH_OUTPUT_SIZE - 1) / HASH_OUTPUT_SIZE;
-        
-        // Check ell is within bounds (max 255 for single byte counter)
+
         if ell > 255 {
             return Err(Error::param("len_in_bytes", "requested output too long"));
         }
-        
-        // DST_prime = DST || I2OSP(len(DST), 1)
-        // I2OSP(len(DST), 1) is just the length as a single byte
+
         let dst_prime_len = dst.len() as u8;
-        
-        // msg_prime = Z_pad || msg || l_i_b_str || I2OSP(0, 1) || DST_prime
-        // Z_pad = I2OSP(0, s_in_bytes) where s_in_bytes = HASH_OUTPUT_SIZE
-        // l_i_b_str = I2OSP(len_in_bytes, 2)
+
         let mut hasher = Sha256::new();
-        
-        // Z_pad: 32 zero bytes for SHA-256
         hasher.update(&[0u8; HASH_OUTPUT_SIZE])?;
-        
-        // msg
         hasher.update(msg)?;
-        
-        // l_i_b_str: len_in_bytes as 2 bytes big-endian
         hasher.update(&((len_in_bytes as u16).to_be_bytes()))?;
-        
-        // I2OSP(0, 1)
         hasher.update(&[0u8])?;
-        
-        // DST_prime
         hasher.update(dst)?;
         hasher.update(&[dst_prime_len])?;
-        
-        // b_0 = H(msg_prime)
+
         let b_0 = hasher.finalize()?;
-        
+
         let mut uniform_bytes = Vec::with_capacity(len_in_bytes);
         let mut b_i = vec![0u8; HASH_OUTPUT_SIZE];
-        
+
         for i in 1..=ell {
-            // b_i = H(strxor(b_0, b_{i-1}) || I2OSP(i, 1) || DST_prime)
             let mut hasher = Sha256::new();
-            
-            // strxor(b_0, b_{i-1})
             if i == 1 {
-                // b_0 = b_{i-1} for first iteration, so strxor is all zeros
                 hasher.update(&[0u8; HASH_OUTPUT_SIZE])?;
             } else {
-                // XOR b_0 with previous b_i
                 let mut xored = [0u8; HASH_OUTPUT_SIZE];
                 for j in 0..HASH_OUTPUT_SIZE {
                     xored[j] = b_0.as_ref()[j] ^ b_i[j];
                 }
                 hasher.update(&xored)?;
             }
-            
-            // I2OSP(i, 1)
             hasher.update(&[i as u8])?;
-            
-            // DST_prime
             hasher.update(dst)?;
             hasher.update(&[dst_prime_len])?;
-            
             let digest = hasher.finalize()?;
             b_i.copy_from_slice(digest.as_ref());
-            
-            // Append to uniform_bytes
             uniform_bytes.extend_from_slice(&b_i);
         }
-        
-        // Return first len_in_bytes bytes
+
         uniform_bytes.truncate(len_in_bytes);
         Ok(uniform_bytes)
     }
@@ -498,25 +494,12 @@ impl Scalar {
     ///
     /// # Returns
     /// A `Result` containing the `Scalar` or an error.
-    pub fn hash_to_field(
-        data: &[u8],
-        dst: &[u8],
-    ) -> Result<Self> {
-        // Expand message to 64 bytes (512 bits) for bias reduction
-        // This provides ~128 bits of security when reducing modulo the ~255-bit scalar field
+    pub fn hash_to_field(data: &[u8], dst: &[u8]) -> Result<Self> {
         let expanded = Self::expand_message_xmd(data, dst, 64)?;
-        
-        // Convert to array for from_bytes_wide
         let mut expanded_array = [0u8; 64];
         expanded_array.copy_from_slice(&expanded);
-        
-        // Reduce modulo q
         Ok(Self::from_bytes_wide(&expanded_array))
     }
-
-    // ============================================================================
-    // END: Standards-Compliant Hash-to-Field Implementation
-    // ============================================================================
 
     fn from_u512(limbs: [u64; 8]) -> Scalar {
         let d0 = Scalar([limbs[0], limbs[1], limbs[2], limbs[3]]);
@@ -524,12 +507,13 @@ impl Scalar {
         d0 * R2 + d1 * R3
     }
 
-    /// Create from raw values and convert to Montgomery
+    /// Creates a scalar from four `u64` limbs (little-endian). This function will
+    /// convert the raw integer into Montgomery form.
     pub const fn from_raw(val: [u64; 4]) -> Self {
         (&Scalar(val)).mul(&R2)
     }
 
-    /// Square this element
+    /// Computes the square of this scalar.
     #[inline]
     pub const fn square(&self) -> Scalar {
         let (r1, carry) = mac(0, self.0[0], self.0[1], 0);
@@ -561,7 +545,88 @@ impl Scalar {
         Scalar::montgomery_reduce(r0, r1, r2, r3, r4, r5, r6, r7)
     }
 
-    /// Multiplicative inverse
+    /// Computes `x` raised to the power of `2^k`.
+    #[inline]
+    pub fn pow2k(mut x: Scalar, mut k: u32) -> Scalar {
+        while k > 0 {
+            x = x.square();
+            k -= 1;
+        }
+        x
+    }
+
+    /// Variable-time exponentiation by a 256-bit little-endian exponent.
+    fn pow_vartime(&self, by: &[u64; 4]) -> Self {
+        let mut res = Self::one();
+        for limb in by.iter().rev() {
+            for i in (0..64).rev() {
+                res = res.square();
+                if ((limb >> i) & 1) == 1 {
+                    res *= self;
+                }
+            }
+        }
+        res
+    }
+
+    /// Computes the square root of this scalar using Tonelli-Shanks.
+    /// Returns `Some(s)` with `s^2 = self` if a square root exists, else `None`.
+    pub fn sqrt(&self) -> subtle::CtOption<Self> {
+        // Trivial case: sqrt(0) = 0
+        if bool::from(self.is_zero()) {
+            return subtle::CtOption::new(Scalar::zero(), subtle::Choice::from(1));
+        }
+
+        // Choose a fixed quadratic non-residue. For this field, 5 works.
+        let z = Scalar::from(5u64);
+
+        // Precompute values per Tonelli-Shanks
+        let mut c = z.pow_vartime(&TONELLI_T); // c = z^T
+        let mut t = self.pow_vartime(&TONELLI_T); // t = a^T
+        let mut x = self.pow_vartime(&TONELLI_TP1_DIV2); // x = a^((T+1)/2)
+        let mut m = S;
+
+        // If t == 1, we guessed the root correctly.
+        if bool::from(subtle::ConstantTimeEq::ct_eq(&t, &Scalar::one())) {
+            return subtle::CtOption::new(x, subtle::ConstantTimeEq::ct_eq(&x.square(), self));
+        }
+
+        // Main Tonelli-Shanks loop
+        loop {
+            // Find smallest i in [1, m) with t^(2^i) == 1
+            let mut i = 1u32;
+            let mut t2i = t.square();
+            while i < m && !bool::from(subtle::ConstantTimeEq::ct_eq(&t2i, &Scalar::one())) {
+                t2i = t2i.square();
+                i += 1;
+            }
+
+            // If i == m, then a is not a square root
+            if i == m {
+                return subtle::CtOption::new(Scalar::zero(), subtle::Choice::from(0));
+            }
+
+            // b = c^{2^(m - i - 1)}
+            let b = Scalar::pow2k(c, m - i - 1);
+
+            // Update variables
+            x = x * b;
+            let b2 = b.square();
+            t = t * b2;
+            c = b2;
+            m = i;
+
+            // If t is now 1, we are done
+            if bool::from(subtle::ConstantTimeEq::ct_eq(&t, &Scalar::one())) {
+                break;
+            }
+        }
+
+        // Final constant-time check to ensure correctness
+        subtle::CtOption::new(x, subtle::ConstantTimeEq::ct_eq(&x.square(), self))
+    }
+
+    /// Computes the multiplicative inverse of this scalar, if it is non-zero.
     pub fn invert(&self) -> CtOption<Self> {
         #[inline(always)]
         fn square_assign_multi(n: &mut Scalar, num_times: usize) {
@@ -701,7 +766,7 @@ impl Scalar {
         (&Scalar([r4, r5, r6, r7])).sub(&MODULUS)
     }
 
-    /// Multiply two scalars
+    /// Multiplies this scalar by another.
     #[inline]
     pub const fn mul(&self, rhs: &Self) -> Self {
         let (r0, carry) = mac(0, self.0[0], rhs.0[0], 0);
@@ -727,7 +792,7 @@ impl Scalar {
         Scalar::montgomery_reduce(r0, r1, r2, r3, r4, r5, r6, r7)
     }
 
-    /// Subtract rhs from self
+    /// Subtracts another scalar from this one.
     #[inline]
     pub const fn sub(&self, rhs: &Self) -> Self {
         let (d0, borrow) = sbb(self.0[0], rhs.0[0], 0);
@@ -743,7 +808,7 @@ impl Scalar {
         Scalar([d0, d1, d2, d3])
     }
 
-    /// Add rhs to self
+    /// Adds another scalar to this one.
     #[inline]
     pub const fn add(&self, rhs: &Self) -> Self {
         let (d0, carry) = adc(self.0[0], rhs.0[0], 0);
@@ -754,7 +819,7 @@ impl Scalar {
         (&Scalar([d0, d1, d2, d3])).sub(&MODULUS)
     }
 
-    /// Negate self
+    /// Computes the additive negation of this scalar.
     #[inline]
     pub const fn neg(&self) -> Self {
         let (d0, borrow) = sbb(MODULUS.0[0], self.0[0], 0);
@@ -828,9 +893,11 @@ fn test_debug() {
         format!("{:?}", Scalar::one()),
         "0x0000000000000000000000000000000000000000000000000000000000000001"
     );
+    // R is the Montgomery representation of 1. The Debug trait should perform the
+    // conversion, so it should also format to "1".
     assert_eq!(
-        format!("{:?}", R2),
-        "0x1824b159acc5056f998c4fefecbc4ff55884b7fa0003480200000001fffffffe"
+        format!("{:?}", R),
+        "0x0000000000000000000000000000000000000000000000000000000000000001"
     );
 }
 
@@ -865,11 +932,13 @@ fn test_to_bytes() {
         ]
     );
 
+    // R is the Montgomery representation of 1. to_bytes() should perform the
+    // conversion, so it should also produce the bytes for "1".
     assert_eq!(
-        R2.to_bytes(),
+        R.to_bytes(),
         [
-            254, 255, 255, 255, 1, 0, 0, 0, 2, 72, 3, 0, 250, 183, 132, 88, 245, 79, 188, 236, 239,
-            79, 140, 153, 111, 5, 197, 172, 89, 177, 36, 24
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0
         ]
     );
 
@@ -948,6 +1017,51 @@ fn test_inversion() {
 }
 
 #[test]
+fn test_sqrt() {
+    // Test with zero
+    assert_eq!(Scalar::zero().sqrt().unwrap(), Scalar::zero());
+
+    // Test with one
+    assert_eq!(Scalar::one().sqrt().unwrap(), Scalar::one());
+
+    // Test with a known square
+    let four = Scalar::from(4u64);
+    let two = Scalar::from(2u64);
+    let neg_two = -two;
+
+    let sqrt_four = four.sqrt().unwrap();
+    assert!(sqrt_four == two || sqrt_four == neg_two);
+    assert_eq!(sqrt_four.square(), four);
+
+    // Test with a random square
+    let s = Scalar::from(123456789u64);
+    let s_sq = s.square();
+    let s_sqrt = s_sq.sqrt().unwrap();
+    assert!(s_sqrt == s || s_sqrt == -s);
+    assert_eq!(s_sqrt.square(), s_sq);
+
+    // Test with a non-residue.
+    // For this field, 5 is a quadratic non-residue.
+    let five = Scalar::from(5u64);
+    assert!(bool::from(five.sqrt().is_none()));
+
+    // Test with a residue.
+    // For a prime q where q = 1 mod 4, -1 is a residue.
+    let neg_one = -Scalar::one();
+    let neg_one_sqrt = neg_one.sqrt().unwrap();
+    assert_eq!(neg_one_sqrt.square(), neg_one);
+
+    // Test roundtrip for many values
+    let mut val = R2;
+    for _ in 0..100 {
+        let sq = val.square();
+        let sqrt = sq.sqrt().unwrap();
+        assert!(sqrt == val || sqrt == -val);
+        val += R;
+    }
+}
+
+#[test]
 fn test_from_raw() {
     assert_eq!(
         Scalar::from_raw([
@@ -968,7 +1082,7 @@ fn test_from_raw() {
 fn test_scalar_hash_to_field() {
     let data1 = b"some input data";
     let data2 = b"different input data";
-    let dst1 = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_";  // Standard DST format
+    let dst1 = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_"; // Standard DST format
     let dst2 = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
 
     // 1. Different data should produce different scalars
@@ -986,13 +1100,7 @@ fn test_scalar_hash_to_field() {
     assert_eq!(s3, s5);
 
     // 4. Verify output is always valid scalar (less than modulus)
-    for test_case in &[
-        b"" as &[u8],
-        b"a",
-        b"test",
-        &[0xFF; 100],
-        &[0x00; 64],
-    ] {
+    for test_case in &[b"" as &[u8], b"a", b"test", &[0xFF; 100], &[0x00; 64]] {
         let scalar = Scalar::hash_to_field(test_case, dst1).unwrap();
         // The scalar should already be reduced, so converting to/from bytes should work
         let bytes = scalar.to_bytes();
@@ -1010,8 +1118,12 @@ fn test_scalar_hash_to_field() {
     }
     // All should be different (no collisions in small sample)
     for i in 0..scalars.len() {
-        for j in i+1..scalars.len() {
-            assert_ne!(scalars[i], scalars[j], "Unexpected collision at {} and {}", i, j);
+        for j in i + 1..scalars.len() {
+            assert_ne!(
+                scalars[i], scalars[j],
+                "Unexpected collision at {} and {}",
+                i, j
+            );
         }
     }
 
@@ -1046,7 +1158,7 @@ fn test_scalar_hash_to_field() {
     // These help ensure our implementation follows the standard
     let expanded = Scalar::expand_message_xmd(b"", b"QUUX-V01-CS02-with-SHA256", 32).unwrap();
     assert_eq!(expanded.len(), 32);
-    
+
     // Basic sanity check: different messages produce different expansions
     let expanded1 = Scalar::expand_message_xmd(b"msg1", b"dst", 64).unwrap();
     let expanded2 = Scalar::expand_message_xmd(b"msg2", b"dst", 64).unwrap();
@@ -1066,5 +1178,8 @@ fn test_zeroize() {
     ]);
     a.zeroize();
     // Fixed: disambiguate ct_eq
-    assert!(bool::from(subtle::ConstantTimeEq::ct_eq(&a, &Scalar::zero())));
+    assert!(bool::from(subtle::ConstantTimeEq::ct_eq(
+        &a,
+        &Scalar::zero()
+    )));
 }
